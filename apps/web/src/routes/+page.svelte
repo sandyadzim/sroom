@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Hero from '#lib/components/home/Hero.svelte';
+	import Introduction from '#lib/components/home/Introduction.svelte';
 </script>
 
 <svelte:head>
@@ -11,3 +12,4 @@
 </svelte:head>
 
 <Hero />
+<Introduction />
