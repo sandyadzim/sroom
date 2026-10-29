@@ -7,7 +7,11 @@
 	import { afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
 
-	const links = ['Explore Cars', 'How It Works', 'Rental Terms'];
+	const links = [
+		{ label: 'Explore Cars', href: '#' },
+		{ label: 'How It Works', href: '#how-it-works' },
+		{ label: 'Rental Terms', href: '#' }
+	];
 	let menu: HTMLDialogElement;
 	let menuOpen = $state(false);
 	let closing = $state(false);
@@ -61,8 +65,9 @@
 		aria-label={expanded ? 'Mobile main navigation' : 'Main navigation'}
 		class={expanded ? 'flex flex-col gap-4' : 'flex items-center gap-4 text-sm xl:gap-6'}
 	>
-		{#each links as label (label)}
+		{#each links as link (link.label)}
 			<Link
+				href={link.href}
 				variant="nav"
 				arrow={expanded}
 				onclick={closeMenu}
@@ -70,7 +75,7 @@
 					? 'min-h-12 justify-between font-display text-xl font-semibold tracking-tight'
 					: undefined}
 			>
-				{label}
+				{link.label}
 			</Link>
 		{/each}
 	</nav>

@@ -2,6 +2,9 @@
 	import Hero from '#lib/components/home/Hero.svelte';
 	import Introduction from '#lib/components/home/Introduction.svelte';
 	import FeaturedFleet from '#lib/components/home/FeaturedFleet.svelte';
+	import HowItWorks from '#lib/components/home/HowItWorks.svelte';
+	import BeforeYouGo from '#lib/components/home/BeforeYouGo.svelte';
+	import Faq from '#lib/components/home/Faq.svelte';
 </script>
 
 <svelte:head>
@@ -15,3 +18,6 @@
 <Hero />
 <Introduction />
 <FeaturedFleet />
+<HowItWorks />
+<BeforeYouGo />
+<Faq />
