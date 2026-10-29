@@ -7,7 +7,7 @@
 		| (HTMLAnchorAttributes & { href: string; disabled?: never })
 	) & {
 		variant?: 'primary' | 'secondary' | 'ghost' | 'inverse' | 'ghost-inverse';
-		size?: 'default' | 'icon';
+		size?: 'default' | 'icon' | 'custom';
 	};
 
 	let {
@@ -26,10 +26,15 @@
 		inverse: 'bg-panel text-primary hover:bg-panel-muted',
 		'ghost-inverse': 'bg-transparent text-on-primary hover:bg-on-primary/10'
 	};
+	const sizes = {
+		default: 'rounded-full px-5 py-3',
+		icon: 'size-11 shrink-0 rounded-lg p-2',
+		custom: ''
+	};
 	const classes = $derived([
 		'inline-flex min-h-11 items-center justify-center gap-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:bg-panel-muted disabled:text-ink-muted motion-reduce:transition-none',
 		variants[variant],
-		size === 'icon' ? 'size-11 shrink-0 rounded-lg p-2' : 'rounded-full px-5 py-3',
+		sizes[size],
 		className
 	]);
 </script>

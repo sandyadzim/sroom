@@ -59,7 +59,7 @@
 	}
 
 	body {
-		@apply m-0 bg-page font-body text-base leading-relaxed text-ink antialiased;
+		@apply m-0 font-body text-base leading-relaxed text-ink antialiased;
 	}
 
 	h1,
@@ -105,6 +105,75 @@
 }
 
 @layer components {
+	.hero {
+		min-height: max(42rem, calc(100svh - 6rem));
+	}
+
+	.hero-artwork {
+		container-type: size;
+	}
+
+	.hero-model {
+		top: 2%;
+		font-size: min(22cqw, 16rem);
+		line-height: 0.85;
+	}
+
+	.hero-model span:first-child {
+		font-size: 0.5em;
+	}
+
+	.hero-model span:last-child {
+		font-size: 1.25em;
+	}
+
+	.hero-model-wide span:last-child {
+		font-size: 0.9em;
+	}
+
+	.hero-car {
+		top: 13%;
+		width: min(82cqw, 66rem);
+		height: 65%;
+	}
+
+	@media (width < 64rem) {
+		.hero-model {
+			top: 4%;
+		}
+		.hero-car {
+			top: 8%;
+			width: min(100cqw, 56rem);
+			height: min(50%, calc(100% - 25rem));
+		}
+	}
+
+	@media (width < 40rem) {
+		.hero {
+			min-height: max(40rem, calc(100svh - 6rem));
+		}
+		.hero-model {
+			top: 4%;
+			font-size: min(28cqw, 11rem);
+		}
+		.hero-car {
+			top: 12%;
+			width: 100cqw;
+			height: 40%;
+		}
+	}
+
+	.hero-thumbnail .hero-model {
+		top: 4%;
+		font-size: 22cqw;
+	}
+
+	.hero-thumbnail .hero-car {
+		top: 16%;
+		width: 96cqw;
+		height: 80%;
+	}
+
 	#mobile-navigation {
 		@apply -translate-y-2 opacity-0;
 		transition-property: opacity, translate;
