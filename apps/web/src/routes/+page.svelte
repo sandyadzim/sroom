@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Hero from '#lib/components/home/Hero.svelte';
 	import Introduction from '#lib/components/home/Introduction.svelte';
+	import FeaturedFleet from '#lib/components/home/FeaturedFleet.svelte';
 </script>
 
 <svelte:head>
@@ -13,3 +14,4 @@
 
 <Hero />
 <Introduction />
+<FeaturedFleet />
