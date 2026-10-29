@@ -1,1 +1,139 @@
 @import 'tailwindcss';
+
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Manrope';
+	font-style: normal;
+	font-weight: 200 800;
+	font-display: swap;
+	src: url('@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2') format('woff2');
+}
+
+:root {
+	--color-bg: #f7f7f5;
+	--color-surface: #ffffff;
+	--color-surface-muted: #f0f1ef;
+	--color-text: #16191b;
+	--color-text-muted: #565e62;
+	--color-border: #d9ddde;
+	--color-brand: #172b33;
+	--color-on-brand: #ffffff;
+	--color-focus: #1c65c9;
+	--color-success: #146c43;
+	--color-warning: #8a5700;
+	--color-danger: #b42318;
+	--color-info: #185abc;
+}
+
+@theme inline {
+	--color-page: var(--color-bg);
+	--color-panel: var(--color-surface);
+	--color-panel-muted: var(--color-surface-muted);
+	--color-ink: var(--color-text);
+	--color-ink-muted: var(--color-text-muted);
+	--color-line: var(--color-border);
+	--color-primary: var(--color-brand);
+	--color-on-primary: var(--color-on-brand);
+	--color-focus-ring: var(--color-focus);
+	--color-positive: var(--color-success);
+	--color-caution: var(--color-warning);
+	--color-negative: var(--color-danger);
+	--color-information: var(--color-info);
+	--font-display: 'Manrope', 'Inter', system-ui, sans-serif;
+	--font-body: 'Inter', system-ui, sans-serif;
+	--font-sans: var(--font-body);
+	--radius-card: 1.125rem;
+	--radius-panel: 1.5rem;
+}
+
+@layer base {
+	html {
+		@apply scroll-pt-28 scroll-smooth scheme-light motion-reduce:scroll-auto;
+	}
+
+	body {
+		@apply m-0 bg-page font-body text-base leading-relaxed text-ink antialiased;
+	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		@apply font-display text-balance;
+	}
+
+	a {
+		@apply underline-offset-4;
+	}
+
+	button {
+		@apply cursor-pointer;
+	}
+
+	:focus-visible {
+		@apply outline-2 outline-offset-3 outline-focus-ring;
+	}
+
+	::selection {
+		@apply bg-primary text-on-primary;
+	}
+}
+
+@utility page-container {
+	@apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-10;
+}
+
+@utility nav-label {
+	@apply relative inline-block after:absolute after:-bottom-2 after:left-0 after:h-0.5 after:w-1/2 after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-150 after:ease-out group-hover:after:scale-x-100 group-focus-visible:after:scale-x-100 group-active:after:scale-x-100 motion-reduce:after:transition-none;
+}
+
+@utility footer-wordmark {
+	@apply inline-block translate-y-1/6 font-display text-[26cqw] leading-none font-bold tracking-tight whitespace-nowrap;
+}
+
+@utility pb-safe {
+	padding-bottom: env(safe-area-inset-bottom);
+}
+
+@layer components {
+	#mobile-navigation {
+		@apply -translate-y-2 opacity-0;
+		transition-property: opacity, translate;
+		transition-duration: 200ms;
+		transition-timing-function: ease;
+	}
+
+	#mobile-navigation[open]:not([data-closing]) {
+		@apply translate-y-0 opacity-100;
+		transition-duration: 220ms;
+		transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+
+		@starting-style {
+			@apply -translate-y-2 opacity-0;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		#mobile-navigation,
+		#mobile-navigation[open]:not([data-closing]) {
+			@apply translate-y-0 transition-none;
+		}
+	}
+
+	#mobile-navigation :focus-visible {
+		@apply outline-on-primary;
+	}
+
+	#footer :focus-visible {
+		@apply outline-on-primary;
+	}
+}
