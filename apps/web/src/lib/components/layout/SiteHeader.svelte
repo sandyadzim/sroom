@@ -6,10 +6,11 @@
 	import Link from '#lib/components/ui/Link.svelte';
 	import { afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { resolve } from '$app/paths';
 
 	const links = [
 		{ label: 'Explore Cars', href: '#' },
-		{ label: 'How It Works', href: '#how-it-works' },
+		{ label: 'How It Works', href: `${resolve('/')}#how-it-works` },
 		{ label: 'Rental Terms', href: '#' }
 	];
 	let menu: HTMLDialogElement;
@@ -87,9 +88,9 @@
 			? 'flex flex-col items-stretch gap-4 text-sm'
 			: 'flex items-center gap-4 text-sm xl:gap-6'}
 	>
-		<Link onclick={closeMenu}>Sign In</Link>
+		<Link href={resolve('/(auth)/login')} onclick={closeMenu}>Sign In</Link>
 		<Button
-			href="#"
+			href={resolve('/(auth)/register')}
 			onclick={closeMenu}
 			variant={expanded ? 'inverse' : 'primary'}
 			class="whitespace-nowrap"

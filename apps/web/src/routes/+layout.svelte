@@ -3,12 +3,15 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import SiteHeader from '#lib/components/layout/SiteHeader.svelte';
 	import SiteFooter from '#lib/components/layout/SiteFooter.svelte';
+	import AuthHeader from '#lib/components/auth/AuthHeader.svelte';
+	import { page } from '$app/state';
 	import Link from '#lib/components/ui/Link.svelte';
 	import interFont from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
 	import manropeFont from '@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2?url';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
+	const authPage = $derived(page.route.id?.startsWith('/(auth)/') ?? false);
 </script>
 
 <svelte:head>
@@ -26,11 +29,11 @@
 		Skip to content
 	</Link>
 
-	<SiteHeader />
+	{#if authPage}<AuthHeader />{:else}<SiteHeader />{/if}
 
 	<main id="main-content" tabindex="-1" class="min-w-0 flex-1">
 		{@render children()}
 	</main>
 
-	<SiteFooter />
+	{#if !authPage}<SiteFooter />{/if}
 </div>
