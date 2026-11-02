@@ -10,3 +10,17 @@ export type CarPreview = {
 	image: string;
 	href?: string;
 };
+
+export type CarGalleryImage = {
+	src: string;
+	alt: string;
+	label: string;
+};
+
+// Frontend detail view model, not a catalogue API or quote contract.
+export type CarDetail = CarPreview & {
+	category: string;
+	fuel: string;
+	description: string;
+	gallery: CarGalleryImage[];
+};

@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { ArrowUpRight } from '@lucide/svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import HeroArtwork from './HeroArtwork.svelte';
 
 	const cars = [
 		{
+			slug: 'fortuner-vrz-at',
 			make: 'Toyota',
 			model: 'Fortuner',
 			image: '/images/hero/fortuner-studio.webp',
@@ -13,6 +15,7 @@
 				'A spacious SUV for family days, longer drives, and a little more room along the way.'
 		},
 		{
+			slug: 'brio-rs-cvt',
 			make: 'Honda',
 			model: 'Brio',
 			image: '/images/hero/brio-studio.webp',
@@ -21,6 +24,7 @@
 				'A compact hatchback with a playful character, for everyday errands, coffee stops, and city drives.'
 		},
 		{
+			slug: 'jimny-3-door-at',
 			make: 'Suzuki',
 			model: 'Jimny',
 			image: '/images/hero/jimny-studio.webp',
@@ -56,7 +60,7 @@
 					{selectedCar.description}
 				</p>
 				<Button
-					href="#"
+					href={resolve('/cars/[slug]', { slug: selectedCar.slug })}
 					class="mt-6"
 					aria-label={`Book Now — ${selectedCar.make} ${selectedCar.model}`}
 				>

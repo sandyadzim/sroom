@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { UsersRound, Gauge } from '@lucide/svelte';
 	import Link from '#lib/components/ui/Link.svelte';
 	import type { CarPreview } from '#lib/types/car.ts';
@@ -10,7 +11,7 @@
 
 <article class="min-w-0">
 	<Link
-		href={car.href ?? '#'}
+		href={car.href ?? resolve('/cars/[slug]', { slug: car.id })}
 		variant="plain"
 		aria-label={`View details for ${car.brand} ${car.model} ${car.trim}`}
 		class="isolate block overflow-hidden rounded-card bg-panel-muted focus-visible:-outline-offset-4"
