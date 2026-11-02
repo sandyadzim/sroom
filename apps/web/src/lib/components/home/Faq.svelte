@@ -20,7 +20,7 @@
 		{
 			question: 'Is a deposit required?',
 			answer:
-				'No deposit is required. The full rental amount is paid upfront by Virtual Account. SROOM is a portfolio demo using Midtrans sandbox, so payments are simulated.'
+				'No deposit is required. The full rental amount is paid upfront by Virtual Account, with your total shown before payment.'
 		},
 		{
 			question: 'When is my booking confirmed?',
@@ -30,7 +30,7 @@
 		{
 			question: 'Can I cancel or change my dates?',
 			answer:
-				'Self-service cancellation and rescheduling aren’t available in this demo. Review your car, dates, times, and total carefully before paying. Any refund handling is manual.'
+				'Bookings cannot be cancelled or rescheduled through your account. Review your car, dates, times, and total carefully before paying. Any exceptional refund is reviewed and processed manually.'
 		}
 	];
 </script>

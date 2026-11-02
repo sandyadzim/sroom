@@ -1,10 +1,12 @@
 <script lang="ts">
 	import type { HTMLAnchorAttributes } from 'svelte/elements';
 	import Link from '#lib/components/ui/Link.svelte';
+	import { resolve } from '$app/paths';
 
 	let {
 		size = 'default',
 		inverse = false,
+		href = resolve('/'),
 		class: className,
 		...props
 	}: HTMLAnchorAttributes & { size?: 'default' | 'display'; inverse?: boolean } = $props();
@@ -12,6 +14,7 @@
 
 <Link
 	aria-label="SROOM home"
+	{href}
 	{...props}
 	variant="plain"
 	class={[

@@ -11,7 +11,7 @@
 	<title>SROOM — Self-drive car rental in Samarinda</title>
 	<meta
 		name="description"
-		content="SROOM is a portfolio demo of a self-drive car rental experience in Samarinda, Indonesia."
+		content="Find a car for your kind of day with SROOM. Explore self-drive car rentals in Samarinda and plan your next drive."
 	/>
 </svelte:head>
 

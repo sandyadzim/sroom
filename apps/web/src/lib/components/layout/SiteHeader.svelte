@@ -7,11 +7,12 @@
 	import { afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 
 	const links = [
 		{ label: 'Explore Cars', href: '#' },
 		{ label: 'How It Works', href: `${resolve('/')}#how-it-works` },
-		{ label: 'Rental Terms', href: '#' }
+		{ label: 'Rental Terms', href: resolve('/rental-terms') }
 	];
 	let menu: HTMLDialogElement;
 	let menuOpen = $state(false);
@@ -69,6 +70,7 @@
 		{#each links as link (link.label)}
 			<Link
 				href={link.href}
+				aria-current={page.url.pathname === link.href ? 'page' : undefined}
 				variant="nav"
 				arrow={expanded}
 				onclick={closeMenu}

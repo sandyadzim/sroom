@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Link from '#lib/components/ui/Link.svelte';
+	import { resolve } from '$app/paths';
 
 	const essentials = [
 		{
@@ -26,7 +27,11 @@
 			<p class="mt-6 max-w-sm text-base/7 text-pretty text-on-primary/85">
 				A few things to know before you go, so you can focus on the day ahead.
 			</p>
-			<Link arrow class="mt-6 font-medium focus-visible:outline-on-primary">Read rental terms</Link>
+			<Link
+				href={resolve('/rental-terms')}
+				arrow
+				class="mt-6 font-medium focus-visible:outline-on-primary">Read rental terms</Link
+			>
 		</div>
 		<dl class="grid gap-8">
 			{#each essentials as essential (essential.title)}
