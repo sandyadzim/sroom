@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import CarCard from '#lib/components/cars/CarCard.svelte';
 	import Link from '#lib/components/ui/Link.svelte';
 	import { demoFeaturedCars } from '#lib/data/demo-fleet.js';
@@ -18,7 +19,7 @@
 					A little city run. A full family trip. A change of scenery.
 				</p>
 			</div>
-			<Link arrow class="shrink-0 font-medium">View all cars</Link>
+			<Link href={resolve('/cars')} arrow class="shrink-0 font-medium">View all cars</Link>
 		</div>
 		<ul class="mt-8 grid gap-6 sm:mt-10 sm:grid-cols-2 lg:grid-cols-3" aria-label="Featured cars">
 			{#each demoFeaturedCars as car (car.id)}

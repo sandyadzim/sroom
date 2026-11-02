@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { ArrowUpRight } from '@lucide/svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 </script>
@@ -19,7 +20,7 @@
 				SROOM is a self-drive car rental experience in Samarinda. Find a car for the day you have in
 				mind, from a full calendar to a wide-open weekend. You bring the plans. You take the wheel.
 			</p>
-			<Button href="#" class="mt-8">
+			<Button href={resolve('/cars')} class="mt-8">
 				Explore Cars <ArrowUpRight size={18} strokeWidth={1.5} aria-hidden="true" />
 			</Button>
 		</div>

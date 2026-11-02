@@ -5,7 +5,7 @@
 	import { resolve } from '$app/paths';
 
 	const navigation = [
-		{ label: 'Explore Cars', href: '#' },
+		{ label: 'Explore Cars', href: resolve('/cars') },
 		{ label: 'Rental Terms', href: resolve('/rental-terms') },
 		{ label: 'My Bookings', href: '#' }
 	];

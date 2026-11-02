@@ -33,3 +33,36 @@ export const demoFeaturedCars: CarPreview[] = [
 		image: '/images/fleet/brio.webp'
 	}
 ];
+
+// Eight display-only variants for exercising the six-per-page catalogue slice.
+export const demoCatalogCars: CarPreview[] = [
+	...demoFeaturedCars,
+	{ ...demoFeaturedCars[2], id: 'brio-satya-e-cvt', trim: 'Satya E CVT', dailyRate: 275000 },
+	{ ...demoFeaturedCars[0], id: 'innova-zenix-g-cvt', trim: '2.0 G CVT', dailyRate: 650000 },
+	{
+		...demoFeaturedCars[1],
+		id: 'fortuner-gr-sport-at',
+		trim: '2.8 GR Sport AT',
+		dailyRate: 1100000
+	},
+	{
+		id: 'jimny-3-door-at',
+		brand: 'Suzuki',
+		model: 'Jimny',
+		trim: '3-door AT',
+		seats: 4,
+		transmission: 'Automatic',
+		dailyRate: 800000,
+		image: '/images/hero/jimny-studio.webp'
+	},
+	{
+		id: 'jimny-5-door-at',
+		brand: 'Suzuki',
+		model: 'Jimny',
+		trim: '5-door AT',
+		seats: 4,
+		transmission: 'Automatic',
+		dailyRate: 900000,
+		image: '/images/hero/jimny-studio.webp'
+	}
+];

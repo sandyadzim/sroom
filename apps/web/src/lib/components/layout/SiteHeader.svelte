@@ -10,7 +10,7 @@
 	import { page } from '$app/state';
 
 	const links = [
-		{ label: 'Explore Cars', href: '#' },
+		{ label: 'Explore Cars', href: resolve('/cars') },
 		{ label: 'How It Works', href: `${resolve('/')}#how-it-works` },
 		{ label: 'Rental Terms', href: resolve('/rental-terms') }
 	];
