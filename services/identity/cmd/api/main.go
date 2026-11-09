@@ -61,8 +61,8 @@ func main() {
 	identityGroup := v1.Group("/identity")
 
 	// Public routes
-	identityGroup.Post("/register", registerHandler.Register)
-	identityGroup.Post("/login", loginHandler.Login)
+	identityGroup.Post("/register", middleware.RegisterRateLimiter(), registerHandler.Register)
+	identityGroup.Post("/login", middleware.LoginRateLimiter(), loginHandler.Login)
 
 	// Protected routes
 	identityGroup.Get("/me", authMiddleware.RequireAuth, meHandler.Me)
