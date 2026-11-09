@@ -10,17 +10,17 @@ import (
 const tokenSize = 32
 
 func Generate() (string, error) {
-    randomBytes := make([]byte, tokenSize)
+	randomBytes := make([]byte, tokenSize)
 
-    if _, err := rand.Read(randomBytes); err != nil {
-        return "", err
-    }
+	if _, err := rand.Read(randomBytes); err != nil {
+		return "", err
+	}
 
-    return base64.RawURLEncoding.EncodeToString(randomBytes), nil
+	return base64.RawURLEncoding.EncodeToString(randomBytes), nil
 }
 
 func Hash(plainToken string) string {
-    sum := sha256.Sum256([]byte(plainToken))
+	sum := sha256.Sum256([]byte(plainToken))
 
-    return hex.EncodeToString(sum[:])
+	return hex.EncodeToString(sum[:])
 }
