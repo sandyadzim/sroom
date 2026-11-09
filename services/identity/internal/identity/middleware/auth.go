@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"identity/internal/identity/model"
+	"identity/internal/identity/response"
 	"identity/internal/identity/service"
 )
 
@@ -32,9 +33,7 @@ func (m *AuthMiddleware) RequireAuth(c fiber.Ctx) error {
 
 	if len(parts) != 2 ||
 		!strings.EqualFold(parts[0], "Bearer") {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "missing or invalid authorization header",
-		})
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHENTICATED", "missing or invalid authorization header", nil)
 	}
 
 	plainToken := parts[1]
@@ -46,14 +45,10 @@ func (m *AuthMiddleware) RequireAuth(c fiber.Ctx) error {
 	)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidSession) {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "invalid or expired session",
-			})
+			return response.Error(c, fiber.StatusUnauthorized, "UNAUTHENTICATED", "invalid or expired session", nil)
 		}
 
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "internal server error",
-		})
+		return err
 	}
 
 	// 3. Store authenticated session in request context

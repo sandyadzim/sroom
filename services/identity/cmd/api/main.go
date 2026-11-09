@@ -12,6 +12,7 @@ import (
 	"identity/internal/identity/handler"
 	"identity/internal/identity/middleware"
 	"identity/internal/identity/repository"
+	"identity/internal/identity/response"
 	"identity/internal/identity/service"
 )
 
@@ -59,7 +60,7 @@ func main() {
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
 	// 4. Initialize Fiber
-	app := fiber.New()
+	app := fiber.New(fiber.Config{ErrorHandler: response.ErrorHandler})
 
 	// 5. Route Group
 	api := app.Group("/api")

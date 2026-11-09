@@ -5,6 +5,8 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
+
+	"identity/internal/identity/response"
 )
 
 func LoginRateLimiter() fiber.Handler {
@@ -28,11 +30,7 @@ func newRateLimiter(max int) fiber.Handler {
 		SkipSuccessfulRequests: false,
 
 		LimitReached: func(c fiber.Ctx) error {
-			return c.Status(fiber.StatusTooManyRequests).JSON(
-				fiber.Map{
-					"error": "too many requests",
-				},
-			)
+			return response.Error(c, fiber.StatusTooManyRequests, "RATE_LIMITED", "too many requests", nil)
 		},
 	})
 }

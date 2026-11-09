@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"identity/internal/identity/dto"
+	"identity/internal/identity/response"
 	"identity/internal/identity/service"
 )
 
@@ -24,12 +25,13 @@ func NewLoginHandler(
 
 func (h *LoginHandler) Login(c fiber.Ctx) error {
 	var req dto.LoginRequest
+	if !c.Is("json") {
+		return fiber.ErrUnsupportedMediaType
+	}
 
 	// 1. Parse JSON request
-	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "invalid request body",
-		})
+	if err := c.Bind().JSON(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "INVALID_REQUEST", "invalid request body", nil)
 	}
 
 	// 2. Call login service
@@ -37,24 +39,17 @@ func (h *LoginHandler) Login(c fiber.Ctx) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidCredentials):
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "invalid email or password",
-			})
+			return response.Error(c, fiber.StatusUnauthorized, "INVALID_CREDENTIALS", "invalid email or password", nil)
 
 		default:
 			if validationErrs, ok := errors.AsType[validator.ValidationErrors](err); ok {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error":   "validation failed",
-					"details": dto.FormatLoginErrors(validationErrs),
-				})
+				return response.Error(c, fiber.StatusBadRequest, "VALIDATION_ERROR", "validation failed", dto.FormatLoginErrors(validationErrs))
 			}
 
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "internal server error",
-			})
+			return err
 		}
 	}
 
 	// 3. Return successful response
-	return c.Status(fiber.StatusOK).JSON(result)
+	return response.Success(c, fiber.StatusOK, result)
 }

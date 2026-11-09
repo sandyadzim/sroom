@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"identity/internal/identity/middleware"
+	"identity/internal/identity/response"
 	"identity/internal/identity/service"
 )
 
@@ -23,9 +24,7 @@ func (h *LogoutHandler) Logout(c fiber.Ctx) error {
 	// 1. Get authenticated session from middleware
 	session, ok := middleware.GetSession(c)
 	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "unauthorized",
-		})
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHENTICATED", "authentication required", nil)
 	}
 
 	// 2. Revoke the current session
@@ -33,9 +32,7 @@ func (h *LogoutHandler) Logout(c fiber.Ctx) error {
 		c.Context(),
 		session.ID,
 	); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "internal server error",
-		})
+		return err
 	}
 
 	// 3. Return success without response body

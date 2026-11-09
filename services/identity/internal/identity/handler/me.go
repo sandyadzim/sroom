@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"identity/internal/identity/middleware"
+	"identity/internal/identity/response"
 	"identity/internal/identity/service"
 )
 
@@ -23,9 +24,7 @@ func (h *MeHandler) Me(c fiber.Ctx) error {
 	// 1. Get authenticated session from middleware
 	session, ok := middleware.GetSession(c)
 	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "unauthorized",
-		})
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHENTICATED", "authentication required", nil)
 	}
 
 	// 2. Get user profile using session's UserID
@@ -35,16 +34,12 @@ func (h *MeHandler) Me(c fiber.Ctx) error {
 	)
 	if err != nil {
 		if errors.Is(err, service.ErrUserNotFound) {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "invalid session",
-			})
+			return response.Error(c, fiber.StatusUnauthorized, "UNAUTHENTICATED", "invalid session", nil)
 		}
 
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "internal server error",
-		})
+		return err
 	}
 
 	// 3. Return user profile
-	return c.Status(fiber.StatusOK).JSON(result)
+	return response.Success(c, fiber.StatusOK, result)
 }
