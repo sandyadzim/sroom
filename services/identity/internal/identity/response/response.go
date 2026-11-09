@@ -32,7 +32,7 @@ func Error(c fiber.Ctx, status int, code, message string, details map[string]str
 	}
 	return c.Status(status).JSON(ErrorResponse{
 		Error:     ErrorDetail{Code: code, Message: message, Details: details},
-		RequestID: "",
+		RequestID: c.GetRespHeader(fiber.HeaderXRequestID),
 	})
 }
 

@@ -60,7 +60,11 @@ func main() {
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
 	// 4. Initialize Fiber
-	app := fiber.New(fiber.Config{ErrorHandler: response.ErrorHandler})
+	app := fiber.New(fiber.Config{
+		ErrorHandler: response.ErrorHandler,
+		BodyLimit:    middleware.MaxBodyBytes,
+	})
+	middleware.UseRequests(app, middleware.DefaultRequestTimeout, logger)
 
 	// 5. Route Group
 	api := app.Group("/api")
