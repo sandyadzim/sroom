@@ -24,3 +24,20 @@ func (r *SessionRepository) Create(
 ) error {
     return r.db.WithContext(ctx).Create(session).Error
 }
+
+func (r *SessionRepository) FindByTokenHash(
+    ctx context.Context,
+    tokenHash string,
+) (*model.Session, error) {
+    var session model.Session
+
+    err := r.db.WithContext(ctx).
+        Where("token_hash = ? AND expires_at > ?", tokenHash, gorm.Expr("NOW()")).
+        First(&session).Error
+
+    if err != nil {
+        return nil, err
+    }
+
+    return &session, nil
+}
