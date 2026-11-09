@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -16,17 +16,18 @@ import (
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 func main() {
-	if err := run(); err != nil {
-		log.Fatal(err)
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil)).With("service", "identity")
+	if err := run(logger); err != nil {
+		logger.Error("owner seed failed", "operation", "seed_owner", "reason", "seed_failed")
+		os.Exit(1)
 	}
 }
 
-func run() error {
-	// Load .env jika tersedia.
-	// Environment variable yang sudah ada tidak ditimpa.
+func run(logger *slog.Logger) error {
 	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("load .env: %w", err)
 	}
@@ -66,6 +67,7 @@ func run() error {
 
 	db, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{
 		TranslateError: true,
+		Logger:         gormlogger.Discard,
 	})
 	if err != nil {
 		return fmt.Errorf("connect database: %w", err)
@@ -83,8 +85,6 @@ func run() error {
 	created := false
 
 	err = db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Mencegah dua proses seeder berjalan bersamaan
-		// dan sama-sama mencoba membuat OWNER.
 		if err := tx.Exec(
 			"SELECT pg_advisory_xact_lock(?)",
 			int64(16052026),
@@ -99,10 +99,6 @@ func run() error {
 			First(&existingOwner).Error
 
 		if err == nil {
-			log.Printf(
-				"OWNER already exists: %s. No changes made.",
-				existingOwner.Email,
-			)
 			return nil
 		}
 
@@ -119,11 +115,7 @@ func run() error {
 			First(&existingUser).Error
 
 		if err == nil {
-			return fmt.Errorf(
-				"email %q is already registered with role %s",
-				ownerEmail,
-				existingUser.Role,
-			)
+			return errors.New("OWNER email is already registered")
 		}
 
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -160,9 +152,11 @@ func run() error {
 		return fmt.Errorf("seed OWNER failed: %w", err)
 	}
 
+	result := "already_exists"
 	if created {
-		log.Printf("OWNER created successfully: %s", ownerEmail)
+		result = "created"
 	}
+	logger.Info("owner seed completed", "operation", "seed_owner", "result", result)
 
 	return nil
 }

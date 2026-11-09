@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/gofiber/fiber/v3"
 
@@ -15,25 +16,30 @@ import (
 )
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil)).With("service", "identity")
+
 	// 1. Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal("failed to load config: ", err)
+		logger.Error("configuration failed", "operation", "api.start", "reason", "invalid_config")
+		os.Exit(1)
 	}
 
 	// 2. Connect to PostgreSQL
 	db, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
-		log.Fatal("failed to connect database: ", err)
+		logger.Error("database connection failed", "operation", "database.connect", "reason", "connection_failed")
+		os.Exit(1)
 	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		log.Fatal("failed to access database pool: ", err)
+		logger.Error("database pool unavailable", "operation", "database.pool", "reason", "pool_unavailable")
+		os.Exit(1)
 	}
 	defer sqlDB.Close()
 
-	log.Println("database connected successfully")
+	logger.Info("database connected", "operation", "database.connect", "result", "success")
 
 	// 3. Init dependency
 	userRepo := repository.NewUserRepository(db)
@@ -71,9 +77,10 @@ func main() {
 	// 6. Start HTTP server
 	addr := fmt.Sprintf(":%d", cfg.AppPort)
 
-	log.Printf("server listening on %s", addr)
+	logger.Info("server starting", "operation", "api.listen", "port", cfg.AppPort)
 
 	if err := app.Listen(addr); err != nil {
-		log.Fatal(err)
+		logger.Error("server stopped", "operation", "api.listen", "reason", "listen_failed")
+		os.Exit(1)
 	}
 }
