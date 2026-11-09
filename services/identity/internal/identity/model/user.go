@@ -7,10 +7,11 @@ import (
 )
 
 type User struct {
-    ID           uuid.UUID `gorm:"type:uuid;primaryKey"`
-    FullName     string
-    Email        string
-    PasswordHash string
-    CreatedAt    time.Time
-    UpdatedAt    time.Time
+	ID           uuid.UUID `gorm:"type:uuid;primaryKey"`
+	FullName     string
+	Email        string
+	PasswordHash string `json:"-"`
+	Role         Role
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }

@@ -49,6 +49,7 @@ func (s *MeService) GetProfile(
 		ID:        user.ID.String(),
 		FullName:  user.FullName,
 		Email:     user.Email,
+		Role:      user.Role,
 		CreatedAt: user.CreatedAt.UTC().Format(time.RFC3339),
 	}, nil
 }
