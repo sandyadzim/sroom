@@ -9,6 +9,7 @@ import (
 	"identity/internal/config"
 	"identity/internal/database"
 	"identity/internal/identity/handler"
+	"identity/internal/identity/middleware"
 	"identity/internal/identity/repository"
 	"identity/internal/identity/service"
 )
@@ -40,9 +41,14 @@ func main() {
 
     registerService := service.NewRegisterService(userRepo)
     loginService := service.NewLoginService(userRepo, sessionRepo)
+    authService := service.NewAuthService(sessionRepo)
+    meService := service.NewMeService(userRepo)
 
     registerHandler := handler.NewRegisterHandler(registerService)
     loginHandler := handler.NewLoginHandler(loginService)
+    meHandler := handler.NewMeHandler(meService)
+
+    authMiddleware := middleware.NewAuthMiddleware(authService)
 
     // 4. Initialize Fiber
     app := fiber.New()
@@ -52,8 +58,12 @@ func main() {
     v1 := api.Group("/v1")
     identityGroup := v1.Group("/identity")
 
+    // Public routes
     identityGroup.Post("/register", registerHandler.Register)
     identityGroup.Post("/login", loginHandler.Login)
+
+    // Protected routes
+    identityGroup.Get("/me", authMiddleware.RequireAuth, meHandler.Me)
 
     // 6. Start HTTP server
     addr := fmt.Sprintf(":%d", cfg.AppPort)
