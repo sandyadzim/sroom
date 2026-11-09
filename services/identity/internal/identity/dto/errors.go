@@ -57,3 +57,35 @@ func FormatRegisterErrors(err error) map[string]string {
 
     return details
 }
+
+func FormatLoginErrors(
+	validationErrs validator.ValidationErrors,
+) map[string]string {
+	details := make(map[string]string)
+
+	for _, fieldErr := range validationErrs {
+		switch fieldErr.Field() {
+		case "Email":
+			switch fieldErr.Tag() {
+			case "required":
+				details["email"] = "email is required"
+			case "email":
+				details["email"] = "email must be a valid email address"
+			case "max":
+				details["email"] = "email must not exceed 255 characters"
+			default:
+				details["email"] = "email is invalid"
+			}
+
+		case "Password":
+			switch fieldErr.Tag() {
+			case "required":
+				details["password"] = "password is required"
+			default:
+				details["password"] = "password is invalid"
+			}
+		}
+	}
+
+	return details
+}

@@ -36,10 +36,13 @@ func main() {
 
     // 3. Init dependency
     userRepo := repository.NewUserRepository(db)
+    sessionRepo := repository.NewSessionRepository(db)
 
     registerService := service.NewRegisterService(userRepo)
+    loginService := service.NewLoginService(userRepo, sessionRepo)
 
     registerHandler := handler.NewRegisterHandler(registerService)
+    loginHandler := handler.NewLoginHandler(loginService)
 
     // 4. Initialize Fiber
     app := fiber.New()
@@ -50,6 +53,7 @@ func main() {
     identityGroup := v1.Group("/identity")
 
     identityGroup.Post("/register", registerHandler.Register)
+    identityGroup.Post("/login", loginHandler.Login)
 
     // 6. Start HTTP server
     addr := fmt.Sprintf(":%d", cfg.AppPort)

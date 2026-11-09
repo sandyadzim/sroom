@@ -23,3 +23,7 @@ func ValidateRegister(req RegisterRequest) error {
 
     return nil
 }
+
+func ValidateLogin(req LoginRequest) error {
+    return validate.Struct(req)
+}
