@@ -1,0 +1,686 @@
+openapi: 3.0.3
+info:
+  title: SROOM Identity API
+  version: 1.4.0
+  description: |
+    Local backend for the SROOM portfolio demo. No real rental operations.
+    Requests use JSON. Registration creates CUSTOMER only and does not log in.
+    Authentication uses an opaque Bearer token with a fixed seven-day expiry.
+    OWNER-only ADMIN list/detail support search and active/inactive status filtering.
+    OWNER can create/update ADMIN accounts. Role is always ADMIN. No delete route.
+    Cookies and gateway integration are not implemented. Sessions remain valid
+    after status/password updates; inactive only blocks subsequent ADMIN logins.
+    OWNER/ADMIN can change their own password using the current password.
+    This file documents the IDN-002 response format; older direct DTO responses
+    are replaced by the data envelope. IDN-003 fills request_id from the validated
+    X-Request-ID response header. An incoming ID with 1-64 ASCII letters, digits,
+    underscores, or hyphens is preserved; missing/invalid values become random UUIDs.
+    Normal API responses, including errors, use Cache-Control: no-store and Helmet
+    security headers (nosniff, frame denial, restrictive CSP). Maximum body size is
+    16384 bytes. Request work gets a cooperative context deadline (default five seconds);
+    repository deadline errors return 504. CPU work is not forcibly interrupted.
+servers:
+  - url: http://127.0.0.1:8081
+    description: Local development; port can be configured.
+paths:
+  /api/v1/identity/register:
+    parameters:
+      - $ref: '#/components/parameters/RequestID'
+    post:
+      operationId: register
+      summary: Create a customer account
+      description: |
+        Email is trimmed and lowercased before validation. Full name is optional
+        and trimmed. Unknown fields are ignored; role or user_id cannot change
+        the account role or identifier. Limit is three requests per IP per minute,
+        including successful and failed requests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Customer created; no session is created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RegisteredUser'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: EMAIL_ALREADY_REGISTERED; canonical email already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        default:
+          $ref: '#/components/responses/OtherError'
+  /api/v1/identity/login:
+    parameters:
+      - $ref: '#/components/parameters/RequestID'
+    post:
+      operationId: login
+      summary: Log in with email and password
+      description: |
+        Email is trimmed and lowercased. Unknown email and incorrect password
+        both return INVALID_CREDENTIALS. Inactive ADMIN accounts also receive
+        INVALID_CREDENTIALS on new logins; existing sessions remain valid. No cookie is written.
+        Limit is five requests per IP per minute, counting successes and failures.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Session created; only this response returns the raw token.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LoginData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: INVALID_CREDENTIALS; invalid email or password.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        default:
+          $ref: '#/components/responses/OtherError'
+  /api/v1/identity/me:
+    parameters:
+      - $ref: '#/components/parameters/RequestID'
+    get:
+      operationId: getCurrentUser
+      summary: Get the authenticated user's profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current public profile; no password or session data.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        default:
+          $ref: '#/components/responses/OtherError'
+  /api/v1/identity/logout:
+    parameters:
+      - $ref: '#/components/parameters/RequestID'
+    post:
+      operationId: logout
+      summary: Delete the current session
+      description: |
+        Requires a currently valid Bearer token. Other sessions are unchanged.
+        Reusing the deleted token returns 401; deletion is idempotent in effect.
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Session deleted; response body is empty.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        default:
+          $ref: '#/components/responses/OtherError'
+  /api/v1/identity/change-password:
+    parameters:
+      - $ref: '#/components/parameters/RequestID'
+    post:
+      operationId: changeOwnPassword
+      summary: Change own password (OWNER or ADMIN)
+      description: |
+        Target comes only from the authenticated session. Requires the correct
+        current_password and a new_password of at least eight characters and at
+        most 72 UTF-8 bytes. Passwords are not trimmed. Unknown fields and null
+        are rejected. CUSTOMER receives 403. Existing sessions remain valid.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: Password changed; empty body, existing sessions unchanged.
+        '400':
+          description: INVALID_REQUEST, VALIDATION_ERROR, or INVALID_CURRENT_PASSWORD.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: FORBIDDEN; user is not OWNER or ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        default:
+          $ref: '#/components/responses/OtherError'
+  /api/v1/identity/admins:
+    parameters:
+      - $ref: '#/components/parameters/RequestID'
+    get:
+      operationId: listAdmins
+      summary: List ADMIN accounts (OWNER only)
+      description: |
+        Includes only ADMIN accounts, ordered by created_at DESC then id DESC.
+        Optional search matches a case-insensitive literal substring in full_name OR
+        email. Leading/trailing whitespace is trimmed. Empty search/status means
+        no filter. Status accepts only active or inactive (invalid values return
+        400). Filters combine with AND and apply to both rows and the total count.
+        Omitted or empty pagination values use defaults. Invalid integers,
+        values outside the bounds, and offsets beyond the server integer range
+        return 400 INVALID_REQUEST. Pages beyond the results return an empty array.
+        Count and rows use separate queries; concurrent writes can change totals.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Case-insensitive literal substring of full_name or email.
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, '']
+          description: Omit or leave empty to include both statuses.
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: ADMIN accounts; data is an empty array when no results exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/OtherError'
+    post:
+      operationId: createAdmin
+      summary: Create an ADMIN account (OWNER only)
+      description: |
+        Role is set to ADMIN by the server. Email/name are trimmed and email is
+        lowercased. Full name is optional. Omitted status defaults to active.
+        Unknown fields, null values, and privileged fields are rejected with 400.
+        Email must be unique across all users, including inactive accounts.
+        Does not create a login session or return a password/hash/token.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAdminRequest'
+      responses:
+        '201':
+          $ref: '#/components/responses/AdminSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/EmailConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        default:
+          $ref: '#/components/responses/OtherError'
+  /api/v1/identity/admins/{id}:
+    parameters:
+      - $ref: '#/components/parameters/RequestID'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getAdmin
+      summary: Get an ADMIN account (OWNER only)
+      description: |
+        Returns 404 NOT_FOUND for missing IDs and IDs belonging to CUSTOMER or OWNER.
+        Malformed UUIDs return 400 INVALID_REQUEST. No password or session data.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ADMIN profile including active/inactive status.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: NOT_FOUND; account does not exist or is not ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          $ref: '#/components/responses/OtherError'
+    patch:
+      operationId: updateAdmin
+      summary: Update an ADMIN account (OWNER only)
+      description: |
+        Only full_name, email, password and status can be changed. Omitted fields
+        stay unchanged. Empty name is allowed; null, unknown fields, an empty
+        patch, empty email/password and unknown status are rejected with 400.
+        Target must be ADMIN; CUSTOMER/OWNER/missing IDs return 404.
+        Password changes do not require the target's previous password.
+        All fields update in one SQL statement; email conflict leaves them unchanged.
+        Existing sessions remain valid after changing password or status.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAdminRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/AdminSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: NOT_FOUND; target does not exist or is not ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/EmailConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        default:
+          $ref: '#/components/responses/OtherError'
+components:
+  parameters:
+    RequestID:
+      name: X-Request-ID
+      in: header
+      required: false
+      description: |
+        Tracking ID only, never credentials or personal data. IDs with 1-64 ASCII
+        letters, digits, underscores, or hyphens are preserved. Other values are
+        accepted but replaced by a random UUID, not rejected as invalid input.
+        The effective ID is echoed in the X-Request-ID response header and the
+        top-level request_id field of JSON error responses.
+      schema:
+        type: string
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+  schemas:
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [current_password, new_password]
+      properties:
+        current_password:
+          type: string
+          format: password
+          minLength: 1
+        new_password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          description: Maximum 72 UTF-8 bytes; not trimmed.
+    CreateAdminRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        full_name:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          description: Minimum eight characters and maximum 72 UTF-8 bytes; not trimmed.
+        status:
+          type: string
+          enum: [active, inactive]
+          default: active
+    UpdateAdminRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        full_name:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          description: Minimum eight characters and maximum 72 UTF-8 bytes; not trimmed.
+        status:
+          type: string
+          enum: [active, inactive]
+    AdminProfile:
+      type: object
+      additionalProperties: false
+      required: [id, full_name, email, role, status, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [ADMIN]
+        status:
+          type: string
+          enum: [active, inactive]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    AdminListResponse:
+      type: object
+      required: [data, page]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminProfile'
+        page:
+          type: object
+          required: [number, limit, total]
+          properties:
+            number:
+              type: integer
+              minimum: 1
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            total:
+              type: integer
+              format: int64
+              minimum: 0
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        full_name:
+          type: string
+          maxLength: 100
+          description: Optional; omitted name is stored as an empty string.
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          description: Canonical value after trimming and lowercasing.
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          description: At least eight characters and at most 72 UTF-8 bytes; not trimmed.
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          format: password
+          minLength: 1
+          description: Required; no new password policy is applied at login.
+    RegisteredUser:
+      type: object
+      required: [id, full_name, email]
+      properties:
+        id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+    LoginData:
+      type: object
+      required: [token, token_type, expires_at]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          description: Raw opaque token; never put in logs or URLs.
+        token_type:
+          type: string
+          enum: [Bearer]
+        expires_at:
+          type: string
+          format: date-time
+    UserProfile:
+      type: object
+      required: [id, full_name, email, role, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [CUSTOMER, ADMIN, OWNER]
+        created_at:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      required: [error, request_id]
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+              enum:
+                - INVALID_REQUEST
+                - VALIDATION_ERROR
+                - INVALID_CREDENTIALS
+                - INVALID_CURRENT_PASSWORD
+                - UNAUTHENTICATED
+                - FORBIDDEN
+                - EMAIL_ALREADY_REGISTERED
+                - NOT_FOUND
+                - METHOD_NOT_ALLOWED
+                - PAYLOAD_TOO_LARGE
+                - UNSUPPORTED_MEDIA_TYPE
+                - RATE_LIMITED
+                - INTERNAL_ERROR
+                - SERVICE_UNAVAILABLE
+                - REQUEST_TIMEOUT
+            message:
+              type: string
+              description: Safe English message; clients should branch on code.
+            details:
+              type: object
+              additionalProperties:
+                type: string
+              description: Field errors for validation; otherwise an empty object.
+        request_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[A-Za-z0-9_-]+$'
+          description: Matches the validated/generated X-Request-ID response header.
+      example:
+        error:
+          code: VALIDATION_ERROR
+          message: validation failed
+          details:
+            email: email must be a valid email address
+        request_id: req_example-123
+  responses:
+    BadRequest:
+      description: INVALID_REQUEST for malformed JSON, invalid pagination/status filter, or malformed UUID; VALIDATION_ERROR for invalid account fields.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    AdminSuccess:
+      description: Safe ADMIN profile; no password, hash, token or session.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '#/components/schemas/AdminProfile'
+    EmailConflict:
+      description: EMAIL_ALREADY_REGISTERED; email belongs to an existing account.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: FORBIDDEN; authenticated caller is not OWNER.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthenticated:
+      description: UNAUTHENTICATED; token is missing, malformed, expired, or deleted.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PayloadTooLarge:
+      description: PAYLOAD_TOO_LARGE; body exceeds 16 KiB (16384 bytes).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnsupportedMediaType:
+      description: UNSUPPORTED_MEDIA_TYPE; Content-Type must be application/json.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    RateLimited:
+      description: RATE_LIMITED; wait before retrying. Login and register have separate quotas.
+      headers:
+        Retry-After:
+          description: Number of seconds before retrying.
+          schema:
+            type: integer
+            minimum: 0
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    OtherError:
+      description: |
+        JSON error envelope, including 404 NOT_FOUND, 405 METHOD_NOT_ALLOWED,
+        and 500 INTERNAL_ERROR. The error handler also maps an explicit HTTP 503
+        to SERVICE_UNAVAILABLE and a context deadline/HTTP 504 to REQUEST_TIMEOUT.
+        Generic repository errors currently remain 500. A cooperative five-second
+        request context deadline is active; dependency outage detection is not implemented.
+        FORBIDDEN (403) is returned when a non-OWNER calls an ADMIN read endpoint.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
