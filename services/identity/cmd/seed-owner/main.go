@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"identity/internal/identity/dto"
 	"identity/internal/identity/model"
 	"identity/internal/identity/password"
 
@@ -49,20 +50,12 @@ func run(logger *slog.Logger) error {
 		return errors.New("OWNER_FULL_NAME is required")
 	}
 
-	if len(ownerFullName) > 100 {
-		return errors.New("OWNER_FULL_NAME must be at most 100 characters")
-	}
-
-	if len(ownerEmail) > 255 {
-		return errors.New("OWNER_EMAIL must be at most 255 characters")
-	}
-
-	if len(ownerPassword) < 8 {
-		return errors.New("OWNER_PASSWORD must be at least 8 bytes")
-	}
-
-	if len(ownerPassword) > 72 {
-		return errors.New("OWNER_PASSWORD must be at most 72 bytes")
+	if err := dto.ValidateRegister(dto.RegisterRequest{
+		FullName: ownerFullName,
+		Email:    ownerEmail,
+		Password: ownerPassword,
+	}); err != nil {
+		return fmt.Errorf("validate OWNER: %w", err)
 	}
 
 	db, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{
