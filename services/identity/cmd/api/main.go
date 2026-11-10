@@ -52,12 +52,17 @@ func main() {
 	meService := service.NewMeService(userRepo)
 	logoutService := service.NewLogoutService(sessionRepo)
 	readAdminService := service.NewReadAdminService(userRepo)
+	createAdminService := service.NewCreateAdminService(userRepo)
+	updateAdminService := service.NewUpdateAdminService(userRepo)
+	changePasswordService := service.NewChangePasswordService(userRepo)
 
 	registerHandler := handler.NewRegisterHandler(registerService)
 	loginHandler := handler.NewLoginHandler(loginService)
 	meHandler := handler.NewMeHandler(meService)
 	logoutHandler := handler.NewLogoutHandler(logoutService)
 	readAdminHandler := handler.NewReadAdminHandler(readAdminService)
+	adminHandler := handler.NewAdminHandler(createAdminService, updateAdminService)
+	changePasswordHandler := handler.NewChangePasswordHandler(changePasswordService)
 
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
@@ -80,11 +85,14 @@ func main() {
 	// Protected routes
 	identityGroup.Get("/me", authMiddleware.RequireAuth, meHandler.Me)
 	identityGroup.Post("/logout", authMiddleware.RequireAuth, logoutHandler.Logout)
+	identityGroup.Post("/change-password", authMiddleware.RequireAuth, changePasswordHandler.Change)
 
 	// OWNER-only admin management
 	admins := identityGroup.Group("/admins", authMiddleware.RequireAuth, middleware.RequireOwner(userRepo))
 	admins.Get("/", readAdminHandler.List)
 	admins.Get("/:id", readAdminHandler.Detail)
+	admins.Post("/", adminHandler.Create)
+	admins.Patch("/:id", adminHandler.Update)
 
 	// 6. Start HTTP server
 	addr := fmt.Sprintf(":%d", cfg.AppPort)

@@ -59,3 +59,16 @@ func (r *UserRepository) FindByID(
 
 	return &user, nil
 }
+
+func (r *UserRepository) UpdatePassword(ctx context.Context, id uuid.UUID, hash string) error {
+	result := r.db.WithContext(ctx).Model(&model.User{}).
+		Where("id = ? AND role IN ?", id, []model.Role{model.RoleOwner, model.RoleAdmin}).
+		Update("password_hash", hash)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}

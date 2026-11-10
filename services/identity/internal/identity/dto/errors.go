@@ -27,6 +27,10 @@ func FormatRegisterErrors(err error) map[string]string {
 		switch fieldErr.Field() {
 		case "FullName":
 			field = "full_name"
+		case "CurrentPassword":
+			field = "current_password"
+		case "NewPassword":
+			field = "new_password"
 		}
 
 		switch fieldErr.Tag() {
