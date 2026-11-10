@@ -71,6 +71,10 @@ func (s *LoginService) Login(
 		return nil, fmt.Errorf("find user by email: %w", err)
 	}
 
+	if user.Role == model.RoleAdmin && user.Status != model.StatusActive {
+		return nil, ErrInvalidCredentials
+	}
+
 	// 4. Verify password using Argon2id
 	valid, err := password.Verify(req.Password, user.PasswordHash)
 	if err != nil {

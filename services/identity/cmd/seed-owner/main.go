@@ -131,6 +131,7 @@ func run(logger *slog.Logger) error {
 			Email:        ownerEmail,
 			PasswordHash: passwordHash,
 			Role:         model.RoleOwner,
+			Status:       model.StatusActive,
 		}
 
 		if err := tx.Create(&owner).Error; err != nil {

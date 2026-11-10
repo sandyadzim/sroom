@@ -51,11 +51,13 @@ func main() {
 	authService := service.NewAuthService(sessionRepo)
 	meService := service.NewMeService(userRepo)
 	logoutService := service.NewLogoutService(sessionRepo)
+	readAdminService := service.NewReadAdminService(userRepo)
 
 	registerHandler := handler.NewRegisterHandler(registerService)
 	loginHandler := handler.NewLoginHandler(loginService)
 	meHandler := handler.NewMeHandler(meService)
 	logoutHandler := handler.NewLogoutHandler(logoutService)
+	readAdminHandler := handler.NewReadAdminHandler(readAdminService)
 
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
@@ -78,6 +80,11 @@ func main() {
 	// Protected routes
 	identityGroup.Get("/me", authMiddleware.RequireAuth, meHandler.Me)
 	identityGroup.Post("/logout", authMiddleware.RequireAuth, logoutHandler.Logout)
+
+	// OWNER-only admin management
+	admins := identityGroup.Group("/admins", authMiddleware.RequireAuth, middleware.RequireOwner(userRepo))
+	admins.Get("/", readAdminHandler.List)
+	admins.Get("/:id", readAdminHandler.Detail)
 
 	// 6. Start HTTP server
 	addr := fmt.Sprintf(":%d", cfg.AppPort)

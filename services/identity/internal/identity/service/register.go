@@ -74,6 +74,7 @@ func (s *RegisterService) Register(
 		Email:        req.Email,
 		PasswordHash: hashedPassword,
 		Role:         model.RoleCustomer,
+		Status:       model.StatusActive,
 	}
 
 	// 7. Save user to database
