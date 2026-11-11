@@ -9,8 +9,13 @@ import (
 )
 
 type Config struct {
-	AppPort     int
-	DatabaseURL string
+	AppPort           int
+	DatabaseURL       string
+	IdentityBaseURL   string
+	R2Endpoint        string
+	R2Bucket          string
+	R2AccessKeyID     string
+	R2SecretAccessKey string
 }
 
 func Load() (Config, error) {
@@ -32,9 +37,18 @@ func Load() (Config, error) {
 	if databaseURL == "" {
 		return Config{}, errors.New("DATABASE_URL is required")
 	}
+	identityBaseURL := os.Getenv("IDENTITY_BASE_URL")
+	if identityBaseURL == "" {
+		identityBaseURL = "http://localhost:8081"
+	}
 
 	return Config{
-		AppPort:     appPort,
-		DatabaseURL: databaseURL,
+		AppPort:           appPort,
+		DatabaseURL:       databaseURL,
+		IdentityBaseURL:   identityBaseURL,
+		R2Endpoint:        os.Getenv("R2_ENDPOINT"),
+		R2Bucket:          os.Getenv("R2_BUCKET"),
+		R2AccessKeyID:     os.Getenv("R2_ACCESS_KEY_ID"),
+		R2SecretAccessKey: os.Getenv("R2_SECRET_ACCESS_KEY"),
 	}, nil
 }

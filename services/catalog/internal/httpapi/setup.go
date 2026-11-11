@@ -40,7 +40,10 @@ func Setup(router *gin.Engine) error {
 }
 
 func limitBody(c *gin.Context) {
-	const maxBodyBytes = 16 * 1024
+	maxBodyBytes := int64(16 * 1024)
+	if c.FullPath() == ImageUploadPath {
+		maxBodyBytes = maxUploadBodyBytes
+	}
 
 	if c.Request.ContentLength > maxBodyBytes {
 		writeError(c, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "request body is too large")
