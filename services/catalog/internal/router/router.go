@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func New(identityClient *identity.Client, brands *handler.BrandHandler, banners *handler.BannerHandler, imageStore handler.ImageStore) (*gin.Engine, error) {
+func New(identityClient *identity.Client, brands *handler.BrandHandler, banners *handler.BannerHandler, cars *handler.CarHandler, imageStore handler.ImageStore) (*gin.Engine, error) {
 	engine := gin.New()
 	if err := engine.SetTrustedProxies(nil); err != nil {
 		return nil, err
@@ -29,8 +29,16 @@ func New(identityClient *identity.Client, brands *handler.BrandHandler, banners 
 	api := engine.Group("/api")
 	v1 := api.Group("/v1")
 	catalogGroup := v1.Group("/catalog")
+
 	home := catalogGroup.Group("/home", defaultBodyLimit)
 	home.GET("/banners", banners.ListPublic)
+
+	publicCars := catalogGroup.Group("/cars", defaultBodyLimit)
+	publicCars.GET("", cars.ListPublic)
+	publicCars.GET("/:slug", cars.DetailPublic)
+	publicCars.GET("/:slug/related", cars.ListRelated)
+
+	catalogGroup.GET("/brands", defaultBodyLimit, cars.ListPublicBrands)
 
 	admin := catalogGroup.Group("/admin", middleware.RequireAdmin(identityClient))
 
@@ -44,6 +52,12 @@ func New(identityClient *identity.Client, brands *handler.BrandHandler, banners 
 	bannerRoutes.GET("/:position", banners.Detail)
 	bannerRoutes.PUT("/:position", banners.Update)
 	bannerRoutes.DELETE("/:position", banners.Delete)
+
+	carRoutes := admin.Group("/cars", defaultBodyLimit)
+	carRoutes.GET("", cars.List)
+	carRoutes.POST("", cars.Create)
+	carRoutes.GET("/:id", cars.Detail)
+	carRoutes.PATCH("/:id", cars.Update)
 
 	admin.POST("/images", middleware.LimitBody(6*1024*1024), handler.UploadImage(imageStore))
 
