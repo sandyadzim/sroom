@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 type R2 struct {
@@ -45,4 +46,15 @@ func (r *R2) Upload(ctx context.Context, key, contentType string, data []byte) e
 		ContentType:   aws.String(contentType),
 	})
 	return err
+}
+
+func (r *R2) ImageExists(ctx context.Context, key string) (bool, error) {
+	_, err := r.client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(r.bucket),
+		Key:    aws.String(key),
+	})
+	if _, ok := errors.AsType[*types.NotFound](err); ok {
+		return false, nil
+	}
+	return err == nil, err
 }

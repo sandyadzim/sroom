@@ -1,4 +1,4 @@
-package httpapi
+package handler
 
 import (
 	"bytes"
@@ -15,13 +15,13 @@ import (
 	"strings"
 	"time"
 
+	"catalog/internal/response"
+
 	"github.com/gin-gonic/gin"
 	_ "golang.org/x/image/webp"
 )
 
-const ImageUploadPath = "/api/v1/catalog/admin/images"
 const maxImageBytes = 5 * 1024 * 1024
-const maxUploadBodyBytes = 6 * 1024 * 1024
 
 type ImageStore interface {
 	Upload(ctx context.Context, key, contentType string, data []byte) error
@@ -30,13 +30,13 @@ type ImageStore interface {
 func UploadImage(store ImageStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if store == nil {
-			writeError(c, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "image storage unavailable")
+			response.Error(c, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "image storage unavailable")
 			return
 		}
 
 		mediaType, _, err := mime.ParseMediaType(c.GetHeader("Content-Type"))
 		if err != nil || mediaType != "multipart/form-data" {
-			writeError(c, http.StatusUnsupportedMediaType, "UNSUPPORTED_MEDIA_TYPE", "content type must be multipart/form-data")
+			response.Error(c, http.StatusUnsupportedMediaType, "UNSUPPORTED_MEDIA_TYPE", "content type must be multipart/form-data")
 			return
 		}
 		reader, err := c.Request.MultipartReader()
@@ -50,7 +50,7 @@ func UploadImage(store ImageStore) gin.HandlerFunc {
 			return
 		}
 		if part.FormName() != "file" || part.FileName() == "" {
-			writeError(c, http.StatusBadRequest, "INVALID_REQUEST", "send one image in the file field")
+			response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", "send one image in the file field")
 			return
 		}
 
@@ -60,7 +60,7 @@ func UploadImage(store ImageStore) gin.HandlerFunc {
 			return
 		}
 		if len(data) > maxImageBytes {
-			writeError(c, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "image must be at most 5 MiB")
+			response.Error(c, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "image must be at most 5 MiB")
 			return
 		}
 		if _, err := reader.NextPart(); err != io.EOF {
@@ -74,7 +74,7 @@ func UploadImage(store ImageStore) gin.HandlerFunc {
 
 		_, format, err := image.DecodeConfig(bytes.NewReader(data))
 		if err != nil || (format != "jpeg" && format != "png" && format != "webp") {
-			writeError(c, http.StatusUnsupportedMediaType, "UNSUPPORTED_MEDIA_TYPE", "file must be a JPEG, PNG, or WebP image")
+			response.Error(c, http.StatusUnsupportedMediaType, "UNSUPPORTED_MEDIA_TYPE", "file must be a JPEG, PNG, or WebP image")
 			return
 		}
 
@@ -83,7 +83,7 @@ func UploadImage(store ImageStore) gin.HandlerFunc {
 		defer cancel()
 		if err := store.Upload(ctx, key, "image/"+format, data); err != nil {
 			slog.Error("image upload failed", "service", "catalog", "operation", "image.upload", "request_id", c.Writer.Header().Get("X-Request-ID"))
-			writeError(c, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "image storage unavailable")
+			response.Error(c, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "image storage unavailable")
 			return
 		}
 
@@ -93,9 +93,9 @@ func UploadImage(store ImageStore) gin.HandlerFunc {
 
 func writeUploadReadError(c *gin.Context, err error) {
 	if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
-		writeError(c, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "request body is too large")
+		response.Error(c, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "request body is too large")
 		return
 	}
 
-	writeError(c, http.StatusBadRequest, "INVALID_REQUEST", "send one image in the file field")
+	response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", "send one image in the file field")
 }

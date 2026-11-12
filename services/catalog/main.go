@@ -3,15 +3,15 @@ package main
 import (
 	"catalog/internal/config"
 	"catalog/internal/database"
-	"catalog/internal/httpapi"
+	"catalog/internal/handler"
 	"catalog/internal/identity"
+	"catalog/internal/repository"
+	"catalog/internal/router"
+	"catalog/internal/service"
 	"catalog/internal/storage"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
-
-	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -48,7 +48,8 @@ func main() {
 	}
 
 	// Initialize Cloudflare R2
-	var imageStore httpapi.ImageStore
+	var imageStore handler.ImageStore
+	var imageChecker service.ImageChecker
 	if cfg.R2Endpoint != "" || cfg.R2Bucket != "" || cfg.R2AccessKeyID != "" || cfg.R2SecretAccessKey != "" {
 		r2, err := storage.NewR2(cfg.R2Endpoint, cfg.R2Bucket, cfg.R2AccessKeyID, cfg.R2SecretAccessKey)
 		if err != nil {
@@ -56,26 +57,28 @@ func main() {
 			os.Exit(1)
 		}
 		imageStore = r2
+		imageChecker = r2
 	}
 
+	// Initialize Repository
+	brandRepository := repository.NewBrandRepository(db)
+
+	// Initialize Service
+	brandService := service.NewBrandService(brandRepository, imageChecker)
+
+	// Initialize Handler
+	brandHandler := handler.NewBrandHandler(brandService)
+
 	// Initialize Gin
-	router := gin.New()
-	if err := httpapi.Setup(router); err != nil {
+	engine, err := router.New(identityClient, brandHandler, imageStore)
+	if err != nil {
 		slog.Error("HTTP setup failed", "reason", err.Error())
 		os.Exit(1)
 	}
 
-	// Route
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status": "ok",
-		})
-	})
-	router.POST(httpapi.ImageUploadPath, httpapi.RequireAdmin(identityClient), httpapi.UploadImage(imageStore))
-
 	// Start server
 	address := fmt.Sprintf(":%d", cfg.AppPort)
-	if err := router.Run(address); err != nil {
+	if err := engine.Run(address); err != nil {
 		slog.Error("server failed to start", "reason", err.Error())
 		os.Exit(1)
 	}
