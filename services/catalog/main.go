@@ -62,15 +62,18 @@ func main() {
 
 	// Initialize Repository
 	brandRepository := repository.NewBrandRepository(db)
+	bannerRepository := repository.NewBannerRepository(db)
 
 	// Initialize Service
 	brandService := service.NewBrandService(brandRepository, imageChecker)
+	bannerService := service.NewBannerService(bannerRepository, imageChecker, cfg.R2PublicBaseURL)
 
 	// Initialize Handler
 	brandHandler := handler.NewBrandHandler(brandService)
+	bannerHandler := handler.NewBannerHandler(bannerService)
 
 	// Initialize Gin
-	engine, err := router.New(identityClient, brandHandler, imageStore)
+	engine, err := router.New(identityClient, brandHandler, bannerHandler, imageStore)
 	if err != nil {
 		slog.Error("HTTP setup failed", "reason", err.Error())
 		os.Exit(1)

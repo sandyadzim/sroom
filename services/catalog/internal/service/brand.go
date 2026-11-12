@@ -19,13 +19,7 @@ var (
 	ErrInvalidBrandName   = errors.New("name must contain 1 to 100 characters")
 	ErrInvalidBrandStatus = errors.New("status must be active or inactive")
 	ErrEmptyUpdate        = errors.New("send at least one field to update")
-	ErrInvalidImage       = errors.New("image_object_key must refer to an uploaded image")
-	ErrImageUnavailable   = errors.New("image storage unavailable")
 )
-
-type ImageChecker interface {
-	ImageExists(ctx context.Context, key string) (bool, error)
-}
 
 type BrandService struct {
 	repo   *repository.BrandRepository
@@ -60,7 +54,7 @@ func (s *BrandService) Create(ctx context.Context, req dto.CreateBrandRequest) (
 	if err := validateCreateBrand(req); err != nil {
 		return nil, err
 	}
-	if err := s.checkImage(ctx, req.ImageObjectKey); err != nil {
+	if err := checkImage(ctx, s.images, req.ImageObjectKey); err != nil {
 		return nil, err
 	}
 
@@ -88,7 +82,7 @@ func (s *BrandService) Update(ctx context.Context, id string, changes model.Bran
 	if changes.Status != nil && *changes.Status != model.BrandActive && *changes.Status != model.BrandInactive {
 		return nil, ErrInvalidBrandStatus
 	}
-	if err := s.checkImage(ctx, changes.ImageObjectKey); err != nil {
+	if err := checkImage(ctx, s.images, changes.ImageObjectKey); err != nil {
 		return nil, err
 	}
 
@@ -118,33 +112,4 @@ func brandResponse(item model.Brand) dto.BrandResponse {
 		CreatedAt:      item.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:      item.UpdatedAt.UTC().Format(time.RFC3339),
 	}
-}
-
-func (s *BrandService) checkImage(ctx context.Context, key *string) error {
-	if key == nil {
-		return nil
-	}
-	filename, validPrefix := strings.CutPrefix(*key, "catalog/images/")
-	id, extension, hasExtension := strings.Cut(filename, ".")
-	if !validPrefix || !hasExtension || len(id) != 26 ||
-		strings.Trim(id, "abcdefghijklmnopqrstuvwxyz234567") != "" {
-		return ErrInvalidImage
-	}
-	if extension != "jpeg" && extension != "png" && extension != "webp" {
-		return ErrInvalidImage
-	}
-	if s.images == nil {
-		return ErrImageUnavailable
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	exists, err := s.images.ImageExists(ctx, *key)
-	if err != nil {
-		return ErrImageUnavailable
-	}
-	if !exists {
-		return ErrInvalidImage
-	}
-	return nil
 }

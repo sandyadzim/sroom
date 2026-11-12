@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"net/url"
 	"os"
 	"strconv"
 
@@ -16,6 +17,7 @@ type Config struct {
 	R2Bucket          string
 	R2AccessKeyID     string
 	R2SecretAccessKey string
+	R2PublicBaseURL   string
 }
 
 func Load() (Config, error) {
@@ -41,6 +43,14 @@ func Load() (Config, error) {
 	if identityBaseURL == "" {
 		identityBaseURL = "http://localhost:8081"
 	}
+	publicBaseURL := os.Getenv("R2_PUBLIC_BASE_URL")
+	if publicBaseURL != "" {
+		parsed, err := url.Parse(publicBaseURL)
+		if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" ||
+			parsed.User != nil || parsed.RawQuery != "" || parsed.ForceQuery || parsed.Fragment != "" {
+			return Config{}, errors.New("R2_PUBLIC_BASE_URL must be a public HTTPS base URL")
+		}
+	}
 
 	return Config{
 		AppPort:           appPort,
@@ -50,5 +60,6 @@ func Load() (Config, error) {
 		R2Bucket:          os.Getenv("R2_BUCKET"),
 		R2AccessKeyID:     os.Getenv("R2_ACCESS_KEY_ID"),
 		R2SecretAccessKey: os.Getenv("R2_SECRET_ACCESS_KEY"),
+		R2PublicBaseURL:   publicBaseURL,
 	}, nil
 }
