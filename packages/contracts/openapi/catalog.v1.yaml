@@ -2,6 +2,10 @@ openapi: 3.0.3
 info:
   title: SROOM Catalog API
   version: 1.3.0
+  description: |
+    The local gateway forwards the same Catalog API. An incoming X-Request-ID
+    with 1-64 ASCII letters, digits, underscores, or hyphens is preserved.
+    Catalog generates a request ID when the header is absent or invalid.
 servers:
   - url: http://localhost:8082
 paths:

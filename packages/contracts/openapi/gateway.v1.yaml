@@ -1,0 +1,71 @@
+openapi: 3.0.3
+info:
+  title: SROOM Gateway API
+  version: 1.0.0
+  description: |
+    Local entry point for the documented Identity and Catalog routes.
+    Request and response schemas are owned by those services. The gateway forwards
+    Bearer tokens and propagates a validated or generated X-Request-ID.
+    Gateway failures use the same error envelope, with 413 PAYLOAD_TOO_LARGE,
+    503 DEPENDENCY_UNAVAILABLE for connection failures, or 504 DEPENDENCY_UNAVAILABLE
+    for timeouts. Request bodies are capped at 16 KiB, or 6 MiB for image uploads.
+servers:
+  - url: http://localhost:8080
+security: []
+paths:
+  /health:
+    get:
+      operationId: gatewayHealth
+      summary: Check whether the gateway process is running
+      responses:
+        '200':
+          description: Gateway process is running.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ok] }
+  /api/v1/identity/register:
+    $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1register'
+  /api/v1/identity/login:
+    $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1login'
+  /api/v1/identity/me:
+    $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1me'
+  /api/v1/identity/logout:
+    $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1logout'
+  /api/v1/identity/change-password:
+    $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1change-password'
+  /api/v1/identity/admins:
+    $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins'
+  /api/v1/identity/admins/{id}:
+    $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins~1{id}'
+  /api/v1/catalog/admin/images:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1images'
+  /api/v1/catalog/admin/brands:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1brands'
+  /api/v1/catalog/admin/brands/{id}:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1brands~1{id}'
+  /api/v1/catalog/admin/banners:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1banners'
+  /api/v1/catalog/admin/banners/{position}:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1banners~1{position}'
+  /api/v1/catalog/home/banners:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1home~1banners'
+  /api/v1/catalog/admin/cars:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars'
+  /api/v1/catalog/admin/cars/{id}:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars~1{id}'
+  /api/v1/catalog/cars:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1cars'
+  /api/v1/catalog/cars/{slug}:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1cars~1{slug}'
+  /api/v1/catalog/cars/{slug}/related:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1cars~1{slug}~1related'
+  /api/v1/catalog/brands:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1brands'
+components:
+  securitySchemes:
+    bearerAuth:
+      $ref: './identity.v1.yaml#/components/securitySchemes/bearerAuth'

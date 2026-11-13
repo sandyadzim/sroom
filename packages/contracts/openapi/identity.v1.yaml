@@ -8,7 +8,7 @@ info:
     Authentication uses an opaque Bearer token with a fixed seven-day expiry.
     OWNER-only ADMIN list/detail support search and active/inactive status filtering.
     OWNER can create/update ADMIN accounts. Role is always ADMIN. No delete route.
-    Cookies and gateway integration are not implemented. Sessions remain valid
+    The local gateway forwards the same Bearer API. Browser cookies are planned. Sessions remain valid
     after status/password updates; inactive only blocks subsequent ADMIN logins.
     OWNER/ADMIN can change their own password using the current password.
     This file documents the IDN-002 response format; older direct DTO responses

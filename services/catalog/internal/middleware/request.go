@@ -11,9 +11,27 @@ import (
 )
 
 func RequestHeaders(c *gin.Context) {
-	c.Header("X-Request-ID", rand.Text())
+	requestID := c.GetHeader("X-Request-ID")
+	if !validRequestID(requestID) {
+		requestID = rand.Text()
+	}
+	c.Header("X-Request-ID", requestID)
 	c.Header("X-Content-Type-Options", "nosniff")
 	c.Next()
+}
+
+func validRequestID(id string) bool {
+	if len(id) == 0 || len(id) > 64 {
+		return false
+	}
+	for _, char := range id {
+		if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') || char == '-' || char == '_' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func Recovery() gin.HandlerFunc {
