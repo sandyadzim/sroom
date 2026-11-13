@@ -12,12 +12,14 @@
 
 	let { children }: LayoutProps = $props();
 	const authPage = $derived(page.route.id?.startsWith('/(auth)/') ?? false);
+	const adminPage = $derived(page.route.id?.startsWith('/admin/') ?? false);
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
 	<link rel="preload" href={interFont} as="font" type="font/woff2" crossorigin="anonymous" />
 	<link rel="preload" href={manropeFont} as="font" type="font/woff2" crossorigin="anonymous" />
+	{#if adminPage}<meta name="robots" content="noindex, nofollow" />{/if}
 </svelte:head>
 
 <div class="flex min-h-dvh flex-col">
@@ -29,11 +31,11 @@
 		Skip to content
 	</Link>
 
-	{#if authPage}<AuthHeader />{:else}<SiteHeader />{/if}
+	{#if authPage}<AuthHeader />{:else if !adminPage}<SiteHeader />{/if}
 
 	<main id="main-content" tabindex="-1" class="min-w-0 flex-1">
 		{@render children()}
 	</main>
 
-	{#if !authPage}<SiteFooter />{/if}
+	{#if !authPage && !adminPage}<SiteFooter />{/if}
 </div>
