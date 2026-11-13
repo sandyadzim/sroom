@@ -4,9 +4,9 @@ import { isAxiosError } from 'axios';
 import { getCurrentUser } from '#lib/server/queries/identity.ts';
 import { isStaff, staffCookiePath, staffSessionCookie } from '#lib/server/staff-session.ts';
 import type { ApiError } from '#lib/types/identity.ts';
-import type { PageServerLoad } from './$types';
+import type { LayoutServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ cookies, setHeaders }) => {
+export const load: LayoutServerLoad = async ({ cookies, setHeaders }) => {
 	setHeaders({ 'cache-control': 'no-store' });
 	const token = cookies.get(staffSessionCookie);
 	if (!token) redirect(303, resolve('/admin/login'));
@@ -30,11 +30,9 @@ export const load: PageServerLoad = async ({ cookies, setHeaders }) => {
 	if (!isStaff(user)) error(403, 'This page is for staff accounts.');
 	return {
 		profile: {
-			id: user.id,
 			full_name: user.full_name,
 			email: user.email,
-			role: user.role,
-			created_at: user.created_at
+			role: user.role
 		}
 	};
 };

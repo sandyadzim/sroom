@@ -3,6 +3,11 @@ export type LoginCredentials = {
 	password: string;
 };
 
+export type ChangePasswordInput = {
+	current_password: string;
+	new_password: string;
+};
+
 export type LoginSession = {
 	token: string;
 	expires_at: string;
@@ -20,6 +25,7 @@ export type ApiData<T> = { data: T };
 
 export type ApiError = {
 	error: {
+		code?: string;
 		message: string;
 		details?: Record<string, string>;
 	};

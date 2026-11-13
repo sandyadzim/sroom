@@ -5,14 +5,41 @@
 	import SiteFooter from '#lib/components/layout/SiteFooter.svelte';
 	import AuthHeader from '#lib/components/auth/AuthHeader.svelte';
 	import { page } from '$app/state';
+	import { untrack } from 'svelte';
 	import Link from '#lib/components/ui/Link.svelte';
+	import Toaster from '#lib/components/ui/Toaster.svelte';
+	import { setToastContext, type ToastFeedback, type ToastItem } from '#lib/ui/toast.ts';
 	import interFont from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
 	import manropeFont from '@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2?url';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
 	const authPage = $derived(page.route.id?.startsWith('/(auth)/') ?? false);
-	const adminPage = $derived(page.route.id?.startsWith('/admin/') ?? false);
+	const adminPage = $derived(page.route.id === '/admin' || page.route.id?.startsWith('/admin/'));
+	const staffPage = $derived(page.route.id?.startsWith('/admin/(staff)') && page.data.profile);
+
+	const serverToast: ToastFeedback | undefined = $derived(page.form?.toast ?? page.data.toast);
+	let lastServerToast = untrack(() => serverToast);
+	let nextToastId = 0;
+	let toasts = $state.raw<ToastItem[]>(
+		lastServerToast ? [{ ...lastServerToast, id: nextToastId++ }] : []
+	);
+
+	function showToast(feedback: ToastFeedback) {
+		toasts = [{ ...feedback, id: nextToastId++ }, ...toasts].slice(0, 3);
+	}
+
+	function dismissToast(id: number) {
+		toasts = toasts.filter((toast) => toast.id !== id);
+	}
+
+	setToastContext(showToast);
+	$effect(() => {
+		const incoming = serverToast;
+		if (incoming === lastServerToast) return;
+		lastServerToast = incoming;
+		if (incoming) untrack(() => showToast(incoming));
+	});
 </script>
 
 <svelte:head>
@@ -31,11 +58,17 @@
 		Skip to content
 	</Link>
 
-	{#if authPage}<AuthHeader />{:else if !adminPage}<SiteHeader />{/if}
-
-	<main id="main-content" tabindex="-1" class="min-w-0 flex-1">
+	{#if staffPage}
 		{@render children()}
-	</main>
+	{:else}
+		{#if authPage}<AuthHeader />{:else if !adminPage}<SiteHeader />{/if}
 
-	{#if !authPage && !adminPage}<SiteFooter />{/if}
+		<main id="main-content" tabindex="-1" class="min-w-0 flex-1">
+			{@render children()}
+		</main>
+
+		{#if !authPage && !adminPage}<SiteFooter />{/if}
+	{/if}
 </div>
+
+<Toaster {toasts} onDismiss={dismissToast} />

@@ -49,6 +49,6 @@ export const actions: Actions = {
 			secure: url.protocol === 'https:',
 			expires: new Date(session.expires_at)
 		});
-		redirect(303, resolve('/admin/profile'));
+		redirect(303, resolve('/admin/(staff)/profile'));
 	}
 };

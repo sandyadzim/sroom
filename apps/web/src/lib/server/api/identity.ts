@@ -1,4 +1,10 @@
-import type { ApiData, LoginCredentials, LoginSession, UserProfile } from '#lib/types/identity.ts';
+import type {
+	ApiData,
+	ChangePasswordInput,
+	LoginCredentials,
+	LoginSession,
+	UserProfile
+} from '#lib/types/identity.ts';
 import { createGatewayClient } from './gateway';
 
 const identityPath = '/api/v1/identity';
@@ -16,4 +22,8 @@ export async function fetchCurrentUser(token: string) {
 
 export async function revokeSession(token: string) {
 	await createGatewayClient(token).post(`${identityPath}/logout`);
+}
+
+export async function changePassword(token: string, input: ChangePasswordInput) {
+	await createGatewayClient(token).post(`${identityPath}/change-password`, input);
 }
