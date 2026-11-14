@@ -13,24 +13,34 @@ func browserCORS(origins string) gin.HandlerFunc {
 		if !strings.HasPrefix(c.Request.URL.Path, "/api/v1/") {
 			return
 		}
+		staff := strings.HasPrefix(c.Request.URL.Path, staffPath+"/")
 
 		c.Writer.Header().Add("Vary", "Origin")
 		origin := c.GetHeader("Origin")
-		if origin == "" {
-			return
-		}
 
 		for _, candidate := range allowed {
-			if origin != strings.TrimSpace(candidate) {
+			if origin == "" || origin == "null" || origin != strings.TrimSpace(candidate) {
 				continue
 			}
 			c.Header("Access-Control-Allow-Origin", origin)
+			if staff {
+				c.Header("Access-Control-Allow-Credentials", "true")
+			}
 			if c.Request.Method == http.MethodOptions && c.GetHeader("Access-Control-Request-Method") != "" {
 				c.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE")
 				c.Header("Access-Control-Allow-Headers", "Authorization, Content-Type")
 				c.AbortWithStatus(http.StatusNoContent)
 			}
 			return
+		}
+
+		// A form can send a request even when the browser blocks reading its response.
+		if staff {
+			switch c.Request.Method {
+			case http.MethodGet, http.MethodHead, http.MethodOptions:
+			default:
+				writeError(c, http.StatusForbidden, "FORBIDDEN_ORIGIN", "request origin is not allowed")
+			}
 		}
 	}
 }

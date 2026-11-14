@@ -10,6 +10,7 @@ Local Go + Gin gateway for all current Identity and Catalog API routes. Use `htt
 
 | Environment variable | Default |
 |---|---|
+| `APP_ENV` | `development` (any other value sets `Secure` on the staff cookie) |
 | `APP_PORT` | `8080` |
 | `IDENTITY_URL` | `http://localhost:8081` |
 | `CATALOG_URL` | `http://localhost:8082` |
@@ -18,6 +19,12 @@ Local Go + Gin gateway for all current Identity and Catalog API routes. Use `htt
 Export variables before starting the gateway to override the defaults. It listens on IPv4 loopback. Identity still applies its login and registration rate limits, and requests through the gateway share its IP quota.
 
 The staff browser calls the gateway directly. Set `WEB_ORIGINS` to a comma-separated list of exact frontend origins if you use a different host or port. The gateway answers browser preflights and allows the Authorization and Content-Type headers for those origins. Identity and Catalog still enforce their own authorization.
+
+## Staff browser session
+
+`POST /api/v1/staff/login` uses the existing Identity login and profile endpoints. Gateway accepts OWNER or ADMIN, returns the profile, and sets the `sroom_staff_session` HttpOnly cookie. The frontend sends it with `withCredentials: true`. Gateway converts it to a Bearer header for `/staff/me`, `/staff/logout`, `/staff/change-password`, `/staff/admins`, and `/staff/catalog/admin/*` under `/api/v1`. Identity and Catalog still enforce role permissions. Successful logout revokes the session and expires the cookie.
+
+Staff mutations require an exact origin in `WEB_ORIGINS`. For local development, use the same hostname for frontend and API, for example `localhost:5173` and `localhost:8080`. On HTTPS, set `APP_ENV=production` and serve both on the same site so the `SameSite=Lax` cookie is sent.
 
 ## Try in Bruno
 

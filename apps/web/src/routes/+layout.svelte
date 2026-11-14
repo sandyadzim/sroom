@@ -5,7 +5,6 @@
 	import SiteFooter from '#lib/components/layout/SiteFooter.svelte';
 	import AuthHeader from '#lib/components/auth/AuthHeader.svelte';
 	import { page } from '$app/state';
-	import { untrack } from 'svelte';
 	import Link from '#lib/components/ui/Link.svelte';
 	import Toaster from '#lib/components/ui/Toaster.svelte';
 	import { setToastContext, type ToastFeedback, type ToastItem } from '#lib/ui/toast.ts';
@@ -16,14 +15,10 @@
 	let { children }: LayoutProps = $props();
 	const authPage = $derived(page.route.id?.startsWith('/(auth)/') ?? false);
 	const adminPage = $derived(page.route.id === '/admin' || page.route.id?.startsWith('/admin/'));
-	const staffPage = $derived(page.route.id?.startsWith('/admin/(staff)') && page.data.profile);
+	const staffPage = $derived(page.route.id?.startsWith('/admin/(staff)'));
 
-	const serverToast: ToastFeedback | undefined = $derived(page.form?.toast ?? page.data.toast);
-	let lastServerToast = untrack(() => serverToast);
 	let nextToastId = 0;
-	let toasts = $state.raw<ToastItem[]>(
-		lastServerToast ? [{ ...lastServerToast, id: nextToastId++ }] : []
-	);
+	let toasts = $state.raw<ToastItem[]>([]);
 
 	function showToast(feedback: ToastFeedback) {
 		toasts = [{ ...feedback, id: nextToastId++ }, ...toasts].slice(0, 3);
@@ -34,12 +29,6 @@
 	}
 
 	setToastContext(showToast);
-	$effect(() => {
-		const incoming = serverToast;
-		if (incoming === lastServerToast) return;
-		lastServerToast = incoming;
-		if (incoming) untrack(() => showToast(incoming));
-	});
 </script>
 
 <svelte:head>

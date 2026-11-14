@@ -21,13 +21,17 @@
 		profileHref,
 		websiteHref,
 		collapsed = false,
-		onNavigate
+		onNavigate,
+		onSignOut,
+		signingOut
 	}: {
 		isOwner: boolean;
 		profileHref: string;
 		websiteHref: string;
 		collapsed?: boolean;
 		onNavigate?: () => void;
+		onSignOut: () => void;
+		signingOut: boolean;
 	} = $props();
 
 	const operations = [
@@ -37,6 +41,8 @@
 		{ label: 'Payments', icon: CreditCard },
 		{ label: 'Reports', icon: ChartColumn }
 	];
+	const adminsHref = $derived(resolve('admin/admins'));
+	const onAdmins = $derived(page.url.pathname === new URL(adminsHref, page.url.href).pathname);
 	const profilePath = $derived(new URL(profileHref, page.url.href).pathname);
 	const onProfile = $derived(page.url.pathname === profilePath);
 	const inProfile = $derived(onProfile || page.url.pathname.startsWith(`${profilePath}/`));
@@ -97,14 +103,22 @@
 				</li>
 				{#if isOwner}
 					<li>
-						<span
-							class={[row, 'text-ink-muted']}
-							title={collapsed ? 'Admin accounts (planned)' : undefined}
+						<Link
+							href={adminsHref}
+							variant="plain"
+							aria-current={onAdmins ? 'page' : undefined}
+							title={collapsed ? 'Admin accounts' : undefined}
+							onclick={onNavigate}
+							class={[
+								row,
+								onAdmins
+									? 'bg-panel-muted font-semibold text-ink'
+									: 'text-ink-muted hover:bg-panel-muted hover:text-ink'
+							]}
 						>
 							<UsersRound size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
 							<span class={labelClass}>Admin accounts</span>
-							<span class={[labelClass, 'ml-auto shrink-0 text-xs']}>Planned</span>
-						</span>
+						</Link>
 					</li>
 				{/if}
 			</ul>
@@ -127,17 +141,16 @@
 				class={[labelClass, 'ml-auto shrink-0']}
 			/>
 		</Link>
-		<form method="post" action={resolve('admin/logout')}>
-			<Button
-				type="submit"
-				variant="ghost"
-				size="custom"
-				title={collapsed ? 'Sign out' : undefined}
-				class={[row, 'w-full justify-start font-normal']}
-			>
-				<LogOut size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
-				<span class={labelClass}>Sign out</span>
-			</Button>
-		</form>
+		<Button
+			onclick={onSignOut}
+			disabled={signingOut}
+			variant="ghost"
+			size="custom"
+			title={collapsed ? 'Sign out' : undefined}
+			class={[row, 'w-full justify-start font-normal']}
+		>
+			<LogOut size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
+			<span class={labelClass}>{signingOut ? 'Signing out…' : 'Sign out'}</span>
+		</Button>
 	</div>
 </nav>

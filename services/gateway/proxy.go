@@ -24,6 +24,10 @@ func newHTTPClient() *http.Client {
 }
 
 func forwardTo(client *http.Client, base *url.URL, service string, bodyLimit int64, timeout time.Duration, logger *slog.Logger) gin.HandlerFunc {
+	return forward(client, base, service, bodyLimit, timeout, logger, nil)
+}
+
+func forward(client *http.Client, base *url.URL, service string, bodyLimit int64, timeout time.Duration, logger *slog.Logger, onSuccess func(*gin.Context, []byte)) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		incoming := c.Request
 		// Dynamic segments are forwarded to another router. Keep them as individual path segments.
@@ -97,6 +101,10 @@ func forwardTo(client *http.Client, base *url.URL, service string, bodyLimit int
 			if value := response.Header.Get(header); value != "" {
 				c.Header(header, value)
 			}
+		}
+		if onSuccess != nil && response.StatusCode >= 200 && response.StatusCode < 300 {
+			onSuccess(c, payload)
+			return
 		}
 		c.Status(response.StatusCode)
 		if len(payload) > 0 {

@@ -1,11 +1,13 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Local entry point for the documented Identity and Catalog routes.
     Request and response schemas are owned by those services. The gateway forwards
     Bearer tokens and propagates a validated or generated X-Request-ID.
+    The staff routes use an HttpOnly session cookie. POST, PATCH, PUT, and DELETE
+    on staff routes require an Origin in the gateway's WEB_ORIGINS allowlist.
     Gateway failures use the same error envelope, with 413 PAYLOAD_TOO_LARGE,
     503 DEPENDENCY_UNAVAILABLE for connection failures, or 504 DEPENDENCY_UNAVAILABLE
     for timeouts. Request bodies are capped at 16 KiB, or 6 MiB for image uploads.
@@ -65,7 +67,287 @@ paths:
     $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1cars~1{slug}~1related'
   /api/v1/catalog/brands:
     $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1brands'
+  /api/v1/staff/login:
+    post:
+      operationId: staffLogin
+      summary: Start an OWNER or ADMIN browser session
+      requestBody:
+        $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1login/post/requestBody'
+      responses:
+        '200':
+          description: Staff profile and session cookie.
+          headers:
+            Set-Cookie:
+              description: Host-only sroom_staff_session with HttpOnly, SameSite=Lax, and Path=/api/v1/staff. Secure outside development.
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: './identity.v1.yaml#/components/schemas/UserProfile'
+        '403':
+          description: STAFF_REQUIRED for a customer account or FORBIDDEN_ORIGIN for an untrusted origin.
+          content:
+            application/json:
+              schema:
+                $ref: './identity.v1.yaml#/components/schemas/ErrorResponse'
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/staff/logout:
+    post:
+      operationId: staffLogout
+      summary: Revoke the staff session
+      security:
+        - staffCookie: []
+      responses:
+        '204':
+          description: Session revoked and cookie expired.
+          headers:
+            Set-Cookie:
+              description: Expires sroom_staff_session.
+              schema: { type: string }
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/staff/me:
+    get:
+      summary: Staff profile
+      security:
+        - staffCookie: []
+      responses:
+        '200':
+          $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1me/get/responses/200'
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/staff/change-password:
+    post:
+      summary: Staff change password
+      security:
+        - staffCookie: []
+      requestBody:
+        $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1change-password/post/requestBody'
+      responses:
+        '204':
+          $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1change-password/post/responses/204'
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/staff/admins:
+    get:
+      summary: Staff list admins
+      security:
+        - staffCookie: []
+      parameters:
+        - $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins/get/parameters/0'
+        - $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins/get/parameters/1'
+        - $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins/get/parameters/2'
+        - $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins/get/parameters/3'
+      responses:
+        '200':
+          $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins/get/responses/200'
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+    post:
+      summary: Staff create admin
+      security:
+        - staffCookie: []
+      requestBody:
+        $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins/post/requestBody'
+      responses:
+        '201':
+          $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins/post/responses/201'
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/staff/admins/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: Staff admin detail
+      security:
+        - staffCookie: []
+      responses:
+        '200':
+          $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins~1{id}/get/responses/200'
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+    patch:
+      summary: Staff update admin
+      security:
+        - staffCookie: []
+      requestBody:
+        $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins~1{id}/patch/requestBody'
+      responses:
+        '200':
+          $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins~1{id}/patch/responses/200'
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/staff/catalog/admin/images:
+    post:
+      summary: Staff upload image
+      security:
+        - staffCookie: []
+      requestBody:
+        $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1images/post/requestBody'
+      responses:
+        '201':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1images/post/responses/201'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+  /api/v1/staff/catalog/admin/brands:
+    get:
+      summary: Staff list brands
+      security:
+        - staffCookie: []
+      parameters:
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1brands/get/parameters/0'
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1brands/get/parameters/1'
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1brands/get/parameters/2'
+      responses:
+        '200':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1brands/get/responses/200'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+    post:
+      summary: Staff create brand
+      security:
+        - staffCookie: []
+      requestBody:
+        $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1brands/post/requestBody'
+      responses:
+        '201':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1brands/post/responses/201'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+  /api/v1/staff/catalog/admin/brands/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      summary: Staff update brand
+      security:
+        - staffCookie: []
+      requestBody:
+        $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1brands~1{id}/patch/requestBody'
+      responses:
+        '200':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1brands~1{id}/patch/responses/200'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+  /api/v1/staff/catalog/admin/banners:
+    get:
+      summary: Staff list banners
+      security:
+        - staffCookie: []
+      responses:
+        '200':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1banners/get/responses/200'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+  /api/v1/staff/catalog/admin/banners/{position}:
+    parameters:
+      - name: position
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Staff banner detail
+      security:
+        - staffCookie: []
+      responses:
+        '200':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1banners~1{position}/get/responses/200'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+    put:
+      summary: Staff update banner
+      security:
+        - staffCookie: []
+      requestBody:
+        $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1banners~1{position}/put/requestBody'
+      responses:
+        '200':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1banners~1{position}/put/responses/200'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+    delete:
+      summary: Staff clear banner
+      security:
+        - staffCookie: []
+      responses:
+        '200':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1banners~1{position}/delete/responses/200'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+  /api/v1/staff/catalog/admin/cars:
+    get:
+      summary: Staff list cars
+      security:
+        - staffCookie: []
+      parameters:
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars/get/parameters/0'
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars/get/parameters/1'
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars/get/parameters/2'
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars/get/parameters/3'
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars/get/parameters/4'
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars/get/parameters/5'
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars/get/parameters/6'
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars/get/parameters/7'
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars/get/parameters/8'
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars/get/parameters/9'
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars/get/parameters/10'
+      responses:
+        '200':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars/get/responses/200'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+    post:
+      summary: Staff create car
+      security:
+        - staffCookie: []
+      requestBody:
+        $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars/post/requestBody'
+      responses:
+        '201':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars/post/responses/201'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+  /api/v1/staff/catalog/admin/cars/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: Staff car detail
+      security:
+        - staffCookie: []
+      responses:
+        '200':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars~1{id}/get/responses/200'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+    patch:
+      summary: Staff update car
+      security:
+        - staffCookie: []
+      requestBody:
+        $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars~1{id}/patch/requestBody'
+      responses:
+        '200':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars~1{id}/patch/responses/200'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
 components:
   securitySchemes:
     bearerAuth:
       $ref: './identity.v1.yaml#/components/securitySchemes/bearerAuth'
+    staffCookie:
+      type: apiKey
+      in: cookie
+      name: sroom_staff_session

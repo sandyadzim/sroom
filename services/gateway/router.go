@@ -57,7 +57,12 @@ func newRouter(identityURL, catalogURL *url.URL, logger *slog.Logger) *gin.Engin
 	catalogRoutes.GET("/cars/:slug", catalog)
 	catalogRoutes.GET("/cars/:slug/related", catalog)
 
-	admin := catalogRoutes.Group("/admin")
+	registerCatalogAdmin(catalogRoutes.Group("/admin"), catalog, upload)
+	registerStaff(v1.Group("/staff"), client, identityURL, identity, catalog, upload, logger)
+	return app
+}
+
+func registerCatalogAdmin(admin *gin.RouterGroup, catalog, upload gin.HandlerFunc) {
 	admin.POST("/images", upload)
 	admin.GET("/brands", catalog)
 	admin.POST("/brands", catalog)
@@ -70,7 +75,6 @@ func newRouter(identityURL, catalogURL *url.URL, logger *slog.Logger) *gin.Engin
 	admin.POST("/cars", catalog)
 	admin.GET("/cars/:id", catalog)
 	admin.PATCH("/cars/:id", catalog)
-	return app
 }
 
 func requestHeaders(c *gin.Context) {
