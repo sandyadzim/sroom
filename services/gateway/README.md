@@ -13,8 +13,11 @@ Local Go + Gin gateway for all current Identity and Catalog API routes. Use `htt
 | `APP_PORT` | `8080` |
 | `IDENTITY_URL` | `http://localhost:8081` |
 | `CATALOG_URL` | `http://localhost:8082` |
+| `WEB_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` |
 
 Export variables before starting the gateway to override the defaults. It listens on IPv4 loopback. Identity still applies its login and registration rate limits, and requests through the gateway share its IP quota.
+
+The staff browser calls the gateway directly. Set `WEB_ORIGINS` to a comma-separated list of exact frontend origins if you use a different host or port. The gateway answers browser preflights and allows the Authorization and Content-Type headers for those origins. Identity and Catalog still enforce their own authorization.
 
 ## Try in Bruno
 

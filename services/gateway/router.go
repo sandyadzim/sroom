@@ -16,6 +16,7 @@ func newRouter(identityURL, catalogURL *url.URL, logger *slog.Logger) *gin.Engin
 	app.HandleMethodNotAllowed = true
 	app.ForwardedByClientIP = false
 	app.Use(requestHeaders)
+	app.Use(browserCORS(envOrDefault("WEB_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")))
 	app.Use(gin.CustomRecoveryWithWriter(nil, func(c *gin.Context, _ any) {
 		logger.Error("request failed", "operation", "http.request", "request_id", c.Writer.Header().Get("X-Request-ID"))
 		writeError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")
