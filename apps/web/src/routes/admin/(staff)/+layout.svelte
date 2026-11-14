@@ -12,6 +12,10 @@
 	let { children }: LayoutProps = $props();
 	const profile = createQuery(() => staffProfileQuery);
 	const role = $derived(profile.data?.role);
+	const adminAccountsRoute = '/admin/(staff)/admins';
+	const inAdminAccounts = $derived(
+		page.route.id === adminAccountsRoute || page.route.id?.startsWith(`${adminAccountsRoute}/`)
+	);
 
 	$effect(() => {
 		if (role === 'CUSTOMER') {
@@ -22,7 +26,7 @@
 
 {#if profile.isSuccess && (role === 'OWNER' || role === 'ADMIN')}
 	<AdminShell profile={profile.data}>
-		{#if page.route.id === '/admin/(staff)/admins' && role !== 'OWNER'}
+		{#if inAdminAccounts && role !== 'OWNER'}
 			<h1 class="text-3xl font-bold">Access denied</h1>
 			<p class="mt-2 text-ink-muted">This page is for the owner.</p>
 		{:else}

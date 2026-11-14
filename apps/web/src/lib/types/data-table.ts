@@ -15,9 +15,11 @@ export type TableFilter = {
 	| { type: 'select'; placeholder?: string; options: readonly { value: string; label: string }[] }
 );
 
-export type TableColumn<Row> = { label: string } & (
-	{ field: Extract<keyof Row, string>; cell?: never } | { field?: never; cell: Snippet<[Row]> }
-);
+export type TableColumn<Row> = {
+	label: string;
+	/** Pin the last column to the right edge when the table scrolls. */
+	sticky?: 'right';
+} & ({ field: Extract<keyof Row, string>; cell?: never } | { field?: never; cell: Snippet<[Row]> });
 
 export type DataTableConfig<Row> = {
 	endpoint: string;

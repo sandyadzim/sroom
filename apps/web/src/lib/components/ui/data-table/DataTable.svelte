@@ -42,6 +42,10 @@
 	);
 	const pageButtonClass =
 		'border border-line aria-disabled:cursor-not-allowed aria-disabled:text-ink-muted aria-disabled:hover:bg-transparent';
+	const stickyColumnClass =
+		'sticky right-0 z-10 before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-line';
+	const lastColumn = $derived(columns.at(-1));
+	const stickyColumn = $derived(lastColumn?.sticky === 'right' ? lastColumn : undefined);
 	const previousUnavailable = $derived(loading || Boolean(failure) || pagination.page <= 1);
 	const nextUnavailable = $derived(
 		loading || Boolean(failure) || pagination.page >= pagination.totalPages
@@ -62,7 +66,13 @@
 			<thead class="border-b border-line bg-page">
 				<tr>
 					{#each columns as column (column.label)}
-						<th scope="col" class="px-4 py-3.5 font-semibold whitespace-nowrap sm:px-5">
+						<th
+							scope="col"
+							class={[
+								'px-4 py-3.5 font-semibold whitespace-nowrap sm:px-5',
+								column === stickyColumn && [stickyColumnClass, 'bg-page']
+							]}
+						>
 							{column.label}
 						</th>
 					{/each}
@@ -82,7 +92,12 @@
 					{#each [0, 1, 2] as index (index)}
 						<tr aria-hidden="true">
 							{#each columns as column (column.label)}
-								<td class="px-4 py-4 sm:px-5">
+								<td
+									class={[
+										'px-4 py-4 sm:px-5',
+										column === stickyColumn && [stickyColumnClass, 'bg-panel']
+									]}
+								>
 									<div class="h-4 w-16 rounded bg-panel-muted motion-safe:animate-pulse"></div>
 								</td>
 							{/each}
@@ -98,7 +113,12 @@
 					{#each rows as row (rowKey(row))}
 						<tr>
 							{#each columns as column (column.label)}
-								<td class="max-w-80 px-4 py-3.5 align-middle wrap-anywhere sm:px-5">
+								<td
+									class={[
+										'max-w-80 px-4 py-3.5 align-middle wrap-anywhere sm:px-5',
+										column === stickyColumn && [stickyColumnClass, 'bg-panel']
+									]}
+								>
 									{#if column.cell}
 										{@render column.cell(row)}
 									{:else}

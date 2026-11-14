@@ -42,7 +42,9 @@
 		{ label: 'Reports', icon: ChartColumn }
 	];
 	const adminsHref = $derived(resolve('admin/admins'));
-	const onAdmins = $derived(page.url.pathname === new URL(adminsHref, page.url.href).pathname);
+	const adminsPath = $derived(new URL(adminsHref, page.url.href).pathname);
+	const onAdmins = $derived(page.url.pathname === adminsPath);
+	const inAdmins = $derived(onAdmins || page.url.pathname.startsWith(`${adminsPath}/`));
 	const profilePath = $derived(new URL(profileHref, page.url.href).pathname);
 	const onProfile = $derived(page.url.pathname === profilePath);
 	const inProfile = $derived(onProfile || page.url.pathname.startsWith(`${profilePath}/`));
@@ -106,12 +108,12 @@
 						<Link
 							href={adminsHref}
 							variant="plain"
-							aria-current={onAdmins ? 'page' : undefined}
+							aria-current={onAdmins ? 'page' : inAdmins ? 'location' : undefined}
 							title={collapsed ? 'Admin accounts' : undefined}
 							onclick={onNavigate}
 							class={[
 								row,
-								onAdmins
+								inAdmins
 									? 'bg-panel-muted font-semibold text-ink'
 									: 'text-ink-muted hover:bg-panel-muted hover:text-ink'
 							]}
