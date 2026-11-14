@@ -1,15 +1,20 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import Button from '#lib/components/ui/Button.svelte';
-	import type { PageProps } from './$types';
+	import { createQuery } from '@tanstack/svelte-query';
+	import { staffProfileQuery } from '#lib/queries/identity.ts';
 
-	let { data }: PageProps = $props();
+	const profile = createQuery(() => staffProfileQuery);
 
-	const fields = $derived([
-		{ label: 'Full name', value: data.profile.full_name.trim() || '—' },
-		{ label: 'Email', value: data.profile.email },
-		{ label: 'Role', value: data.profile.role === 'OWNER' ? 'Owner' : 'Admin' }
-	]);
+	const fields = $derived(
+		profile.data
+			? [
+					{ label: 'Full name', value: profile.data.full_name.trim() || '—' },
+					{ label: 'Email', value: profile.data.email },
+					{ label: 'Role', value: profile.data.role === 'OWNER' ? 'Owner' : 'Admin' }
+				]
+			: []
+	);
 </script>
 
 <svelte:head>

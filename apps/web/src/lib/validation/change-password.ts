@@ -18,9 +18,9 @@ export type PasswordErrors = Partial<Record<PasswordField, string>>;
 
 export function readPasswordForm(form: FormData) {
 	return {
-		current_password: form.get('current_password') ?? '',
-		new_password: form.get('new_password') ?? '',
-		confirm_password: form.get('confirm_password') ?? ''
+		current_password: String(form.get('current_password') ?? ''),
+		new_password: String(form.get('new_password') ?? ''),
+		confirm_password: String(form.get('confirm_password') ?? '')
 	};
 }
 

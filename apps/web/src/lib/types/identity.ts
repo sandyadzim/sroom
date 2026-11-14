@@ -8,11 +8,6 @@ export type ChangePasswordInput = {
 	new_password: string;
 };
 
-export type LoginSession = {
-	token: string;
-	expires_at: string;
-};
-
 export type UserProfile = {
 	id: string;
 	full_name: string;
@@ -29,4 +24,12 @@ export type ApiError = {
 		message: string;
 		details?: Record<string, string>;
 	};
+};
+
+export type AdminAccount = {
+	id: string;
+	full_name: string;
+	email: string;
+	status: 'active' | 'inactive';
+	created_at: string;
 };

@@ -1,6 +1,11 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { Menu, PanelLeftClose, PanelLeftOpen } from '@lucide/svelte';
+	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
+	import { logout } from '#lib/api/identity/auth.ts';
+	import { getApiError } from '#lib/api/staff.ts';
+	import { useToast } from '#lib/ui/toast.ts';
 	import type { Snippet } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
 	import type { UserProfile } from '#lib/types/identity.ts';
@@ -28,6 +33,19 @@
 	);
 	let menuOpen = $state(false);
 	let collapsed = $state(false);
+
+	const queryClient = useQueryClient();
+	const showToast = useToast();
+	const signOut = createMutation(() => ({
+		mutationFn: logout,
+		onSuccess: async () => {
+			await goto(resolve('/admin/login'), { replaceState: true });
+			queryClient.clear();
+		},
+		onError: (cause) => {
+			showToast({ kind: 'error', message: getApiError(cause)?.message ?? 'Could not sign out.' });
+		}
+	}));
 
 	$effect(() => {
 		if (desktop.current) menuOpen = false;
@@ -76,7 +94,14 @@
 				Staff workspace
 			</p>
 		</div>
-		<AdminNavigation {isOwner} {profileHref} {websiteHref} {collapsed} />
+		<AdminNavigation
+			{isOwner}
+			{profileHref}
+			{websiteHref}
+			{collapsed}
+			onSignOut={() => signOut.mutate()}
+			signingOut={signOut.isPending}
+		/>
 	</aside>
 
 	<div class="flex min-h-dvh min-w-0 flex-col lg:pr-2 lg:pb-2">
@@ -100,6 +125,8 @@
 						{isOwner}
 						{profileHref}
 						{websiteHref}
+						onSignOut={() => signOut.mutate()}
+						signingOut={signOut.isPending}
 						onNavigate={() => (menuOpen = false)}
 					/>
 				</Dialog>

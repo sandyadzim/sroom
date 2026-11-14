@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Select } from 'bits-ui';
-	import { Check, ChevronDown, ChevronUp } from '@lucide/svelte';
+	import { Check, ChevronDown, ChevronUp, X } from '@lucide/svelte';
+	import Button from './Button.svelte';
 
 	type Props = Omit<Select.TriggerProps, 'value' | 'type' | 'children' | 'child' | 'onchange'> & {
 		label: string;
@@ -12,11 +13,14 @@
 		help?: string;
 		error?: string;
 		onchange?: (value: string) => void;
+		clearable?: boolean;
+		compact?: boolean;
 	};
 
 	const generatedId = $props.id();
 	let {
 		id = generatedId,
+		ref = $bindable(null),
 		label,
 		name,
 		value = $bindable(''),
@@ -27,6 +31,8 @@
 		help,
 		error,
 		onchange,
+		clearable = false,
+		compact = false,
 		class: className,
 		'aria-describedby': describedBy,
 		...props
@@ -45,7 +51,7 @@
 </script>
 
 <div class="min-w-0">
-	<label id={`${id}-label`} for={id} class="mb-2 block text-sm font-medium">
+	<label id={`${id}-label`} for={id} class={compact ? 'sr-only' : 'mb-2 block text-sm font-medium'}>
 		{label}{#if required}<span class="ml-1 text-negative" aria-hidden="true">*</span>{/if}
 	</label>
 	<Select.Root
@@ -57,30 +63,50 @@
 		bind:value
 		onValueChange={selectValue}
 	>
-		<Select.Trigger
-			{...props}
-			{id}
-			aria-labelledby={`${id}-label ${id}-value`}
-			aria-describedby={description}
-			aria-invalid={error ? 'true' : undefined}
-			class={[
-				'group flex min-h-13 w-full items-center justify-between gap-3 rounded-xl border bg-panel px-4 py-3 text-left text-base text-ink transition-colors focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:bg-panel-muted disabled:text-ink-muted motion-reduce:transition-none',
-				error
-					? 'border-negative hover:border-negative data-[state=open]:border-negative'
-					: 'border-line hover:border-ink-muted data-[state=open]:border-ink-muted',
-				className
-			]}
-		>
-			<span id={`${id}-value`} class={['min-w-0 truncate', !selectedLabel && 'text-ink-muted']}
-				>{selectedLabel ?? placeholder}</span
+		<div class="relative">
+			<Select.Trigger
+				{...props}
+				bind:ref
+				{id}
+				aria-labelledby={`${id}-label ${id}-value`}
+				aria-describedby={description}
+				aria-invalid={error ? 'true' : undefined}
+				class={[
+					'group flex w-full items-center justify-between gap-3 rounded-xl border bg-panel text-left text-ink transition-colors focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:bg-panel-muted disabled:text-ink-muted motion-reduce:transition-none',
+					compact ? 'min-h-11 px-3 text-sm' : 'min-h-13 px-4 py-3 text-base',
+					clearable && value && 'pr-14',
+					error
+						? 'border-negative hover:border-negative data-[state=open]:border-negative'
+						: 'border-line hover:border-ink-muted data-[state=open]:border-ink-muted',
+					className
+				]}
 			>
-			<ChevronDown
-				size={18}
-				strokeWidth={1.5}
-				aria-hidden="true"
-				class="shrink-0 transition-transform duration-150 ease-out group-data-[state=open]:rotate-180 motion-reduce:transition-none"
-			/>
-		</Select.Trigger>
+				<span id={`${id}-value`} class={['min-w-0 truncate', !selectedLabel && 'text-ink-muted']}
+					>{selectedLabel ?? placeholder}</span
+				>
+				<ChevronDown
+					size={18}
+					strokeWidth={1.5}
+					aria-hidden="true"
+					class="shrink-0 transition-transform duration-150 ease-out group-data-[state=open]:rotate-180 motion-reduce:transition-none"
+				/>
+			</Select.Trigger>
+			{#if clearable && value && !disabled}
+				<Button
+					variant="ghost"
+					size="icon"
+					class="absolute top-1/2 right-1 -translate-y-1/2 text-ink-muted focus-visible:-outline-offset-2"
+					aria-label={`Clear ${label.toLowerCase()}`}
+					aria-controls={id}
+					onclick={() => {
+						selectValue('');
+						ref?.focus();
+					}}
+				>
+					<X size={18} strokeWidth={1.5} aria-hidden="true" />
+				</Button>
+			{/if}
+		</div>
 		<Select.Portal>
 			<Select.Content
 				aria-labelledby={`${id}-label`}
@@ -98,10 +124,15 @@
 							value={option.value}
 							label={option.label}
 							disabled={option.disabled}
-							class="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm/6 outline-none select-none data-disabled:pointer-events-none data-disabled:text-ink-muted data-highlighted:bg-panel-muted data-selected:font-medium"
+							class={[
+								'flex min-h-11 cursor-pointer items-center justify-between rounded-lg py-2.5 text-sm/6 outline-none select-none data-disabled:pointer-events-none data-disabled:text-ink-muted data-highlighted:bg-panel-muted data-selected:font-medium',
+								compact ? 'gap-1 px-2' : 'gap-3 px-3'
+							]}
 						>
 							{#snippet children({ selected })}
-								<span class="min-w-0 wrap-break-word">{option.label}</span>
+								<span class={compact ? 'whitespace-nowrap tabular-nums' : 'min-w-0 wrap-break-word'}
+									>{option.label}</span
+								>
 								<span class="flex size-4 shrink-0 items-center justify-center"
 									>{#if selected}<Check
 											size={16}

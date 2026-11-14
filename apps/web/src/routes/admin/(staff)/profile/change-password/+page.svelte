@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { ArrowLeft } from '@lucide/svelte';
-	import { tick } from 'svelte';
+	import { createMutation } from '@tanstack/svelte-query';
+	import { changePassword } from '#lib/api/identity/profile.ts';
+	import { getApiError } from '#lib/api/staff.ts';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Link from '#lib/components/ui/Link.svelte';
 	import TextField from '#lib/components/ui/TextField.svelte';
@@ -11,65 +13,61 @@
 		readPasswordForm,
 		validatePasswordField,
 		validatePasswordForm,
-		type PasswordField
+		type PasswordField,
+		type PasswordErrors
 	} from '#lib/validation/change-password.ts';
-	import type { PageProps, SubmitFunction } from './$types';
 
-	let { form }: PageProps = $props();
 	const profileHref = $derived(resolve('admin/profile'));
 	const showToast = useToast();
-	let pending = $state(false);
-	let inlineErrors = $state<Partial<Record<PasswordField, string | null>>>({});
+	const updatePassword = createMutation(() => ({ mutationFn: changePassword }));
+	let fields = $state<PasswordErrors>({});
 
 	function validateField(input: HTMLInputElement, field: PasswordField, event: 'input' | 'blur') {
 		if (!input.form) return;
 		const values = readPasswordForm(new FormData(input.form));
-		if (event === 'blur' && inlineErrors[field] === undefined && form?.fields?.[field]) return;
-		inlineErrors[field] = validatePasswordField(field, values, event) ?? null;
+		fields[field] = validatePasswordField(field, values, event);
 		if (field === 'new_password' && values.confirm_password) {
-			inlineErrors.confirm_password =
-				validatePasswordField('confirm_password', values, 'input') ?? null;
+			fields.confirm_password = validatePasswordField('confirm_password', values, 'input');
 		}
 	}
 
-	function fieldError(field: PasswordField) {
-		return inlineErrors[field] === undefined
-			? form?.fields?.[field]
-			: (inlineErrors[field] ?? undefined);
-	}
-
-	const submit: SubmitFunction = ({ cancel, formElement, formData }) => {
-		if (pending) return cancel();
-		const errors = validatePasswordForm(readPasswordForm(formData));
-		inlineErrors = {
-			current_password: errors.current_password ?? null,
-			new_password: errors.new_password ?? null,
-			confirm_password: errors.confirm_password ?? null
-		};
-		if (Object.values(errors).some(Boolean)) {
-			cancel();
+	async function submit(event: SubmitEvent & { currentTarget: HTMLFormElement }) {
+		event.preventDefault();
+		if (updatePassword.isPending) return;
+		const form = event.currentTarget;
+		const values = readPasswordForm(new FormData(form));
+		fields = validatePasswordForm(values);
+		const invalidField = Object.keys(fields).find((field) => fields[field as PasswordField]);
+		if (invalidField) {
 			showToast({ kind: 'warning', message: 'Check the highlighted fields and try again.' });
-			void tick().then(() =>
-				formElement.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
-			);
+			form.querySelector<HTMLInputElement>(`[name="${invalidField}"]`)?.focus();
 			return;
 		}
 
-		pending = true;
-		return async ({ result, update }) => {
-			try {
-				await update({ invalidateAll: false });
-				inlineErrors = {};
-			} finally {
-				pending = false;
-			}
-			await tick();
-			if (result.type === 'failure') {
-				const field = formElement.querySelector<HTMLElement>('[aria-invalid="true"]');
-				(field ?? formElement.querySelector('button[type="submit"]'))?.focus();
-			}
-		};
-	};
+		try {
+			await updatePassword.mutateAsync({
+				current_password: values.current_password,
+				new_password: values.new_password
+			});
+			showToast({ kind: 'success', message: 'Your password has been updated.' });
+			await goto(profileHref);
+		} catch (cause) {
+			const apiError = getApiError(cause);
+			fields = {
+				current_password:
+					apiError?.code === 'INVALID_CURRENT_PASSWORD'
+						? apiError.message
+						: apiError?.details?.current_password,
+				new_password: apiError?.details?.new_password
+			};
+			showToast({
+				kind: 'error',
+				message: apiError?.message ?? 'Could not change your password. Please try again.'
+			});
+		} finally {
+			updatePassword.reset();
+		}
+	}
 </script>
 
 <svelte:head>
@@ -85,9 +83,9 @@
 <form
 	method="post"
 	novalidate
-	aria-busy={pending}
+	aria-busy={updatePassword.isPending}
 	class="mt-6 max-w-lg border-t border-line pt-6"
-	use:enhance={submit}
+	onsubmit={submit}
 >
 	<div class="space-y-5">
 		<TextField
@@ -96,7 +94,7 @@
 			type="password"
 			revealPassword
 			autocomplete="current-password"
-			error={fieldError('current_password')}
+			error={fields.current_password}
 			oninput={(event) => validateField(event.currentTarget, 'current_password', 'input')}
 			onblur={(event) => validateField(event.currentTarget, 'current_password', 'blur')}
 			required
@@ -107,8 +105,8 @@
 			type="password"
 			revealPassword
 			autocomplete="new-password"
-			help={fieldError('new_password') ? undefined : 'Use at least 8 characters.'}
-			error={fieldError('new_password')}
+			help={fields.new_password ? undefined : 'Use at least 8 characters.'}
+			error={fields.new_password}
 			oninput={(event) => validateField(event.currentTarget, 'new_password', 'input')}
 			onblur={(event) => validateField(event.currentTarget, 'new_password', 'blur')}
 			required
@@ -119,7 +117,7 @@
 			type="password"
 			revealPassword
 			autocomplete="new-password"
-			error={fieldError('confirm_password')}
+			error={fields.confirm_password}
 			oninput={(event) => validateField(event.currentTarget, 'confirm_password', 'input')}
 			onblur={(event) => validateField(event.currentTarget, 'confirm_password', 'blur')}
 			required
@@ -127,8 +125,8 @@
 	</div>
 
 	<div class="mt-6 flex flex-wrap items-center gap-3">
-		<Button type="submit" disabled={pending}>
-			{pending ? 'Updating password…' : 'Update password'}
+		<Button type="submit" disabled={updatePassword.isPending}>
+			{updatePassword.isPending ? 'Updating password…' : 'Update password'}
 		</Button>
 		<Button href={profileHref} variant="ghost">Cancel</Button>
 	</div>

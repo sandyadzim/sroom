@@ -1,64 +1,58 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { tick } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
+	import { login } from '#lib/api/identity/auth.ts';
+	import { getApiError } from '#lib/api/staff.ts';
 	import Wordmark from '#lib/components/layout/Wordmark.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import TextField from '#lib/components/ui/TextField.svelte';
+	import { staffProfileQuery } from '#lib/queries/identity.ts';
 	import { validateAuthField, validateAuthForm } from '#lib/validation/auth.ts';
-	import type { PageProps, SubmitFunction } from './$types';
 
-	let { form }: PageProps = $props();
-	let pending = $state(false);
-	let inlineErrors = $state<{ email?: string | null; password?: string | null }>({});
+	let email = $state('');
+	let password = $state('');
+	let message = $state<string>();
+	let fields = $state<{ email?: string; password?: string }>({});
+	const values = $derived({ email, password, confirmPassword: '' });
+	const queryClient = useQueryClient();
+	const signIn = createMutation(() => ({
+		mutationFn: login
+	}));
 
-	function loginValues(fields: FormData) {
-		return {
-			email: String(fields.get('email') ?? ''),
-			password: String(fields.get('password') ?? ''),
-			confirmPassword: ''
-		};
+	function validateField(field: 'email' | 'password', event: 'input' | 'blur') {
+		fields[field] = validateAuthField(field, values, event);
 	}
 
-	function validateField(
-		input: HTMLInputElement,
-		field: 'email' | 'password',
-		event: 'input' | 'blur'
-	) {
-		if (!input.form) return;
-		inlineErrors[field] =
-			validateAuthField(field, loginValues(new FormData(input.form)), event) ?? null;
-	}
+	async function submit(event: SubmitEvent & { currentTarget: HTMLFormElement }) {
+		event.preventDefault();
+		if (signIn.isPending) return;
 
-	const submit: SubmitFunction = ({ cancel, formElement, formData }) => {
-		if (pending) return cancel();
-		const errors = validateAuthForm('login', loginValues(formData));
-		inlineErrors = { email: errors.email ?? null, password: errors.password ?? null };
-		if (errors.email || errors.password) {
-			cancel();
-			const field = formElement.elements.namedItem(errors.email ? 'email' : 'password');
-			if (field instanceof HTMLInputElement) void tick().then(() => field.focus());
+		const form = event.currentTarget;
+		message = undefined;
+		fields = validateAuthForm('login', values);
+		if (fields.email || fields.password) {
+			form
+				.querySelector<HTMLInputElement>(fields.email ? '[name=email]' : '[name=password]')
+				?.focus();
 			return;
 		}
 
-		pending = true;
-		return async ({ result, update }) => {
-			try {
-				await update();
-			} finally {
-				pending = false;
-			}
-			if (result.type === 'failure') {
-				inlineErrors = {};
-				await tick();
-				const password = formElement.querySelector<HTMLInputElement>('input[name="password"]');
-				if (password) password.value = '';
-				const target = formElement.querySelector<HTMLElement>(
-					'input[aria-invalid="true"], [data-login-error]'
-				);
-				target?.focus();
-			}
-		};
-	};
+		try {
+			const staff = await signIn.mutateAsync({ email: email.trim(), password });
+			password = '';
+			queryClient.removeQueries();
+			queryClient.setQueryData(staffProfileQuery.queryKey, staff);
+			await goto(resolve('/admin/(staff)/profile'), { replaceState: true });
+		} catch (cause) {
+			const apiError = getApiError(cause);
+			fields = { email: apiError?.details?.email, password: apiError?.details?.password };
+			message = apiError?.message ?? 'Could not sign in. Please try again.';
+			password = '';
+		} finally {
+			signIn.reset();
+		}
+	}
 </script>
 
 <svelte:head>
@@ -72,7 +66,13 @@
 			Staff sign in
 		</h1>
 
-		<form method="post" class="mt-7 space-y-5" aria-busy={pending} novalidate use:enhance={submit}>
+		<form
+			method="post"
+			class="mt-7 space-y-5"
+			aria-busy={signIn.isPending}
+			novalidate
+			onsubmit={submit}
+		>
 			<TextField
 				label="Email"
 				name="email"
@@ -80,12 +80,13 @@
 				autocomplete="username"
 				autocapitalize="none"
 				spellcheck={false}
-				value={form?.email ?? ''}
-				error={inlineErrors.email === undefined
-					? form?.fields?.email
-					: (inlineErrors.email ?? undefined)}
-				oninput={(event) => validateField(event.currentTarget, 'email', 'input')}
-				onblur={(event) => validateField(event.currentTarget, 'email', 'blur')}
+				bind:value={email}
+				error={fields.email}
+				oninput={(event) => {
+					email = event.currentTarget.value;
+					validateField('email', 'input');
+				}}
+				onblur={() => validateField('email', 'blur')}
 				required
 			/>
 			<TextField
@@ -93,20 +94,22 @@
 				name="password"
 				type="password"
 				autocomplete="current-password"
-				error={inlineErrors.password === undefined
-					? form?.fields?.password
-					: (inlineErrors.password ?? undefined)}
-				oninput={(event) => validateField(event.currentTarget, 'password', 'input')}
-				onblur={(event) => validateField(event.currentTarget, 'password', 'blur')}
+				bind:value={password}
+				error={fields.password}
+				oninput={(event) => {
+					password = event.currentTarget.value;
+					validateField('password', 'input');
+				}}
+				onblur={() => validateField('password', 'blur')}
 				required
 			/>
 			<div aria-live="polite" aria-atomic="true" class="empty:hidden">
-				{#if form?.message}
-					<p class="text-sm text-negative" tabindex="-1" data-login-error>{form.message}</p>
+				{#if message}
+					<p class="text-sm text-negative">{message}</p>
 				{/if}
 			</div>
-			<Button type="submit" class="w-full" disabled={pending}>
-				{pending ? 'Signing in…' : 'Sign in'}
+			<Button type="submit" class="w-full" disabled={signIn.isPending}>
+				{signIn.isPending ? 'Signing in…' : 'Sign in'}
 			</Button>
 		</form>
 	</section>
