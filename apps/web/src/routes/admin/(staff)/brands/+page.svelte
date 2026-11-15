@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { brandsEndpoint } from '#lib/api/catalog/brand.ts';
 	import BrandEditor from '#lib/components/admin/BrandEditor.svelte';
-	import ImagePreviewDialog from '#lib/components/ui/ImagePreviewDialog.svelte';
+	import ImagePreviewLink from '#lib/components/ui/ImagePreviewLink.svelte';
 	import StatusBadge from '#lib/components/ui/StatusBadge.svelte';
 	import DataTableGenerator from '#lib/components/ui/data-table/DataTableGenerator.svelte';
 	import type { Brand } from '#lib/types/catalog.ts';
@@ -52,22 +52,7 @@
 	{#if brand.image_object_key}
 		{@const filename =
 			brand.image_filename || brand.image_object_key.split('/').at(-1) || 'Brand image'}
-		{@const characters = Array.from(filename)}
-		{@const suffix = characters.length > 22 ? characters.slice(-10).join('') : ''}
-		<ImagePreviewDialog title="Brand Image" {filename} src={brand.image_url}>
-			{#snippet trigger({ props })}
-				<button
-					{...props}
-					type="button"
-					title={filename}
-					aria-label={filename}
-					class="flex max-w-40 min-w-0 cursor-pointer rounded-sm text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary sm:max-w-48"
-				>
-					<span class="truncate">{suffix ? characters.slice(0, -10).join('') : filename}</span>
-					{#if suffix}<span class="shrink-0 whitespace-pre">{suffix}</span>{/if}
-				</button>
-			{/snippet}
-		</ImagePreviewDialog>
+		<ImagePreviewLink title="Brand Image" label={filename} src={brand.image_url} />
 	{:else}
 		<span class="text-ink-muted">—</span>
 	{/if}

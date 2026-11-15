@@ -1,6 +1,5 @@
 import { queryOptions } from '@tanstack/svelte-query';
 import { fetchBannerSlot, fetchBannerSlots } from '#lib/api/catalog/banner.ts';
-import { brandsEndpoint, fetchBrandsForSelect } from '#lib/api/catalog/brand.ts';
 
 export const bannerSlotsQuery = queryOptions({
 	queryKey: ['banner-slots'],
@@ -14,8 +13,3 @@ export function bannerSlotQuery(position: number) {
 		enabled: Number.isInteger(position) && position >= 1 && position <= 3
 	});
 }
-
-export const bannerBrandsQuery = queryOptions({
-	queryKey: [brandsEndpoint, 'options'],
-	queryFn: ({ signal }) => fetchBrandsForSelect(signal)
-});

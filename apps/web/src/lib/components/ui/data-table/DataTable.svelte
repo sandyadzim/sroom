@@ -37,6 +37,14 @@
 		onRetry: () => void;
 	} = $props();
 
+	const hintId = $props.id();
+	let viewportWidth = $state(0);
+	let tableWidth = $state(0);
+	const showScrollHint = $derived(
+		!loading && !failure && rows.length > 0 && tableWidth > viewportWidth + 1
+	);
+	const messageWidth = $derived(viewportWidth ? `${viewportWidth}px` : undefined);
+
 	const sizeOptions = $derived(
 		pageSizes.map((size) => ({ value: String(size), label: String(size) }))
 	);
@@ -52,16 +60,22 @@
 	);
 </script>
 
+{#if showScrollHint}
+	<p id={hintId} class="mb-2 text-xs text-ink-muted">Scroll horizontally to see more columns.</p>
+{/if}
+
 <div class="min-w-0 rounded-xl border border-line bg-panel">
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard users can scroll the table) -->
 	<div
 		role="region"
 		aria-busy={loading}
 		aria-label={`${label} table`}
+		aria-describedby={showScrollHint ? hintId : undefined}
+		bind:clientWidth={viewportWidth}
 		tabindex="0"
 		class="overflow-x-auto rounded-t-xl focus-visible:-outline-offset-2"
 	>
-		<table class="w-full min-w-max border-collapse text-left text-sm">
+		<table bind:clientWidth={tableWidth} class="w-full min-w-max border-collapse text-left text-sm">
 			<caption class="sr-only">{label}</caption>
 			<thead class="border-b border-line bg-page">
 				<tr>
@@ -81,11 +95,13 @@
 			<tbody class="divide-y divide-line">
 				{#if failure}
 					<tr>
-						<td colspan={columns.length} class="px-4 py-8 sm:px-5">
-							<p role="alert" class="font-medium text-negative">{failure.message}</p>
-							{#if failure.status !== 401 && failure.status !== 403}
-								<Button variant="secondary" class="mt-3" onclick={onRetry}>Try again</Button>
-							{/if}
+						<td colspan={columns.length}>
+							<div class="sticky left-0 px-4 py-8 sm:px-5" style:width={messageWidth}>
+								<p role="alert" class="font-medium text-negative">{failure.message}</p>
+								{#if failure.status !== 401 && failure.status !== 403}
+									<Button variant="secondary" class="mt-3" onclick={onRetry}>Try again</Button>
+								{/if}
+							</div>
 						</td>
 					</tr>
 				{:else if loading}
@@ -105,8 +121,13 @@
 					{/each}
 				{:else if rows.length === 0}
 					<tr>
-						<td colspan={columns.length} class="px-4 py-10 text-center text-ink-muted sm:px-5">
-							{emptyMessage}
+						<td colspan={columns.length}>
+							<p
+								class="sticky left-0 px-4 py-10 text-center text-ink-muted sm:px-5"
+								style:width={messageWidth}
+							>
+								{emptyMessage}
+							</p>
 						</td>
 					</tr>
 				{:else}

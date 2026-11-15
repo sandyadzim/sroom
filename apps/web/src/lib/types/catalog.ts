@@ -87,3 +87,57 @@ export type BrandPage = {
 	data: Brand[];
 	page: { number: number; limit: number; total: number };
 };
+
+export type CarPhotoInput = {
+	object_key: string;
+	alt_text: string;
+	label: string;
+};
+
+export type CatalogCarImage = Pick<CarPhotoInput, 'alt_text' | 'label'> & { url: string | null };
+
+export type AdminCarImage = CatalogCarImage &
+	CarPhotoInput & { id: string; kind: 'cover' | 'gallery' };
+
+export type AdminCar = {
+	id: string;
+	brand_id: string;
+	brand_name: string;
+	model: string;
+	trim: string;
+	slug: string;
+	category: string;
+	seats: number;
+	transmission: string;
+	daily_rate_idr: number;
+	status: 'active' | 'inactive';
+	cover: CatalogCarImage | null;
+	created_at: string;
+	updated_at: string;
+};
+
+export type AdminCarDetail = AdminCar & {
+	body_type: string;
+	fuel_type: string;
+	description: string;
+	images: AdminCarImage[];
+};
+
+export type CarFields = Pick<
+	AdminCarDetail,
+	| 'brand_id'
+	| 'model'
+	| 'trim'
+	| 'category'
+	| 'body_type'
+	| 'seats'
+	| 'transmission'
+	| 'fuel_type'
+	| 'description'
+	| 'daily_rate_idr'
+	| 'status'
+>;
+
+export type CreateCarInput = CarFields & { cover: CarPhotoInput; gallery: CarPhotoInput[] };
+export type UpdateCarInput = Partial<CreateCarInput>;
+export type SavedCar = { data: AdminCarDetail; message: string };

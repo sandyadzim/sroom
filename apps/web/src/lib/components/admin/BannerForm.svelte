@@ -11,7 +11,8 @@
 	import ImageWithPlaceholder from '#lib/components/ui/ImageWithPlaceholder.svelte';
 	import SelectField from '#lib/components/ui/SelectField.svelte';
 	import TextField from '#lib/components/ui/TextField.svelte';
-	import { bannerBrandsQuery, bannerSlotQuery, bannerSlotsQuery } from '#lib/queries/banner.ts';
+	import { bannerSlotQuery, bannerSlotsQuery } from '#lib/queries/banner.ts';
+	import { brandOptionsQuery } from '#lib/queries/brand.ts';
 	import type { BannerInput, BannerSlot } from '#lib/types/catalog.ts';
 	import { useToast } from '#lib/ui/toast.ts';
 
@@ -20,7 +21,7 @@
 	const formId = $props.id();
 	const queryClient = useQueryClient();
 	const toast = useToast();
-	const brands = createQuery(() => bannerBrandsQuery);
+	const brands = createQuery(() => brandOptionsQuery);
 	const brandOptions = $derived(
 		brands.data?.map((brand) => ({ value: brand.id, label: brand.name })) ?? []
 	);
