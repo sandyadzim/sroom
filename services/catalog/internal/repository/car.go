@@ -218,7 +218,7 @@ func withCarCover(db *gorm.DB) *gorm.DB {
 func findCarDetail(db *gorm.DB) (model.Car, error) {
 	var car model.Car
 	err := db.Preload("Brand").Preload("Images", func(db *gorm.DB) *gorm.DB {
-		return db.Order("kind, created_at, id")
+		return db.Order("kind, position")
 	}).First(&car).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return model.Car{}, ErrCarNotFound

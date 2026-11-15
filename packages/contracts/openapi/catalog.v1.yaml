@@ -249,6 +249,7 @@ paths:
       summary: Create a car with its cover and gallery
       description: |
         Upload the files first. The car and its image references are saved together.
+        Gallery images are saved in the order they appear in the request.
         Status defaults to inactive. Send active to publish immediately.
         The server generates the slug from the brand, model, and optional trim.
       security:
@@ -290,7 +291,7 @@ paths:
       summary: Edit fields or change car publication status
       description: |
         Omitted fields keep their values. A submitted cover replaces the cover.
-        A submitted gallery replaces the gallery and must contain at least one photo.
+        A submitted gallery replaces the gallery, follows request order, and must contain at least one photo.
         Car fields and image references are saved together.
         Use an empty trim to clear it. An active car requires a cover.
       security:
@@ -563,7 +564,7 @@ components:
             description: { type: string }
             gallery:
               type: array
-              description: Cover first, followed by gallery images.
+              description: Cover first, followed by gallery images in the order they were saved.
               items:
                 $ref: '#/components/schemas/CarImage'
     AdminCarCard:
@@ -586,6 +587,7 @@ components:
             description: { type: string }
             images:
               type: array
+              description: Cover first, followed by gallery images in the order they were saved.
               items:
                 $ref: '#/components/schemas/AdminCarImage'
     CarPage:

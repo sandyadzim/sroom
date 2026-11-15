@@ -213,6 +213,58 @@ func TestCarFormSubmissionPostgres(t *testing.T) {
 	}
 }
 
+func TestCarGalleryOrderPostgres(t *testing.T) {
+	db := catalogTestDatabase(t)
+	brand := createCarTestBrand(t, repository.NewBrandRepository(db), "Toyota")
+	router := newCarTestRouter(t, repository.NewCarRepository(db))
+	active := model.CarActive
+	req := carTestRequest(brand.ID, "Fortuner", 650000)
+	req.Status = &active
+	req.Gallery = append(req.Gallery, dto.CarPhotoInput{
+		ObjectKey: uploadedKey, AltText: "Dashboard view", Label: "Dashboard",
+	})
+	car := createTestCar(t, router, req)
+	assertAdminOrder := func(item dto.AdminCarDetail, want []string) {
+		t.Helper()
+		labels := make([]string, 0, len(item.Images))
+		for _, image := range item.Images {
+			labels = append(labels, image.Label)
+		}
+		if !slices.Equal(labels, want) {
+			t.Fatalf("gallery order = %v, want %v", labels, want)
+		}
+	}
+	assertAdminOrder(car, []string{"Exterior", "Interior", "Dashboard"})
+
+	req.Gallery = append(req.Gallery, dto.CarPhotoInput{
+		ObjectKey: secondCarKey, AltText: "Rear view", Label: "Rear",
+	})
+	path := adminCarsPath + "/" + car.ID
+	want := []string{"Exterior", "Interior", "Dashboard", "Rear"}
+	var result struct{ Data dto.AdminCarDetail }
+	edit := carJSON(t, map[string]any{"gallery": req.Gallery})
+	decodeCarJSON(t, catalogRequest(t, router, "PATCH", path, "ADMIN", edit, 200), &result)
+	assertAdminOrder(result.Data, want)
+
+	// The last photo stays last even if its timestamp would sort before the other photos.
+	if err := db.Model(&model.CarImage{}).Where("car_id = ? AND label = ?", car.ID, "Rear").
+		UpdateColumn("created_at", "2000-01-01T00:00:00Z").Error; err != nil {
+		t.Fatal(err)
+	}
+	decodeCarJSON(t, catalogRequest(t, router, "GET", path, "ADMIN", "", 200), &result)
+	assertAdminOrder(result.Data, want)
+
+	var public struct{ Data dto.CarDetail }
+	decodeCarJSON(t, catalogRequest(t, router, "GET", publicCarsPath+"/"+car.Slug, "", "", 200), &public)
+	labels := make([]string, 0, len(public.Data.Gallery))
+	for _, image := range public.Data.Gallery {
+		labels = append(labels, image.Label)
+	}
+	if !slices.Equal(labels, want) {
+		t.Fatalf("public gallery order = %v, want %v", labels, want)
+	}
+}
+
 func TestCarFiltersPostgres(t *testing.T) {
 	db := catalogTestDatabase(t)
 	brands := repository.NewBrandRepository(db)

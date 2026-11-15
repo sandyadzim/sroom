@@ -36,6 +36,7 @@ type CarImage struct {
 	Kind      string
 	AltText   string
 	Label     string
+	Position  int
 	CreatedAt time.Time
 }
 

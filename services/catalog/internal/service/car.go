@@ -159,11 +159,12 @@ func (s *CarService) prepareCarPhotos(ctx context.Context, cover *dto.CarPhotoIn
 	}
 
 	var galleryImages []model.CarImage
-	for _, photo := range gallery {
+	for position, photo := range gallery {
 		image, err := s.prepareCarImage(ctx, model.CarGallery, photo)
 		if err != nil {
 			return nil, nil, err
 		}
+		image.Position = position
 		galleryImages = append(galleryImages, image)
 	}
 	return coverImage, galleryImages, nil
