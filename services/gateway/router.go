@@ -50,6 +50,11 @@ func newRouter(identityURL, catalogURL *url.URL, logger *slog.Logger) *gin.Engin
 	admins.GET("/:id", identity)
 	admins.PATCH("/:id", identity)
 
+	customers := identityRoutes.Group("/customers")
+	customers.GET("", identity)
+	customers.GET("/:id", identity)
+	customers.PATCH("/:id/status", identity)
+
 	catalogRoutes := v1.Group("/catalog")
 	catalogRoutes.GET("/home/banners", catalog)
 	catalogRoutes.GET("/brands", catalog)

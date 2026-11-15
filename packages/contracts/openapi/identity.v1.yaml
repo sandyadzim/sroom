@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Identity API
-  version: 1.4.0
+  version: 1.5.0
   description: |
     Local backend for the SROOM portfolio demo. No real rental operations.
     Requests use JSON. Registration creates CUSTOMER only and does not log in.
@@ -9,7 +9,7 @@ info:
     OWNER-only ADMIN list/detail support search and active/inactive status filtering.
     OWNER can create/update ADMIN accounts. Role is always ADMIN. No delete route.
     The local gateway forwards the same Bearer API. Browser cookies are planned. Sessions remain valid
-    after status/password updates; inactive only blocks subsequent ADMIN logins.
+    after status/password updates; inactive blocks subsequent ADMIN and CUSTOMER logins.
     OWNER/ADMIN can change their own password using the current password.
     This file documents the IDN-002 response format; older direct DTO responses
     are replaced by the data envelope. IDN-003 fills request_id from the validated
@@ -75,7 +75,7 @@ paths:
       summary: Log in with email and password
       description: |
         Email is trimmed and lowercased. Unknown email and incorrect password
-        both return INVALID_CREDENTIALS. Inactive ADMIN accounts also receive
+        both return INVALID_CREDENTIALS. Inactive ADMIN and CUSTOMER accounts also receive
         INVALID_CREDENTIALS on new logins; existing sessions remain valid. No cookie is written.
         Limit is five requests per IP per minute, counting successes and failures.
       requestBody:
@@ -364,6 +364,125 @@ paths:
           $ref: '#/components/responses/UnsupportedMediaType'
         default:
           $ref: '#/components/responses/OtherError'
+  /api/v1/identity/customers:
+    parameters:
+      - $ref: '#/components/parameters/RequestID'
+    get:
+      operationId: listCustomers
+      summary: List customer accounts (ADMIN or OWNER)
+      description: |
+        Includes only CUSTOMER accounts, ordered by created_at DESC then id DESC.
+        Optional search matches a case-insensitive literal substring in full_name OR
+        email. Leading/trailing whitespace is trimmed. Empty search/status means
+        no filter. Status accepts only active or inactive (invalid values return
+        400). Filters combine with AND and apply to both rows and the total count.
+        Omitted or empty pagination values use defaults. Invalid integers,
+        values outside the bounds, and offsets beyond the server integer range
+        return 400 INVALID_REQUEST. Pages beyond the results return an empty array.
+        Count and rows use separate queries; concurrent writes can change totals.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Case-insensitive literal substring of full_name or email.
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, '']
+          description: Omit or leave empty to include both statuses.
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: CUSTOMER accounts; data is an empty array when no results exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/StaffForbidden'
+        default:
+          $ref: '#/components/responses/OtherError'
+  /api/v1/identity/customers/{id}:
+    parameters:
+      - $ref: '#/components/parameters/RequestID'
+      - $ref: '#/components/parameters/CustomerID'
+    get:
+      operationId: getCustomer
+      summary: Get a customer account (ADMIN or OWNER)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/CustomerSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/StaffForbidden'
+        '404':
+          $ref: '#/components/responses/CustomerNotFound'
+        default:
+          $ref: '#/components/responses/OtherError'
+  /api/v1/identity/customers/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/RequestID'
+      - $ref: '#/components/parameters/CustomerID'
+    patch:
+      operationId: updateCustomerStatus
+      summary: Update customer sign-in status (ADMIN or OWNER)
+      description: Inactive accounts cannot sign in again. Existing sessions remain valid until logout or expiry.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              additionalProperties: false
+              properties:
+                status:
+                  type: string
+                  enum: [active, inactive]
+      responses:
+        '200':
+          $ref: '#/components/responses/CustomerSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/StaffForbidden'
+        '404':
+          $ref: '#/components/responses/CustomerNotFound'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        default:
+          $ref: '#/components/responses/OtherError'
 components:
   parameters:
     RequestID:
@@ -378,6 +497,13 @@ components:
         top-level request_id field of JSON error responses.
       schema:
         type: string
+    CustomerID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
   securitySchemes:
     bearerAuth:
       type: http
@@ -475,6 +601,51 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AdminProfile'
+        page:
+          type: object
+          required: [number, limit, total]
+          properties:
+            number:
+              type: integer
+              minimum: 1
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            total:
+              type: integer
+              format: int64
+              minimum: 0
+    CustomerProfile:
+      type: object
+      additionalProperties: false
+      required: [id, full_name, email, status, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        status:
+          type: string
+          enum: [active, inactive]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CustomerListResponse:
+      type: object
+      required: [data, page]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomerProfile'
         page:
           type: object
           required: [number, limit, total]
@@ -630,6 +801,28 @@ components:
             properties:
               data:
                 $ref: '#/components/schemas/AdminProfile'
+    CustomerSuccess:
+      description: Customer account information and sign-in status.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '#/components/schemas/CustomerProfile'
+    StaffForbidden:
+      description: FORBIDDEN; the caller is neither ADMIN nor OWNER.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    CustomerNotFound:
+      description: NOT_FOUND; the account is missing or does not have the CUSTOMER role.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     EmailConflict:
       description: EMAIL_ALREADY_REGISTERED; email belongs to an existing account.
       content:

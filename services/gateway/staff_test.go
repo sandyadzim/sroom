@@ -144,3 +144,49 @@ func TestStaffLoginRejectsCustomer(t *testing.T) {
 		t.Fatal("customer must receive no staff session")
 	}
 }
+
+func TestStaffCustomerStatus(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	const origin = "https://staff.example.test"
+	t.Setenv("WEB_ORIGINS", origin)
+	calls := 0
+	upstream := testUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		body, err := io.ReadAll(r.Body)
+		if err != nil || string(body) != `{"status":"inactive"}` ||
+			r.Method != http.MethodPatch || r.URL.Path != identityPath+"/customers/test-id/status" ||
+			r.Header.Get("Authorization") != "Bearer fixture-session" {
+			t.Error("expected customer status request with the staff session forwarded to Identity")
+		}
+		// The gateway must preserve Identity's role decision.
+		w.WriteHeader(http.StatusForbidden)
+	})
+	app := newRouter(upstream, upstream, testLogger())
+
+	for _, test := range []struct {
+		name, origin string
+		cookie       bool
+		status       int
+	}{
+		{"missing session", origin, false, http.StatusUnauthorized},
+		{"missing origin", "", true, http.StatusForbidden},
+		{"forwarded to Identity", origin, true, http.StatusForbidden},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPatch, staffPath+"/customers/test-id/status", strings.NewReader(`{"status":"inactive"}`))
+			req.Header.Set("Content-Type", "application/json")
+			if test.origin != "" {
+				req.Header.Set("Origin", test.origin)
+			}
+			if test.cookie {
+				req.AddCookie(&http.Cookie{Name: staffCookieName, Value: "fixture-session"})
+			}
+			if res := request(app, req); res.Code != test.status {
+				t.Fatalf("status = %d, want %d", res.Code, test.status)
+			}
+		})
+	}
+	if calls != 1 {
+		t.Fatalf("upstream calls = %d, want 1", calls)
+	}
+}

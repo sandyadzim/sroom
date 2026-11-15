@@ -22,7 +22,7 @@ The staff browser calls the gateway directly. Set `WEB_ORIGINS` to a comma-separ
 
 ## Staff browser session
 
-`POST /api/v1/staff/login` uses the existing Identity login and profile endpoints. Gateway accepts OWNER or ADMIN, returns the profile, and sets the `sroom_staff_session` HttpOnly cookie. The frontend sends it with `withCredentials: true`. Gateway converts it to a Bearer header for `/staff/me`, `/staff/logout`, `/staff/change-password`, `/staff/admins`, and `/staff/catalog/admin/*` under `/api/v1`. Identity and Catalog still enforce role permissions. Successful logout revokes the session and expires the cookie.
+`POST /api/v1/staff/login` uses the existing Identity login and profile endpoints. Gateway accepts OWNER or ADMIN, returns the profile, and sets the `sroom_staff_session` HttpOnly cookie. The frontend sends it with `withCredentials: true`. Gateway converts it to a Bearer header for `/staff/me`, `/staff/logout`, `/staff/change-password`, `/staff/admins`, `/staff/customers`, and `/staff/catalog/admin/*` under `/api/v1`. Identity and Catalog still enforce role permissions. Successful logout revokes the session and expires the cookie.
 
 Staff mutations require an exact origin in `WEB_ORIGINS`. For local development, use the same hostname for frontend and API, for example `localhost:5173` and `localhost:8080`. On HTTPS, set `APP_ENV=production` and serve both on the same site so the `SameSite=Lax` cookie is sent.
 

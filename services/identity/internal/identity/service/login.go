@@ -71,7 +71,7 @@ func (s *LoginService) Login(
 		return nil, fmt.Errorf("find user by email: %w", err)
 	}
 
-	if user.Role == model.RoleAdmin && user.Status != model.StatusActive {
+	if (user.Role == model.RoleAdmin || user.Role == model.RoleCustomer) && user.Status != model.StatusActive {
 		return nil, ErrInvalidCredentials
 	}
 

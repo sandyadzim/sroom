@@ -39,6 +39,10 @@ func registerStaff(staff *gin.RouterGroup, client *http.Client, identityURL *url
 	staff.GET("/admins/:id", staffIdentity)
 	staff.PATCH("/admins/:id", staffIdentity)
 
+	staff.GET("/customers", staffIdentity)
+	staff.GET("/customers/:id", staffIdentity)
+	staff.PATCH("/customers/:id/status", staffIdentity)
+
 	registerCatalogAdmin(staff.Group("/catalog/admin"),
 		staffProxy("/api/v1", true, catalog), staffProxy("/api/v1", true, upload))
 }

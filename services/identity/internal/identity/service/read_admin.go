@@ -40,7 +40,7 @@ func (s *ReadAdminService) List(ctx context.Context, page, limit int, search, st
 	}
 	return &dto.AdminListResponse{
 		Data: data,
-		Page: dto.AdminPage{Number: page, Limit: limit, Total: total},
+		Page: dto.AccountPage{Number: page, Limit: limit, Total: total},
 	}, nil
 }
 

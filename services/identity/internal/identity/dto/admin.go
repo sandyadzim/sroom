@@ -28,10 +28,10 @@ type AdminResponse struct {
 
 type AdminListResponse struct {
 	Data []AdminResponse `json:"data"`
-	Page AdminPage       `json:"page"`
+	Page AccountPage     `json:"page"`
 }
 
-type AdminPage struct {
+type AccountPage struct {
 	Number int   `json:"number"`
 	Limit  int   `json:"limit"`
 	Total  int64 `json:"total"`

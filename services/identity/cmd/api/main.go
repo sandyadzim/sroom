@@ -54,6 +54,7 @@ func main() {
 	readAdminService := service.NewReadAdminService(userRepo)
 	createAdminService := service.NewCreateAdminService(userRepo)
 	updateAdminService := service.NewUpdateAdminService(userRepo)
+	customerService := service.NewCustomerService(userRepo)
 	changePasswordService := service.NewChangePasswordService(userRepo)
 
 	registerHandler := handler.NewRegisterHandler(registerService)
@@ -62,6 +63,7 @@ func main() {
 	logoutHandler := handler.NewLogoutHandler(logoutService)
 	readAdminHandler := handler.NewReadAdminHandler(readAdminService)
 	adminHandler := handler.NewAdminHandler(createAdminService, updateAdminService)
+	customerHandler := handler.NewCustomerHandler(customerService)
 	changePasswordHandler := handler.NewChangePasswordHandler(changePasswordService)
 
 	authMiddleware := middleware.NewAuthMiddleware(authService)
@@ -93,6 +95,12 @@ func main() {
 	admins.Get("/:id", readAdminHandler.Detail)
 	admins.Post("/", adminHandler.Create)
 	admins.Patch("/:id", adminHandler.Update)
+
+	// Staff customer management
+	customers := identityGroup.Group("/customers", authMiddleware.RequireAuth, middleware.RequireStaff(userRepo))
+	customers.Get("/", customerHandler.List)
+	customers.Get("/:id", customerHandler.Detail)
+	customers.Patch("/:id/status", customerHandler.UpdateStatus)
 
 	// 6. Start HTTP server
 	addr := fmt.Sprintf(":%d", cfg.AppPort)

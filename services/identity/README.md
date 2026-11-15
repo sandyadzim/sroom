@@ -1,6 +1,6 @@
 # Identity service
 
-Authentication and ADMIN account management for SROOM, built with Go, Fiber v3, GORM, and PostgreSQL.
+Authentication and staff account management for SROOM, built with Go, Fiber v3, GORM, and PostgreSQL.
 
 ## Getting started
 
@@ -46,9 +46,13 @@ Local base URL: `http://localhost:8081/api/v1/identity`. Request bodies use JSON
 | POST | `/admins` | OWNER |
 | PATCH | `/admins/{id}` | OWNER |
 | POST | `/change-password` | OWNER/ADMIN |
+| GET | `/customers` | OWNER/ADMIN |
+| GET | `/customers/{id}` | OWNER/ADMIN |
+| PATCH | `/customers/{id}/status` | OWNER/ADMIN |
 
-- List ADMIN accounts: `search` matches name/email, `status=active|inactive`, `page` defaults to 1, and `limit` defaults to 20 (maximum 100). Results are ordered newest first.
+- List ADMIN or CUSTOMER accounts: `search` matches name/email, `status=active|inactive`, `page` defaults to 1, and `limit` defaults to 20 (maximum 100). Results are ordered newest first.
 - Create/update ADMIN accounts: `full_name`, `email`, `password`, `status`. Updates change only submitted fields; creation defaults to `active` status.
+- Update a customer status with `{"status":"inactive"}` or `{"status":"active"}`.
 - Change your own password: `current_password` and `new_password`.
 - Successful responses use `data`; errors contain `error` and `request_id`. Successful logout/password changes return 204 without a body.
 
@@ -58,7 +62,7 @@ Payload and response details: [OpenAPI](../../packages/contracts/openapi/identit
 
 - Public registration creates CUSTOMER accounts. A single OWNER is seeded; only OWNER can manage ADMIN accounts. The ADMIN role is fixed, and account deletion is not available through the API.
 - Passwords require at least 8 characters and at most 72 UTF-8 bytes. Changing your own password requires the current password; OWNER does not need an ADMIN's current password to replace it.
-- Sessions last 7 days. Inactive ADMIN accounts cannot log in again. Password/status changes preserve existing sessions until logout or expiry.
+- Sessions last 7 days. Inactive ADMIN and CUSTOMER accounts cannot log in again. Password/status changes preserve existing sessions until logout or expiry.
 
 ## Checks
 

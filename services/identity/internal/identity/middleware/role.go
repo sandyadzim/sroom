@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
@@ -13,11 +14,19 @@ import (
 	"identity/internal/identity/response"
 )
 
-type OwnerUserRepository interface {
+type RoleUserRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*model.User, error)
 }
 
-func RequireOwner(userRepo OwnerUserRepository) fiber.Handler {
+func RequireOwner(userRepo RoleUserRepository) fiber.Handler {
+	return requireRole(userRepo, model.RoleOwner)
+}
+
+func RequireStaff(userRepo RoleUserRepository) fiber.Handler {
+	return requireRole(userRepo, model.RoleAdmin, model.RoleOwner)
+}
+
+func requireRole(userRepo RoleUserRepository, roles ...model.Role) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		session, ok := GetSession(c)
 		if !ok {
@@ -29,10 +38,10 @@ func RequireOwner(userRepo OwnerUserRepository) fiber.Handler {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return response.Error(c, fiber.StatusUnauthorized, "UNAUTHENTICATED", "invalid session", nil)
 			}
-			return fmt.Errorf("find owner user: %w", err)
+			return fmt.Errorf("find session user: %w", err)
 		}
 
-		if user.Role != model.RoleOwner {
+		if !slices.Contains(roles, user.Role) {
 			return response.Error(c, fiber.StatusForbidden, "FORBIDDEN", "access denied", nil)
 		}
 

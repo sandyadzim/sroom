@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.1.0
+  version: 1.2.0
   description: |
     Local entry point for the documented Identity and Catalog routes.
     Request and response schemas are owned by those services. The gateway forwards
@@ -43,6 +43,12 @@ paths:
     $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins'
   /api/v1/identity/admins/{id}:
     $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins~1{id}'
+  /api/v1/identity/customers:
+    $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customers'
+  /api/v1/identity/customers/{id}:
+    $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customers~1{id}'
+  /api/v1/identity/customers/{id}/status:
+    $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customers~1{id}~1status'
   /api/v1/catalog/admin/images:
     $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1images'
   /api/v1/catalog/admin/brands:
@@ -183,6 +189,76 @@ paths:
       responses:
         '200':
           $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1admins~1{id}/patch/responses/200'
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/staff/customers:
+    get:
+      operationId: staffListCustomers
+      summary: List customer accounts (ADMIN or OWNER)
+      security:
+        - staffCookie: []
+      parameters:
+        - $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customers/get/parameters/0'
+        - $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customers/get/parameters/1'
+        - $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customers/get/parameters/2'
+        - $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customers/get/parameters/3'
+      responses:
+        '200':
+          $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customers/get/responses/200'
+        '400':
+          $ref: './identity.v1.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './identity.v1.yaml#/components/responses/Unauthenticated'
+        '403':
+          $ref: './identity.v1.yaml#/components/responses/StaffForbidden'
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/staff/customers/{id}:
+    get:
+      operationId: staffGetCustomer
+      summary: Get a customer account (ADMIN or OWNER)
+      security:
+        - staffCookie: []
+      parameters:
+        - $ref: './identity.v1.yaml#/components/parameters/CustomerID'
+      responses:
+        '200':
+          $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customers~1{id}/get/responses/200'
+        '400':
+          $ref: './identity.v1.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './identity.v1.yaml#/components/responses/Unauthenticated'
+        '403':
+          $ref: './identity.v1.yaml#/components/responses/StaffForbidden'
+        '404':
+          $ref: './identity.v1.yaml#/components/responses/CustomerNotFound'
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/staff/customers/{id}/status:
+    patch:
+      operationId: staffUpdateCustomerStatus
+      summary: Update customer sign-in status (ADMIN or OWNER)
+      security:
+        - staffCookie: []
+      parameters:
+        - $ref: './identity.v1.yaml#/components/parameters/CustomerID'
+      requestBody:
+        $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customers~1{id}~1status/patch/requestBody'
+      responses:
+        '200':
+          $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customers~1{id}~1status/patch/responses/200'
+        '400':
+          $ref: './identity.v1.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './identity.v1.yaml#/components/responses/Unauthenticated'
+        '403':
+          $ref: './identity.v1.yaml#/components/responses/StaffForbidden'
+        '404':
+          $ref: './identity.v1.yaml#/components/responses/CustomerNotFound'
+        '413':
+          $ref: './identity.v1.yaml#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: './identity.v1.yaml#/components/responses/UnsupportedMediaType'
         default:
           $ref: './identity.v1.yaml#/components/responses/OtherError'
   /api/v1/staff/catalog/admin/images:
