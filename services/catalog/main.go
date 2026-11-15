@@ -66,7 +66,7 @@ func main() {
 	carRepository := repository.NewCarRepository(db)
 
 	// Initialize Service
-	brandService := service.NewBrandService(brandRepository, imageChecker)
+	brandService := service.NewBrandService(brandRepository, imageChecker, cfg.R2PublicBaseURL)
 	bannerService := service.NewBannerService(bannerRepository, imageChecker, cfg.R2PublicBaseURL)
 	carService := service.NewCarService(carRepository, imageChecker, cfg.R2PublicBaseURL)
 

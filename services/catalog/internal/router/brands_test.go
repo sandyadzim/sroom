@@ -42,7 +42,7 @@ func (testImages) ImageExists(_ context.Context, key string) (bool, error) {
 
 func newBrandTestRouter(t *testing.T, repo *repository.BrandRepository) *gin.Engine {
 	t.Helper()
-	brandHandler := handler.NewBrandHandler(service.NewBrandService(repo, testImages{}))
+	brandHandler := handler.NewBrandHandler(service.NewBrandService(repo, testImages{}, "https://assets.example.test/"))
 	return newCatalogTestRouter(t, brandHandler, handler.NewBannerHandler(nil), handler.NewCarHandler(nil))
 }
 
@@ -117,6 +117,9 @@ func TestBrandAuthorizationAndValidation(t *testing.T) {
 		{name: "URL instead of key", method: "POST", token: "ADMIN", body: `{"name":"Toyota","image_object_key":"https://example.com/image.png"}`, status: 400},
 		{name: "missing image", method: "POST", token: "ADMIN", body: `{"name":"Toyota","image_object_key":"` + missingKey + `"}`, status: 400},
 		{name: "image storage unavailable", method: "POST", token: "ADMIN", body: `{"name":"Toyota","image_object_key":"catalog/images/abcdefghijklmnopqrstuvwxyz.jpeg"}`, status: 503},
+		{name: "filename without a key", method: "POST", token: "ADMIN", body: `{"name":"Toyota","image_filename":"logo.png"}`, status: 400},
+		{name: "filename with a path", method: "POST", token: "ADMIN", body: `{"name":"Toyota","image_object_key":"` + uploadedKey + `","image_filename":"folder/logo.png"}`, status: 400},
+		{name: "filename on detach", method: "PATCH", path: "/" + missingBrandID, token: "ADMIN", body: `{"image_object_key":null,"image_filename":"logo.png"}`, status: 400},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			brandRequest(t, router, test.method, test.path, test.token, test.body, test.status)
@@ -137,7 +140,7 @@ func TestBrandPostgres(t *testing.T) {
 	if page.Data == nil || len(page.Data) != 0 || page.Page != (dto.BrandPage{Number: 1, Limit: 20, Total: 0}) {
 		t.Fatalf("unexpected empty list: %s", empty)
 	}
-	created := brandRequest(t, router, "POST", "", "OWNER", `{"name":" Toyota ","image_object_key":"`+uploadedKey+`"}`, 201)
+	created := brandRequest(t, router, "POST", "", "OWNER", `{"name":" Toyota ","image_object_key":"`+uploadedKey+`","image_filename":"Toyota Logo.png"}`, 201)
 	var result struct {
 		Message string            `json:"message"`
 		Data    dto.BrandResponse `json:"data"`
@@ -152,6 +155,10 @@ func TestBrandPostgres(t *testing.T) {
 	}
 	if !strings.HasSuffix(item.CreatedAt, "Z") || !strings.HasSuffix(item.UpdatedAt, "Z") {
 		t.Fatalf("expected UTC timestamps: %s", created)
+	}
+	if item.ImageFilename == nil || *item.ImageFilename != "Toyota Logo.png" ||
+		item.ImageURL == nil || *item.ImageURL != "https://assets.example.test/"+uploadedKey {
+		t.Fatalf("expected filename and public URL: %s", created)
 	}
 	path := "/" + item.ID
 	brandRequest(t, router, "POST", "", "ADMIN", `{"name":" toyOTA "}`, 409)
@@ -190,11 +197,14 @@ func TestBrandPostgres(t *testing.T) {
 	}
 	brandRequest(t, router, "PATCH", path, "ADMIN", `{"image_object_key":"`+missingKey+`"}`, 400)
 	updated := brandRequest(t, router, "PATCH", path, "ADMIN", `{"name":"Toyota Motor"}`, 200)
-	if !strings.Contains(string(updated), `"name":"Toyota Motor"`) || !strings.Contains(string(updated), uploadedKey) {
+	if !strings.Contains(string(updated), `"name":"Toyota Motor"`) || !strings.Contains(string(updated), `"image_filename":"Toyota Logo.png"`) {
 		t.Fatalf("expected rename to preserve image: %s", updated)
 	}
 	cleared := brandRequest(t, router, "PATCH", path, "OWNER", `{"image_object_key":null}`, 200)
-	if !strings.Contains(string(cleared), `"name":"Toyota Motor"`) || !strings.Contains(string(cleared), `"image_object_key":null`) {
+	if !strings.Contains(string(cleared), `"name":"Toyota Motor"`) ||
+		!strings.Contains(string(cleared), `"image_object_key":null`) ||
+		!strings.Contains(string(cleared), `"image_filename":null`) ||
+		!strings.Contains(string(cleared), `"image_url":null`) {
 		t.Fatalf("expected image cleared and name preserved: %s", cleared)
 	}
 
@@ -266,6 +276,7 @@ func catalogTestDatabase(t *testing.T) *gorm.DB {
 		"000004_create_banners.up.sql",
 		"000005_create_cars.up.sql",
 		"000006_create_car_images.up.sql",
+		"000007_add_brand_image_filename.up.sql",
 	} {
 		sql, err := os.ReadFile("../../migrations/" + file)
 		if err != nil {

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"catalog/internal/dto"
 	"catalog/internal/model"
@@ -16,18 +18,20 @@ import (
 var validate = validator.New()
 
 var (
-	ErrInvalidBrandName   = errors.New("name must contain 1 to 100 characters")
-	ErrInvalidBrandStatus = errors.New("status must be active or inactive")
-	ErrEmptyUpdate        = errors.New("send at least one field to update")
+	ErrInvalidBrandName     = errors.New("name must contain 1 to 100 characters")
+	ErrInvalidBrandStatus   = errors.New("status must be active or inactive")
+	ErrEmptyUpdate          = errors.New("send at least one field to update")
+	ErrInvalidImageFilename = errors.New("image_filename must be a file name of up to 255 characters and requires image_object_key")
 )
 
 type BrandService struct {
-	repo   *repository.BrandRepository
-	images ImageChecker
+	repo               *repository.BrandRepository
+	images             ImageChecker
+	publicImageBaseURL string
 }
 
-func NewBrandService(repo *repository.BrandRepository, images ImageChecker) *BrandService {
-	return &BrandService{repo: repo, images: images}
+func NewBrandService(repo *repository.BrandRepository, images ImageChecker, publicImageBaseURL string) *BrandService {
+	return &BrandService{repo: repo, images: images, publicImageBaseURL: strings.TrimRight(publicImageBaseURL, "/")}
 }
 
 func (s *BrandService) List(ctx context.Context, search string, page, limit int) (*dto.BrandListResponse, error) {
@@ -41,7 +45,7 @@ func (s *BrandService) List(ctx context.Context, search string, page, limit int)
 	}
 	data := make([]dto.BrandResponse, 0, len(items))
 	for _, item := range items {
-		data = append(data, brandResponse(item))
+		data = append(data, s.brandResponse(item))
 	}
 	return &dto.BrandListResponse{
 		Data: data,
@@ -54,21 +58,29 @@ func (s *BrandService) Create(ctx context.Context, req dto.CreateBrandRequest) (
 	if err := validateCreateBrand(req); err != nil {
 		return nil, err
 	}
+	if err := validateBrandImageFilename(req.ImageObjectKey, req.ImageFilename); err != nil {
+		return nil, err
+	}
 	if err := checkImage(ctx, s.images, req.ImageObjectKey); err != nil {
 		return nil, err
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	item, err := s.repo.Create(ctx, model.Brand{Name: req.Name, ImageObjectKey: req.ImageObjectKey})
+	item, err := s.repo.Create(ctx, model.Brand{
+		Name: req.Name, ImageObjectKey: req.ImageObjectKey, ImageFilename: req.ImageFilename,
+	})
 	if err != nil {
 		return nil, err
 	}
-	result := brandResponse(item)
+	result := s.brandResponse(item)
 	return &result, nil
 }
 
 func (s *BrandService) Update(ctx context.Context, id string, changes model.BrandChanges) (*dto.BrandResponse, error) {
+	if err := validateBrandImageFilename(changes.ImageObjectKey, changes.ImageFilename); err != nil {
+		return nil, err
+	}
 	if changes.Name == nil && !changes.SetImage && changes.Status == nil {
 		return nil, ErrEmptyUpdate
 	}
@@ -92,7 +104,7 @@ func (s *BrandService) Update(ctx context.Context, id string, changes model.Bran
 	if err != nil {
 		return nil, err
 	}
-	result := brandResponse(item)
+	result := s.brandResponse(item)
 	return &result, nil
 }
 
@@ -103,13 +115,30 @@ func validateCreateBrand(req dto.CreateBrandRequest) error {
 	return nil
 }
 
-func brandResponse(item model.Brand) dto.BrandResponse {
-	return dto.BrandResponse{
+func validateBrandImageFilename(key, filename *string) error {
+	if filename == nil {
+		return nil
+	}
+	if key == nil || strings.TrimSpace(*filename) == "" || utf8.RuneCountInString(*filename) > 255 ||
+		strings.ContainsAny(*filename, "/\\") || strings.IndexFunc(*filename, unicode.IsControl) >= 0 {
+		return ErrInvalidImageFilename
+	}
+	return nil
+}
+
+func (s *BrandService) brandResponse(item model.Brand) dto.BrandResponse {
+	result := dto.BrandResponse{
 		ID:             item.ID,
 		Name:           item.Name,
 		ImageObjectKey: item.ImageObjectKey,
+		ImageFilename:  item.ImageFilename,
 		Status:         item.Status,
 		CreatedAt:      item.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:      item.UpdatedAt.UTC().Format(time.RFC3339),
 	}
+	if item.ImageObjectKey != nil && s.publicImageBaseURL != "" {
+		imageURL := s.publicImageBaseURL + "/" + *item.ImageObjectKey
+		result.ImageURL = &imageURL
+	}
+	return result
 }

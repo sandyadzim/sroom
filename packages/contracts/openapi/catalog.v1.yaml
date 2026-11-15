@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Catalog API
-  version: 1.3.0
+  version: 1.4.0
   description: |
     The local gateway forwards the same Catalog API. An incoming X-Request-ID
     with 1-64 ASCII letters, digits, underscores, or hyphens is preserved.
@@ -103,7 +103,7 @@ paths:
     patch:
       operationId: updateBrand
       summary: Update a brand
-      description: Omitted fields keep their values. Send image_object_key as null to detach the image. Use status inactive to deactivate a brand.
+      description: Omitted fields keep their values. When image_object_key is sent, it also replaces the associated filename. Send image_object_key as null to detach the image and clear its filename. Use status inactive to deactivate a brand.
       security:
         - bearerAuth: []
       parameters:
@@ -675,6 +675,12 @@ components:
           type: string
           nullable: true
           description: Existing object key from the Catalog image upload endpoint.
+        image_filename:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 255
+          description: Optional display filename with no path or control characters. Requires a non-null image_object_key.
     UpdateBrandInput:
       type: object
       additionalProperties: false
@@ -688,14 +694,26 @@ components:
           type: string
           nullable: true
           description: Existing object key from the Catalog image upload endpoint.
+        image_filename:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 255
+          description: Optional display filename with no path or control characters. Can be set only alongside a non-null image_object_key.
         status: { type: string, enum: [active, inactive] }
     Brand:
       type: object
-      required: [id, name, image_object_key, status, created_at, updated_at]
+      required: [id, name, image_object_key, image_filename, image_url, status, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         image_object_key: { type: string, nullable: true }
+        image_filename: { type: string, nullable: true }
+        image_url:
+          type: string
+          format: uri
+          nullable: true
+          description: Public image URL. Null without an attachment or configured public image base URL.
         status: { type: string, enum: [active, inactive] }
         created_at: { type: string, format: date-time, description: RFC 3339 in UTC. }
         updated_at: { type: string, format: date-time, description: RFC 3339 in UTC. }

@@ -52,6 +52,7 @@ func (r *BrandRepository) Update(ctx context.Context, id string, input model.Bra
 	}
 	if input.SetImage {
 		changes["image_object_key"] = input.ImageObjectKey
+		changes["image_filename"] = input.ImageFilename
 	}
 	if input.Status != nil {
 		changes["status"] = *input.Status

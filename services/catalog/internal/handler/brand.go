@@ -92,6 +92,7 @@ func (h *BrandHandler) Update(c *gin.Context) {
 	}
 
 	changes.SetImage = input.ImageObjectKey != nil
+	changes.ImageFilename = input.ImageFilename
 	if changes.SetImage {
 		if err := json.Unmarshal(input.ImageObjectKey, &changes.ImageObjectKey); err != nil {
 			writeBrandError(c, service.ErrInvalidImage)
@@ -115,7 +116,7 @@ func (h *BrandHandler) Update(c *gin.Context) {
 
 func writeBrandError(c *gin.Context, err error) {
 	switch err {
-	case service.ErrInvalidBrandName, service.ErrInvalidBrandStatus, service.ErrEmptyUpdate, service.ErrInvalidImage:
+	case service.ErrInvalidBrandName, service.ErrInvalidBrandStatus, service.ErrEmptyUpdate, service.ErrInvalidImage, service.ErrInvalidImageFilename:
 		response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
 	case repository.ErrBrandNotFound:
 		response.Error(c, http.StatusNotFound, "BRAND_NOT_FOUND", err.Error())
