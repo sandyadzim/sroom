@@ -1,12 +1,12 @@
-import { staffApi, staffApiPath } from '#lib/api/staff.ts';
+import { catalogAdminPath, staffApi } from '#lib/api/staff.ts';
 import type {
-	CatalogImageUpload,
+	Brand,
+	BrandPage,
 	CreateBrandInput,
 	SavedBrand,
 	UpdateBrandInput
 } from '#lib/types/catalog.ts';
 
-const catalogAdminPath = `${staffApiPath}/catalog/admin`;
 export const brandsEndpoint = `${catalogAdminPath}/brands`;
 
 export async function createBrand(input: CreateBrandInput) {
@@ -22,11 +22,15 @@ export async function updateBrand(id: string, input: UpdateBrandInput) {
 	return data;
 }
 
-export async function uploadCatalogImage(file: File, signal?: AbortSignal) {
-	const body = new FormData();
-	body.append('file', file);
-	const { data } = await staffApi.post<CatalogImageUpload>(`${catalogAdminPath}/images`, body, {
-		signal
-	});
-	return data.data.object_key;
+export async function fetchBrandsForSelect(signal?: AbortSignal) {
+	const brands: Brand[] = [];
+	const limit = 100;
+	for (let page = 1; ; page += 1) {
+		const { data } = await staffApi.get<BrandPage>(brandsEndpoint, {
+			params: { page, limit },
+			signal
+		});
+		brands.push(...data.data);
+		if (data.data.length < limit || page * limit >= data.page.total) return brands;
+	}
 }

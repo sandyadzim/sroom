@@ -60,3 +60,30 @@ export type UpdateBrandInput = {
 
 export type SavedBrand = { data: Brand; message: string };
 export type CatalogImageUpload = { data: { object_key: string } };
+
+export type BannerInput = {
+	brand_id: string;
+	car_model: string;
+	car_slug: string;
+	headline_line_1: string;
+	headline_line_2: string;
+	description: string;
+	image_object_key: string;
+};
+
+export type BannerContent = BannerInput & {
+	brand_name: string;
+	image_url: string | null;
+};
+
+export type BannerSlot = {
+	position: number;
+	content: BannerContent | null;
+};
+
+export type SavedBanner = { data: BannerSlot; message: string };
+
+export type BrandPage = {
+	data: Brand[];
+	page: { number: number; limit: number; total: number };
+};

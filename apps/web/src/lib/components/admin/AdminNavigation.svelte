@@ -8,6 +8,7 @@
 		CarFront,
 		CreditCard,
 		LogOut,
+		PanelsTopLeft,
 		ExternalLink,
 		Tag,
 		ContactRound,
@@ -43,9 +44,10 @@
 		{ label: 'Payments', icon: CreditCard },
 		{ label: 'Reports', icon: ChartColumn }
 	];
-	const brandsRoute = '/admin/(staff)/brands';
-	const brandsHref = $derived(resolve(brandsRoute));
-	const onBrands = $derived(page.route.id === brandsRoute);
+	const catalogLinks = [
+		{ label: 'Brands', icon: Tag, route: '/admin/(staff)/brands' },
+		{ label: 'Banners', icon: PanelsTopLeft, route: '/admin/(staff)/banners' }
+	] as const;
 	const customersHref = $derived(resolve('/admin/(staff)/customers'));
 	const inCustomers = $derived(page.route.id?.startsWith('/admin/(staff)/customers'));
 	const adminsHref = $derived(resolve('admin/admins'));
@@ -70,24 +72,28 @@
 				Operations
 			</p>
 			<ul class="space-y-1">
-				<li>
-					<Link
-						href={brandsHref}
-						variant="plain"
-						aria-current={onBrands ? 'page' : undefined}
-						title={collapsed ? 'Brands' : undefined}
-						onclick={onNavigate}
-						class={[
-							row,
-							onBrands
-								? 'bg-panel-muted font-semibold text-ink'
-								: 'text-ink-muted hover:bg-panel-muted hover:text-ink'
-						]}
-					>
-						<Tag size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
-						<span class={labelClass}>Brands</span>
-					</Link>
-				</li>
+				{#each catalogLinks as { label, icon: Icon, route } (route)}
+					{@const onPage = page.route.id === route}
+					{@const inModule = onPage || page.route.id?.startsWith(`${route}/`)}
+					<li>
+						<Link
+							href={resolve(route)}
+							variant="plain"
+							aria-current={onPage ? 'page' : inModule ? 'location' : undefined}
+							title={collapsed ? label : undefined}
+							onclick={onNavigate}
+							class={[
+								row,
+								inModule
+									? 'bg-panel-muted font-semibold text-ink'
+									: 'text-ink-muted hover:bg-panel-muted hover:text-ink'
+							]}
+						>
+							<Icon size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
+							<span class={labelClass}>{label}</span>
+						</Link>
+					</li>
+				{/each}
 				{#each operations as { label, icon: Icon } (label)}
 					<li>
 						<span

@@ -4,6 +4,7 @@ import axios, { isAxiosError } from 'axios';
 import type { ApiError } from '#lib/types/identity.ts';
 
 export const staffApiPath = '/api/v1/staff';
+export const catalogAdminPath = `${staffApiPath}/catalog/admin`;
 
 export const staffApi = axios.create({
 	baseURL: PUBLIC_GATEWAY_BASE_URL || `http://${globalThis.location?.hostname ?? 'localhost'}:8080`,

@@ -2,12 +2,8 @@
 	import { Eye, LoaderCircle, Plus, Trash2 } from '@lucide/svelte';
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { onDestroy } from 'svelte';
-	import {
-		brandsEndpoint,
-		createBrand,
-		updateBrand,
-		uploadCatalogImage
-	} from '#lib/api/catalog/brand.ts';
+	import { brandsEndpoint, createBrand, updateBrand } from '#lib/api/catalog/brand.ts';
+	import { uploadCatalogImage } from '#lib/api/catalog/image.ts';
 	import { getApiError } from '#lib/api/staff.ts';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Dialog from '#lib/components/ui/Dialog.svelte';
