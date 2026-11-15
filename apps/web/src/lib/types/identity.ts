@@ -46,3 +46,12 @@ export type CreateAdminInput = {
 };
 
 export type UpdateAdminInput = Partial<CreateAdminInput>;
+
+export type CustomerAccount = {
+	id: string;
+	full_name: string;
+	email: string;
+	status: 'active' | 'inactive';
+	created_at: string;
+	updated_at: string;
+};

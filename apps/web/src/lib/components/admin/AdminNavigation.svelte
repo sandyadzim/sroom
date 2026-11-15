@@ -41,6 +41,8 @@
 		{ label: 'Payments', icon: CreditCard },
 		{ label: 'Reports', icon: ChartColumn }
 	];
+	const customersHref = $derived(resolve('/admin/(staff)/customers'));
+	const inCustomers = $derived(page.route.id?.startsWith('/admin/(staff)/customers'));
 	const adminsHref = $derived(resolve('admin/admins'));
 	const adminsPath = $derived(new URL(adminsHref, page.url.href).pathname);
 	const onAdmins = $derived(page.url.pathname === adminsPath);
@@ -101,6 +103,28 @@
 					>
 						<UserRound size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
 						<span class={labelClass}>Profile</span>
+					</Link>
+				</li>
+				<li>
+					<Link
+						href={customersHref}
+						variant="plain"
+						aria-current={page.route.id === '/admin/(staff)/customers'
+							? 'page'
+							: inCustomers
+								? 'location'
+								: undefined}
+						title={collapsed ? 'Customers' : undefined}
+						onclick={onNavigate}
+						class={[
+							row,
+							inCustomers
+								? 'bg-panel-muted font-semibold text-ink'
+								: 'text-ink-muted hover:bg-panel-muted hover:text-ink'
+						]}
+					>
+						<UsersRound size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
+						<span class={labelClass}>Customers</span>
 					</Link>
 				</li>
 				{#if isOwner}
