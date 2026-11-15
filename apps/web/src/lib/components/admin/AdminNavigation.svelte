@@ -9,6 +9,8 @@
 		CreditCard,
 		LogOut,
 		ExternalLink,
+		Tag,
+		ContactRound,
 		UsersRound,
 		UserRound,
 		Warehouse
@@ -41,6 +43,9 @@
 		{ label: 'Payments', icon: CreditCard },
 		{ label: 'Reports', icon: ChartColumn }
 	];
+	const brandsRoute = '/admin/(staff)/brands';
+	const brandsHref = $derived(resolve(brandsRoute));
+	const onBrands = $derived(page.route.id === brandsRoute);
 	const customersHref = $derived(resolve('/admin/(staff)/customers'));
 	const inCustomers = $derived(page.route.id?.startsWith('/admin/(staff)/customers'));
 	const adminsHref = $derived(resolve('admin/admins'));
@@ -50,25 +55,39 @@
 	const profilePath = $derived(new URL(profileHref, page.url.href).pathname);
 	const onProfile = $derived(page.url.pathname === profilePath);
 	const inProfile = $derived(onProfile || page.url.pathname.startsWith(`${profilePath}/`));
-	const row = 'flex min-h-11 items-center gap-2 overflow-hidden rounded-lg px-3 text-sm';
+	const row =
+		'flex min-h-11 items-center gap-2 overflow-hidden rounded-lg px-3 text-sm focus-visible:-outline-offset-2';
 	const labelClass = $derived([
 		'whitespace-nowrap motion-safe:transition-opacity motion-safe:duration-150',
 		collapsed && 'opacity-0'
 	]);
 </script>
 
-<nav class="flex flex-1 flex-col" aria-label="Staff navigation">
-	<div class="space-y-6">
+<nav class="flex flex-1 flex-col lg:min-h-0" aria-label="Staff navigation">
+	<div class="space-y-6 lg:overflow-y-auto">
 		<div>
-			<p
-				class={[
-					labelClass,
-					'flex justify-between gap-2 overflow-hidden px-3 pb-2 text-xs font-medium text-ink-muted'
-				]}
-			>
-				Operations <span class="font-normal">Planned</span>
+			<p class={[labelClass, 'overflow-hidden px-3 pb-2 text-xs font-medium text-ink-muted']}>
+				Operations
 			</p>
 			<ul class="space-y-1">
+				<li>
+					<Link
+						href={brandsHref}
+						variant="plain"
+						aria-current={onBrands ? 'page' : undefined}
+						title={collapsed ? 'Brands' : undefined}
+						onclick={onNavigate}
+						class={[
+							row,
+							onBrands
+								? 'bg-panel-muted font-semibold text-ink'
+								: 'text-ink-muted hover:bg-panel-muted hover:text-ink'
+						]}
+					>
+						<Tag size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
+						<span class={labelClass}>Brands</span>
+					</Link>
+				</li>
 				{#each operations as { label, icon: Icon } (label)}
 					<li>
 						<span
@@ -76,7 +95,7 @@
 							title={collapsed ? `${label} (planned)` : undefined}
 						>
 							<Icon size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
-							<span class={labelClass}>{label}</span>
+							<span class={labelClass}>{label}<span class="sr-only"> (planned)</span></span>
 						</span>
 					</li>
 				{/each}
@@ -87,24 +106,6 @@
 				Account
 			</p>
 			<ul class="space-y-1">
-				<li>
-					<Link
-						href={profileHref}
-						variant="plain"
-						aria-current={onProfile ? 'page' : inProfile ? 'location' : undefined}
-						title={collapsed ? 'Profile' : undefined}
-						onclick={onNavigate}
-						class={[
-							row,
-							inProfile
-								? 'bg-panel-muted font-semibold text-ink'
-								: 'text-ink-muted hover:bg-panel-muted hover:text-ink'
-						]}
-					>
-						<UserRound size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
-						<span class={labelClass}>Profile</span>
-					</Link>
-				</li>
 				<li>
 					<Link
 						href={customersHref}
@@ -123,7 +124,7 @@
 								: 'text-ink-muted hover:bg-panel-muted hover:text-ink'
 						]}
 					>
-						<UsersRound size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
+						<ContactRound size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
 						<span class={labelClass}>Customers</span>
 					</Link>
 				</li>
@@ -151,7 +152,7 @@
 		</div>
 	</div>
 
-	<div class="mt-auto space-y-1 pt-6">
+	<div class="mt-auto shrink-0 space-y-1 pt-6">
 		<Link
 			href={websiteHref}
 			variant="plain"
@@ -167,13 +168,29 @@
 				class={[labelClass, 'ml-auto shrink-0']}
 			/>
 		</Link>
+		<Link
+			href={profileHref}
+			variant="plain"
+			aria-current={onProfile ? 'page' : inProfile ? 'location' : undefined}
+			title={collapsed ? 'Profile' : undefined}
+			onclick={onNavigate}
+			class={[
+				row,
+				inProfile
+					? 'bg-panel-muted font-semibold text-ink'
+					: 'text-ink-muted hover:bg-panel-muted hover:text-ink'
+			]}
+		>
+			<UserRound size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
+			<span class={labelClass}>Profile</span>
+		</Link>
 		<Button
 			onclick={onSignOut}
 			disabled={signingOut}
-			variant="ghost"
+			variant="danger"
 			size="custom"
 			title={collapsed ? 'Sign out' : undefined}
-			class={[row, 'w-full justify-start font-normal']}
+			class={[row, 'mt-2 w-full justify-start']}
 		>
 			<LogOut size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
 			<span class={labelClass}>{signingOut ? 'Signing out…' : 'Sign out'}</span>

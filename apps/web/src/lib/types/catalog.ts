@@ -31,3 +31,32 @@ export function prepareCatalogRequest(filters: CatalogFilters, page: number, pag
 		pageSize
 	};
 }
+
+export type BrandStatus = 'active' | 'inactive';
+
+export type Brand = {
+	id: string;
+	name: string;
+	status: BrandStatus;
+	image_object_key: string | null;
+	image_filename: string | null;
+	image_url: string | null;
+	created_at: string;
+	updated_at: string;
+};
+
+export type CreateBrandInput = {
+	name: string;
+	image_object_key?: string;
+	image_filename?: string;
+};
+
+export type UpdateBrandInput = {
+	name?: string;
+	status?: BrandStatus;
+	image_object_key?: string | null;
+	image_filename?: string;
+};
+
+export type SavedBrand = { data: Brand; message: string };
+export type CatalogImageUpload = { data: { object_key: string } };

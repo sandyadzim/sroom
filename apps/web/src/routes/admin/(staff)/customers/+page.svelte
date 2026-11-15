@@ -14,7 +14,8 @@
 		label: 'Customers',
 		rowKey: (row) => row.id,
 		columns: [
-			{ label: 'Customer', cell: customerIdentity },
+			{ label: 'Full name', cell: fullName },
+			{ label: 'Email', field: 'email' },
 			{ label: 'Status', cell: accountStatus },
 			{ label: 'Registered at', cell: createdAt },
 			{ label: 'Actions', cell: actions, sticky: 'right' }
@@ -46,7 +47,7 @@
 
 <DataTableGenerator {config} />
 
-{#snippet customerIdentity(row: CustomerAccount)}
+{#snippet fullName(row: CustomerAccount)}
 	<Link
 		href={resolve('/admin/(staff)/customers/[id]', { id: row.id })}
 		variant="plain"
@@ -54,9 +55,6 @@
 	>
 		{row.full_name.trim() || row.email}
 	</Link>
-	{#if row.full_name.trim()}
-		<span class="mt-1 block text-ink-muted">{row.email}</span>
-	{/if}
 {/snippet}
 
 {#snippet accountStatus(row: CustomerAccount)}
