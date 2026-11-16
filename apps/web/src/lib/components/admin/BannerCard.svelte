@@ -8,6 +8,7 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import Dialog from '#lib/components/ui/Dialog.svelte';
 	import ImageWithPlaceholder from '#lib/components/ui/ImageWithPlaceholder.svelte';
+	import Link from '#lib/components/ui/Link.svelte';
 	import { bannerSlotQuery, bannerSlotsQuery } from '#lib/queries/banner.ts';
 	import type { BannerSlot } from '#lib/types/catalog.ts';
 	import { useToast } from '#lib/ui/toast.ts';
@@ -60,7 +61,18 @@
 			{/snippet}
 		</ImageWithPlaceholder>
 		<div class="px-4 pt-4 pb-5 wrap-anywhere">
-			<p class="text-sm text-ink-muted">{content.brand_name} {content.car_model}</p>
+			{#if content.car_id}
+				<Link
+					href={resolve('/admin/(staff)/cars/[id]', { id: content.car_id })}
+					variant="plain"
+					class="text-sm text-ink-muted underline decoration-line underline-offset-4 hover:text-ink"
+				>
+					{content.brand_name}
+					{content.car_model}
+				</Link>
+			{:else}
+				<p class="text-sm text-ink-muted">{content.brand_name} {content.car_model} · Unlinked</p>
+			{/if}
 			<p class="mt-2 text-lg/6 font-semibold">
 				{content.headline_line_1}<br />{content.headline_line_2}
 			</p>

@@ -62,17 +62,19 @@ export type SavedBrand = { data: Brand; message: string };
 export type CatalogImageUpload = { data: { object_key: string } };
 
 export type BannerInput = {
-	brand_id: string;
-	car_model: string;
-	car_slug: string;
+	car_id: string;
 	headline_line_1: string;
 	headline_line_2: string;
 	description: string;
 	image_object_key: string;
 };
 
-export type BannerContent = BannerInput & {
+export type BannerContent = Omit<BannerInput, 'car_id'> & {
+	car_id: string | null;
+	brand_id: string;
 	brand_name: string;
+	car_model: string;
+	car_slug: string;
 	image_url: string | null;
 };
 

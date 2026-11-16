@@ -12,7 +12,7 @@
 	import SelectField from '#lib/components/ui/SelectField.svelte';
 	import TextField from '#lib/components/ui/TextField.svelte';
 	import { bannerSlotQuery, bannerSlotsQuery } from '#lib/queries/banner.ts';
-	import { brandOptionsQuery } from '#lib/queries/brand.ts';
+	import { activeCarOptionsQuery } from '#lib/queries/car.ts';
 	import type { BannerInput, BannerSlot } from '#lib/types/catalog.ts';
 	import { useToast } from '#lib/ui/toast.ts';
 
@@ -21,22 +21,26 @@
 	const formId = $props.id();
 	const queryClient = useQueryClient();
 	const toast = useToast();
-	const brands = createQuery(() => brandOptionsQuery);
-	const brandOptions = $derived(
-		brands.data?.map((brand) => ({ value: brand.id, label: brand.name })) ?? []
+	const cars = createQuery(() => activeCarOptionsQuery);
+	const carOptions = $derived(
+		cars.data?.map((car) => ({
+			value: car.id,
+			label: [car.brand_name, car.model, car.trim].filter(Boolean).join(' ')
+		})) ?? []
 	);
 	const imageTypes = ['image/jpeg', 'image/png', 'image/webp'];
 	const listHref = $derived(resolve('/admin/(staff)/banners'));
 
 	let values = $state<BannerInput>({
-		brand_id: original?.brand_id ?? '',
-		car_model: original?.car_model ?? '',
-		car_slug: original?.car_slug ?? '',
+		car_id: original?.car_id ?? '',
 		headline_line_1: original?.headline_line_1 ?? '',
 		headline_line_2: original?.headline_line_2 ?? '',
 		description: original?.description ?? '',
 		image_object_key: original?.image_object_key ?? ''
 	});
+	const usesLinkedCar = $derived(!!original?.car_id && values.car_id === original.car_id);
+	const canSave = $derived(usesLinkedCar || carOptions.length > 0);
+	const linkedCarName = original?.car_id ? `${original.brand_name} ${original.car_model}` : '';
 	let errors = $state<Partial<Record<keyof BannerInput, string>>>({});
 	let fileInput = $state<HTMLInputElement>();
 	let upload = $state.raw<AbortController>();
@@ -48,13 +52,6 @@
 	const imageUrl = $derived(uploaded ? previewUrl : original?.image_url);
 	const imageName = $derived(uploaded?.name ?? original?.image_object_key.split('/').at(-1));
 	const fields = [
-		{ name: 'car_model', label: 'Car model', limit: 100 },
-		{
-			name: 'car_slug',
-			label: 'Car slug',
-			limit: 150,
-			help: 'Use the slug from the car detail URL, for example fortuner-vrz-at.'
-		},
 		{ name: 'headline_line_1', label: 'Headline line 1', limit: 100 },
 		{ name: 'headline_line_2', label: 'Headline line 2', limit: 100 }
 	] as const;
@@ -69,18 +66,19 @@
 	});
 
 	function validate(name: keyof BannerInput) {
+		if (name === 'car_id') {
+			return usesLinkedCar || carOptions.some((option) => option.value === values.car_id)
+				? undefined
+				: 'Select an active car.';
+		}
 		const value = values[name].trim();
 		const field = fields.find((item) => item.name === name);
 		if (!value) {
-			if (name === 'brand_id') return 'Select a brand.';
 			if (name === 'image_object_key') return 'Upload a banner image.';
 			return `Enter the ${field?.label.toLowerCase() ?? 'description'}.`;
 		}
 		const limit = field?.limit ?? (name === 'description' ? 500 : undefined);
 		if (limit && Array.from(value).length > limit) return `Use at most ${limit} characters.`;
-		if (name === 'car_slug' && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)) {
-			return 'Use lowercase letters, numbers, and single hyphens between words.';
-		}
 	}
 
 	async function selectFile(input: HTMLInputElement) {
@@ -117,9 +115,9 @@
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
-		if (upload || save.isPending || !brandOptions.length) return;
+		if (upload || save.isPending || !canSave) return;
 		const fieldOrder = [
-			'brand_id',
+			'car_id',
 			...fields.map((field) => field.name),
 			'description',
 			'image_object_key'
@@ -138,9 +136,7 @@
 
 		try {
 			const { data, message } = await save.mutateAsync({
-				brand_id: values.brand_id,
-				car_model: values.car_model.trim(),
-				car_slug: values.car_slug.trim(),
+				car_id: values.car_id,
 				headline_line_1: values.headline_line_1.trim(),
 				headline_line_2: values.headline_line_2.trim(),
 				description: values.description.trim(),
@@ -155,7 +151,10 @@
 			await goto(listHref);
 		} catch (cause) {
 			const error = getApiError(cause);
-			if (error?.code === 'BRAND_NOT_FOUND') errors.brand_id = error.message;
+			if (error?.code === 'CAR_NOT_FOUND') {
+				errors.car_id = error.message;
+				void cars.refetch();
+			}
 			toast({
 				kind: 'error',
 				message: error?.message ?? 'Could not save the banner. Please try again.'
@@ -164,24 +163,28 @@
 	}
 </script>
 
-{#if brands.isError && !brandOptions.length}
+{#if cars.isError && !carOptions.length}
 	<div class="mt-5">
 		<p role="alert" class="text-negative">
-			{getApiError(brands.error)?.message ?? 'Could not load brands.'}
+			{getApiError(cars.error)?.message ?? 'Could not load cars.'}
 		</p>
 		<Button
 			class="mt-3"
 			variant="secondary"
-			disabled={brands.isFetching}
-			onclick={() => brands.refetch()}>Try again</Button
+			disabled={cars.isFetching}
+			onclick={() => cars.refetch()}>Try again</Button
 		>
 	</div>
-{:else if brands.isSuccess && !brandOptions.length}
+{:else if cars.isSuccess && !carOptions.length}
 	<p class="mt-5 text-ink-muted">
-		Add a brand before filling this slot.
-		<Button href={resolve('/admin/(staff)/brands')} variant="ghost" class="px-3"
-			>Go to Brands</Button
-		>
+		{#if linkedCarName}
+			No active cars are available to replace the linked car.
+		{:else}
+			Add an active car before filling this slot.
+			<Button href={resolve('/admin/(staff)/cars/new')} variant="ghost" class="px-3"
+				>Create car</Button
+			>
+		{/if}
 	</p>
 {/if}
 
@@ -195,24 +198,30 @@
 	<div class="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
 		<div class="space-y-5">
 			<SelectField
-				id={`${formId}-brand_id`}
-				name="brand_id"
-				label="Brand"
-				placeholder={brands.isPending ? 'Loading brands…' : 'Select a brand'}
-				options={brandOptions}
-				bind:value={values.brand_id}
-				error={errors.brand_id}
-				disabled={save.isPending || !brandOptions.length}
-				onchange={() => (errors.brand_id = validate('brand_id'))}
+				id={`${formId}-car_id`}
+				name="car_id"
+				label="Car variant"
+				placeholder={usesLinkedCar
+					? linkedCarName
+					: cars.isPending
+						? 'Loading cars…'
+						: 'Select an active car'}
+				options={carOptions}
+				bind:value={values.car_id}
+				help={original && !original.car_id && !values.car_id
+					? `This slot shows ${original.brand_name} ${original.car_model}. Select an active car to link it.`
+					: undefined}
+				error={errors.car_id}
+				disabled={save.isPending || !carOptions.length}
+				onchange={() => (errors.car_id = validate('car_id'))}
 				required
 			/>
 
-			{#each fields as { name, label, limit, ...details } (name)}
+			{#each fields as { name, label, limit } (name)}
 				<TextField
 					id={`${formId}-${name}`}
 					{name}
 					{label}
-					help={'help' in details ? details.help : undefined}
 					maxlength={limit}
 					value={values[name]}
 					error={errors[name]}
@@ -337,7 +346,7 @@
 
 	<div class="mt-6 flex flex-wrap justify-end gap-2 border-t border-line pt-4">
 		<Button href={listHref} variant="secondary">Cancel</Button>
-		<Button type="submit" disabled={save.isPending || !!upload || !brandOptions.length}>
+		<Button type="submit" disabled={save.isPending || !!upload || !canSave}>
 			{save.isPending ? 'Saving…' : 'Save banner'}
 		</Button>
 	</div>
