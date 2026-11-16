@@ -105,7 +105,7 @@ export type PublicCatalogPage = {
 	data: CatalogCarCard[];
 	page: { number: number; limit: number; total: number };
 };
-export type PublicBrand = Pick<Brand, 'id' | 'name'>;
+export type PublicBrand = Pick<Brand, 'id' | 'name' | 'image_url'>;
 
 export type AdminFeaturedSelection = AdminFeaturedCar & { position: number };
 export type UpdateFeaturedCarsInput = { car_ids: (string | null)[] };

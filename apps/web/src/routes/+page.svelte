@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Hero from '#lib/components/home/Hero.svelte';
+	import BrowseBrands from '#lib/components/home/BrowseBrands.svelte';
 	import Introduction from '#lib/components/home/Introduction.svelte';
 	import FeaturedFleet from '#lib/components/home/FeaturedFleet.svelte';
 	import HowItWorks from '#lib/components/home/HowItWorks.svelte';
@@ -19,6 +20,7 @@
 </svelte:head>
 
 <Hero banners={data.banners} />
+<BrowseBrands brands={data.brands} />
 <Introduction />
 <FeaturedFleet cars={data.featuredCars} unavailable={data.featuredUnavailable} />
 <HowItWorks />

@@ -29,8 +29,8 @@ export function fetchHomeFeaturedCars() {
 	return fetchItems<CatalogCarCard>('home/featured-cars');
 }
 
-export function fetchPublicBrands() {
-	return fetchItems<PublicBrand>('brands');
+export function fetchPublicBrands(activeOnly = false) {
+	return fetchItems<PublicBrand>(activeOnly ? 'brands?status=active' : 'brands');
 }
 
 export async function fetchPublicCars(params: URLSearchParams) {
