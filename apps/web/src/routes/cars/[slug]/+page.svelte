@@ -17,7 +17,7 @@
 		{ label: 'Seats', value: `${car.seats} people`, icon: UsersRound },
 		{ label: 'Transmission', value: car.transmission, icon: Gauge },
 		{ label: 'Fuel', value: car.fuel, icon: Fuel },
-		{ label: 'Body type', value: car.category, icon: CarFront }
+		{ label: 'Body type', value: car.bodyType, icon: CarFront }
 	]);
 </script>
 
@@ -25,7 +25,7 @@
 	<title>{name} {car.trim} — SROOM</title>
 	<meta
 		name="description"
-		content={`Explore the ${name} ${car.trim}, a ${car.seats}-seat ${car.category.toLowerCase()} for your next self-drive trip in Samarinda. View daily rates, specifications, and rental terms.`}
+		content={`Explore the ${name} ${car.trim}, a ${car.seats}-seat ${car.bodyType.toLowerCase()} for your next self-drive trip in Samarinda. View daily rates, specifications, and rental terms.`}
 	/>
 </svelte:head>
 

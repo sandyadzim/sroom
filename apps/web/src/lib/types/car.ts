@@ -4,6 +4,7 @@ export type CarPreview = {
 	brand: string;
 	model: string;
 	trim: string;
+	category: string;
 	seats: number;
 	transmission: string;
 	dailyRate: number;
@@ -20,7 +21,7 @@ export type CarGalleryImage = {
 
 // Frontend detail view model, not a catalogue API or quote contract.
 export type CarDetail = CarPreview & {
-	category: string;
+	bodyType: string;
 	fuel: string;
 	description: string;
 	gallery: CarGalleryImage[];

@@ -40,7 +40,9 @@
 		</div>
 		<div class="px-5 pt-4 pb-6">
 			<h3 class="text-xl/7 font-semibold tracking-tight">{car.brand} {car.model}</h3>
-			<p class="mt-1 text-sm/6 text-ink-muted">{car.trim}</p>
+			<p class="mt-1 text-sm/6 text-ink-muted">
+				{[car.trim, car.category].filter(Boolean).join(' · ')}
+			</p>
 			<ul class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm/6 text-ink-muted">
 				<li class="flex items-center gap-2">
 					<UsersRound size={16} strokeWidth={1.5} aria-hidden="true" />{car.seats} seats
@@ -49,14 +51,11 @@
 					<Gauge size={16} strokeWidth={1.5} aria-hidden="true" />{car.transmission}
 				</li>
 			</ul>
-			<div class="mt-6 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-				<p class="text-lg/7 font-semibold tabular-nums">
-					{formatIDR(car.dailyRate)}<span class="ml-1 text-sm font-normal text-ink-muted">
-						/ day
-					</span>
-				</p>
-				<p class="text-sm/6 text-ink-muted">Self-drive</p>
-			</div>
+			<p class="mt-6 text-lg/7 font-semibold tabular-nums">
+				{formatIDR(car.dailyRate)}<span class="ml-1 text-sm font-normal text-ink-muted">
+					/ day
+				</span>
+			</p>
 		</div>
 	</Link>
 </article>

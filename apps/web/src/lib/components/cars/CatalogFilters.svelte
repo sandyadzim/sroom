@@ -1,45 +1,91 @@
 <script lang="ts">
-	import { Search, SlidersHorizontal } from '@lucide/svelte';
+	import { RotateCcw, Search, SlidersHorizontal } from '@lucide/svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import TextField from '#lib/components/ui/TextField.svelte';
 	import SelectField from '#lib/components/ui/SelectField.svelte';
-	import type { CatalogFilters } from '#lib/types/catalog.ts';
+	import type { CatalogFilters, PublicBrand } from '#lib/types/catalog.ts';
+	import { carCategories, carTransmissions } from '#lib/utils/car.ts';
+	import {
+		catalogPrices,
+		defaultCatalogFilters,
+		emptyCatalogFilters
+	} from '#lib/utils/catalog-filters.ts';
+
+	type FilterValues = Omit<CatalogFilters, 'sort'>;
 
 	let {
 		brands,
+		brandsUnavailable,
+		filters,
 		onapply
-	}: { brands: string[]; onapply: (filters: Omit<CatalogFilters, 'sort'>) => void } = $props();
-	const initialFilters = { search: '', brand: '', seats: '', price: '' };
-	let filters = $state({ ...initialFilters });
+	}: {
+		brands: PublicBrand[];
+		brandsUnavailable: boolean;
+		filters: CatalogFilters;
+		onapply: (changes: Partial<FilterValues>) => void;
+	} = $props();
+	let search = $derived(filters.search);
 	let expanded = $state(false);
 	const filterId = $props.id();
+	const commonSeats = ['4', '5', '7'];
 	const activeCount = $derived(
-		[filters.brand, filters.seats, filters.price].filter(Boolean).length
+		[filters.brand, filters.category, filters.seats, filters.transmission, filters.price].filter(
+			Boolean
+		).length
 	);
-	const hasFilters = $derived(Object.values(filters).some(Boolean));
-	const brandOptions = $derived([
-		{ value: '', label: 'All brands' },
-		...brands.map((brand) => ({ value: brand, label: brand }))
-	]);
-	const seats = [
+	const seatOptions = $derived([
 		{ value: '', label: 'Any number' },
-		{ value: '4', label: '4 seats' },
-		{ value: '5', label: '5 seats' },
-		{ value: '7', label: '7 seats' }
-	];
-	const prices = [
-		{ value: '', label: 'Any daily rate' },
-		{ value: 'under-400', label: 'Up to IDR 400,000' },
-		{ value: '400-700', label: 'IDR 400,001–700,000' },
-		{ value: 'over-700', label: 'Above IDR 700,000' }
-	];
+		...commonSeats.map((value) => ({ value, label: `${value} seats` })),
+		...(filters.seats && !commonSeats.includes(filters.seats)
+			? [
+					{
+						value: filters.seats,
+						label: Number(filters.seats) === 1 ? '1 seat' : `${filters.seats} seats`
+					}
+				]
+			: [])
+	]);
+	const fields = $derived([
+		{
+			name: 'brand',
+			label: 'Brand',
+			disabled: brandsUnavailable,
+			options: [
+				{ value: '', label: brandsUnavailable ? 'Brands unavailable' : 'All brands' },
+				...brands.map(({ id, name }) => ({ value: id, label: name })),
+				...(filters.brand && !brands.some(({ id }) => id === filters.brand)
+					? [{ value: filters.brand, label: 'Selected brand' }]
+					: [])
+			]
+		},
+		{
+			name: 'category',
+			label: 'Category',
+			options: [{ value: '', label: 'All categories' }, ...carCategories]
+		},
+		{ name: 'seats', label: 'Seats', options: seatOptions },
+		{
+			name: 'transmission',
+			label: 'Transmission',
+			options: [{ value: '', label: 'All transmissions' }, ...carTransmissions]
+		},
+		{
+			name: 'price',
+			label: 'Price per day',
+			options: [
+				{ value: '', label: 'Any daily rate' },
+				...catalogPrices.filter(({ value, legacy }) => !legacy || value === filters.price)
+			]
+		}
+	] as const);
 
-	function apply() {
-		onapply({ ...filters });
+	function apply(changes: Partial<FilterValues> = {}) {
+		onapply({ search: search.trim(), ...changes });
 	}
+
 	function reset() {
-		filters = { ...initialFilters };
-		apply();
+		search = '';
+		onapply(emptyCatalogFilters);
 	}
 </script>
 
@@ -52,6 +98,9 @@
 	}}
 	class="rounded-panel bg-panel-muted p-4 sm:p-6"
 >
+	{#if filters.sort !== defaultCatalogFilters.sort}
+		<input type="hidden" name="sort" value={filters.sort} />
+	{/if}
 	<div class="flex flex-col items-start gap-3 lg:block">
 		<div class="flex w-full min-w-0 items-end gap-2 sm:gap-3">
 			<div class="min-w-0 flex-1">
@@ -59,8 +108,9 @@
 					name="search"
 					type="search"
 					label="Find your car"
-					placeholder="Search brand or model"
-					bind:value={filters.search}
+					placeholder="Brand, model, or trim"
+					bind:value={search}
+					onclear={() => apply({ search: '' })}
 				/>
 			</div>
 			<Button
@@ -93,35 +143,28 @@
 		id={filterId}
 		class={[
 			expanded ? 'grid' : 'hidden',
-			'mt-4 gap-4 sm:grid-cols-3 lg:mt-6 lg:grid lg:grid-cols-[1fr_1fr_1.25fr_auto] lg:items-end lg:gap-6'
+			'mt-4 gap-4 sm:grid-cols-2 lg:mt-6 lg:grid lg:grid-cols-3 lg:items-end lg:gap-6'
 		]}
 	>
-		<SelectField
-			name="brand"
-			label="Brand"
-			options={brandOptions}
-			bind:value={filters.brand}
-			onchange={apply}
-		/>
-		<SelectField
-			name="seats"
-			label="Seats"
-			options={seats}
-			bind:value={filters.seats}
-			onchange={apply}
-		/>
-		<SelectField
-			name="price"
-			label="Price per day"
-			options={prices}
-			bind:value={filters.price}
-			onchange={apply}
-		/>
+		{#each fields as field (field.name)}
+			<SelectField
+				name={field.name}
+				label={field.label}
+				options={field.options}
+				clearable
+				value={filters[field.name]}
+				disabled={'disabled' in field && field.disabled}
+				onchange={(value) => apply({ [field.name]: value })}
+			/>
+		{/each}
 		<Button
 			variant="ghost"
-			disabled={!hasFilters}
-			class="sm:col-span-3 lg:col-span-1"
-			onclick={reset}>Reset filters</Button
+			disabled={!search && !filters.search && !activeCount}
+			class="gap-2 justify-self-end border border-line hover:border-ink-muted/50 lg:mb-1"
+			onclick={reset}
 		>
+			<RotateCcw size={16} strokeWidth={1.5} aria-hidden="true" />
+			Reset filters
+		</Button>
 	</div>
 </form>

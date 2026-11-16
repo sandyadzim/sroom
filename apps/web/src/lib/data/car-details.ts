@@ -4,28 +4,28 @@ import type { CarDetail, CarGalleryImage } from '#lib/types/car.ts';
 // Display content only. Checkout prices and physical-unit allocation remain server-owned.
 const descriptions = {
 	'Innova Zenix': {
-		category: 'MPV',
+		bodyType: 'MPV',
 		fuel: 'Petrol',
 		description:
 			'Family plans, a weekend together, or a longer route home. The Innova Zenix pairs seven seats with an automatic transmission, giving your day a little more room.',
 		studio: undefined
 	},
 	Fortuner: {
-		category: 'SUV',
+		bodyType: 'SUV',
 		fuel: 'Diesel',
 		description:
 			'A spacious seven-seat SUV for family days and trips with more on the agenda. The Fortuner brings a bold presence to the road, with an automatic transmission for an easygoing drive.',
 		studio: '/images/hero/fortuner-studio.webp'
 	},
 	Brio: {
-		category: 'Hatchback',
+		bodyType: 'Hatchback',
 		fuel: 'Petrol',
 		description:
 			'Coffee stops, everyday errands, and a change of plans. The compact Honda Brio is a natural fit for city days, with five seats and an automatic transmission to keep things simple.',
 		studio: '/images/hero/brio-studio.webp'
 	},
 	Jimny: {
-		category: 'SUV',
+		bodyType: 'SUV',
 		fuel: 'Petrol',
 		description:
 			'A distinctive boxy silhouette for a different kind of day. The Suzuki Jimny pairs four seats with an automatic transmission, making room for a small group and a spontaneous city detour.',
