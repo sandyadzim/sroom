@@ -101,7 +101,7 @@ export type CatalogCarImage = Pick<CarPhotoInput, 'alt_text' | 'label'> & { url:
 export type AdminCarImage = CatalogCarImage &
 	CarPhotoInput & { id: string; kind: 'cover' | 'gallery' };
 
-export type AdminCar = {
+export type AdminFeaturedCar = {
 	id: string;
 	brand_id: string;
 	brand_name: string;
@@ -114,6 +114,13 @@ export type AdminCar = {
 	daily_rate_idr: number;
 	status: 'active' | 'inactive';
 	cover: CatalogCarImage | null;
+};
+
+export type AdminFeaturedSelection = AdminFeaturedCar & { position: number };
+export type UpdateFeaturedCarsInput = { car_ids: (string | null)[] };
+export type SavedFeaturedCars = { data: AdminFeaturedSelection[]; message: string };
+
+export type AdminCar = AdminFeaturedCar & {
 	created_at: string;
 	updated_at: string;
 };

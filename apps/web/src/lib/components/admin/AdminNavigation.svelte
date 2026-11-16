@@ -7,6 +7,7 @@
 		CalendarDays,
 		CarFront,
 		CreditCard,
+		Star,
 		LogOut,
 		PanelsTopLeft,
 		ExternalLink,
@@ -46,7 +47,8 @@
 	const catalogLinks = [
 		{ label: 'Brands', icon: Tag, route: '/admin/(staff)/brands' },
 		{ label: 'Cars', icon: CarFront, route: '/admin/(staff)/cars' },
-		{ label: 'Banners', icon: PanelsTopLeft, route: '/admin/(staff)/banners' }
+		{ label: 'Banners', icon: PanelsTopLeft, route: '/admin/(staff)/banners' },
+		{ label: 'Featured Cars', icon: Star, route: '/admin/(staff)/featured-cars' }
 	] as const;
 	const customersHref = $derived(resolve('/admin/(staff)/customers'));
 	const inCustomers = $derived(page.route.id?.startsWith('/admin/(staff)/customers'));

@@ -21,7 +21,7 @@
 	const formId = $props.id();
 	const queryClient = useQueryClient();
 	const toast = useToast();
-	const cars = createQuery(() => activeCarOptionsQuery);
+	const cars = createQuery(() => activeCarOptionsQuery());
 	const carOptions = $derived(
 		cars.data?.map((car) => ({
 			value: car.id,

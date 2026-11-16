@@ -1,10 +1,12 @@
 import { queryOptions } from '@tanstack/svelte-query';
 import { carsEndpoint, fetchActiveCarsForSelect, fetchCar } from '#lib/api/catalog/car.ts';
 
-export const activeCarOptionsQuery = queryOptions({
-	queryKey: [carsEndpoint, 'options', 'active'],
-	queryFn: ({ signal }) => fetchActiveCarsForSelect(signal)
-});
+export function activeCarOptionsQuery(search = '') {
+	return queryOptions({
+		queryKey: [carsEndpoint, 'options', 'active', search],
+		queryFn: ({ signal }) => fetchActiveCarsForSelect(search, signal)
+	});
+}
 
 export function carDetailQuery(id: string) {
 	return queryOptions({
