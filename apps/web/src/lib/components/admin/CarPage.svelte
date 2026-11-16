@@ -106,7 +106,7 @@
 						<span class="font-medium text-ink">Cover</span> · {cover.label}
 					</p>
 				{:else}
-					<ImageWithPlaceholder alt="" class="aspect-[16/10] rounded-xl">
+					<ImageWithPlaceholder alt="" class="aspect-16/10 rounded-xl">
 						{#snippet fallback()}<p class="text-sm text-ink-muted">No cover photo</p>{/snippet}
 					</ImageWithPlaceholder>
 				{/if}

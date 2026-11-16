@@ -1,7 +1,9 @@
 import type { CarPreview } from '#lib/types/car.ts';
 
+type FixtureCar = CarPreview & { image: string };
+
 // Illustrative fixtures carried over from the local prototype, not live inventory or quotes.
-export const demoFeaturedCars: CarPreview[] = [
+const baseCatalogCars: FixtureCar[] = [
 	{
 		id: 'innova-zenix-v-cvt',
 		brand: 'Toyota',
@@ -35,12 +37,12 @@ export const demoFeaturedCars: CarPreview[] = [
 ];
 
 // Eight display-only variants for exercising the six-per-page catalogue slice.
-export const demoCatalogCars: CarPreview[] = [
-	...demoFeaturedCars,
-	{ ...demoFeaturedCars[2], id: 'brio-satya-e-cvt', trim: 'Satya E CVT', dailyRate: 275000 },
-	{ ...demoFeaturedCars[0], id: 'innova-zenix-g-cvt', trim: '2.0 G CVT', dailyRate: 650000 },
+export const demoCatalogCars: FixtureCar[] = [
+	...baseCatalogCars,
+	{ ...baseCatalogCars[2], id: 'brio-satya-e-cvt', trim: 'Satya E CVT', dailyRate: 275000 },
+	{ ...baseCatalogCars[0], id: 'innova-zenix-g-cvt', trim: '2.0 G CVT', dailyRate: 650000 },
 	{
-		...demoFeaturedCars[1],
+		...baseCatalogCars[1],
 		id: 'fortuner-gr-sport-at',
 		trim: '2.8 GR Sport AT',
 		dailyRate: 1100000

@@ -85,6 +85,15 @@ export type BannerSlot = {
 
 export type SavedBanner = { data: BannerSlot; message: string };
 
+export type PublicBanner = {
+	slug: string;
+	make: string;
+	model: string;
+	image: string | null;
+	headline: [string, string];
+	description: string;
+};
+
 export type BrandPage = {
 	data: Brand[];
 	page: { number: number; limit: number; total: number };
@@ -101,7 +110,7 @@ export type CatalogCarImage = Pick<CarPhotoInput, 'alt_text' | 'label'> & { url:
 export type AdminCarImage = CatalogCarImage &
 	CarPhotoInput & { id: string; kind: 'cover' | 'gallery' };
 
-export type AdminFeaturedCar = {
+export type CatalogCarCard = {
 	id: string;
 	brand_id: string;
 	brand_name: string;
@@ -112,9 +121,10 @@ export type AdminFeaturedCar = {
 	seats: number;
 	transmission: string;
 	daily_rate_idr: number;
-	status: 'active' | 'inactive';
 	cover: CatalogCarImage | null;
 };
+
+export type AdminFeaturedCar = CatalogCarCard & { status: 'active' | 'inactive' };
 
 export type AdminFeaturedSelection = AdminFeaturedCar & { position: number };
 export type UpdateFeaturedCarsInput = { car_ids: (string | null)[] };

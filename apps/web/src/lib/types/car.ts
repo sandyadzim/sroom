@@ -7,7 +7,8 @@ export type CarPreview = {
 	seats: number;
 	transmission: string;
 	dailyRate: number;
-	image: string;
+	image: string | null;
+	imageAlt?: string;
 	href?: string;
 };
 

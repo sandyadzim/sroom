@@ -17,7 +17,7 @@
 		class="isolate block overflow-hidden rounded-card bg-panel-muted focus-visible:-outline-offset-4"
 	>
 		<div class="relative aspect-4/3 overflow-hidden">
-			{#if failedImage === car.image}
+			{#if !car.image || failedImage === car.image}
 				<div
 					role="img"
 					aria-label={`Image unavailable for ${car.brand} ${car.model}`}
@@ -29,7 +29,7 @@
 			{:else}
 				<img
 					src={car.image}
-					alt={`Illustrative ${car.brand} ${car.model}`}
+					alt={car.imageAlt || `${car.brand} ${car.model}`}
 					width="800"
 					height="600"
 					loading="lazy"

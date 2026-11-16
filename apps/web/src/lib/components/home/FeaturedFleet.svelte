@@ -2,7 +2,9 @@
 	import { resolve } from '$app/paths';
 	import CarCard from '#lib/components/cars/CarCard.svelte';
 	import Link from '#lib/components/ui/Link.svelte';
-	import { demoFeaturedCars } from '#lib/data/demo-fleet.js';
+	import type { CarPreview } from '#lib/types/car.ts';
+
+	let { cars, unavailable }: { cars: CarPreview[]; unavailable: boolean } = $props();
 </script>
 
 <section id="fleet" class="bg-panel py-16 sm:py-24" aria-labelledby="fleet-heading">
@@ -21,10 +23,18 @@
 			</div>
 			<Link href={resolve('/cars')} arrow class="shrink-0 font-medium">View all cars</Link>
 		</div>
-		<ul class="mt-8 grid gap-6 sm:mt-10 sm:grid-cols-2 lg:grid-cols-3" aria-label="Featured cars">
-			{#each demoFeaturedCars as car (car.id)}
-				<li class="min-w-0"><CarCard {car} /></li>
-			{/each}
-		</ul>
+		{#if cars.length}
+			<ul class="mt-8 grid gap-6 sm:mt-10 sm:grid-cols-2 lg:grid-cols-3" aria-label="Featured cars">
+				{#each cars as car (car.id)}
+					<li class="min-w-0"><CarCard {car} /></li>
+				{/each}
+			</ul>
+		{:else}
+			<p class="mt-8 rounded-card bg-panel-muted p-5 text-sm text-ink-muted">
+				{unavailable
+					? 'Featured cars are temporarily unavailable.'
+					: 'There are no featured cars right now.'}
+			</p>
+		{/if}
 	</div>
 </section>
