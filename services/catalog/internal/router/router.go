@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func New(identityClient *identity.Client, brands *handler.BrandHandler, banners *handler.BannerHandler, cars *handler.CarHandler, imageStore handler.ImageStore) (*gin.Engine, error) {
+func New(identityClient *identity.Client, brands *handler.BrandHandler, banners *handler.BannerHandler, cars *handler.CarHandler, featuredCars *handler.FeaturedCarHandler, imageStore handler.ImageStore) (*gin.Engine, error) {
 	engine := gin.New()
 	if err := engine.SetTrustedProxies(nil); err != nil {
 		return nil, err
@@ -32,6 +32,7 @@ func New(identityClient *identity.Client, brands *handler.BrandHandler, banners 
 
 	home := catalogGroup.Group("/home", defaultBodyLimit)
 	home.GET("/banners", banners.ListPublic)
+	home.GET("/featured-cars", featuredCars.ListPublic)
 
 	publicCars := catalogGroup.Group("/cars", defaultBodyLimit)
 	publicCars.GET("", cars.ListPublic)
@@ -58,6 +59,10 @@ func New(identityClient *identity.Client, brands *handler.BrandHandler, banners 
 	carRoutes.POST("", cars.Create)
 	carRoutes.GET("/:id", cars.Detail)
 	carRoutes.PATCH("/:id", cars.Update)
+
+	featuredRoutes := admin.Group("/featured-cars", defaultBodyLimit)
+	featuredRoutes.GET("", featuredCars.List)
+	featuredRoutes.PUT("", featuredCars.Replace)
 
 	admin.POST("/images", middleware.LimitBody(6*1024*1024), handler.UploadImage(imageStore))
 

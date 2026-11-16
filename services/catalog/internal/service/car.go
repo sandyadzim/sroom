@@ -203,10 +203,10 @@ func (s *CarService) DetailPublic(ctx context.Context, slug string) (dto.CarDeta
 	}
 	gallery := make([]dto.CarImageResponse, 0, len(item.Images))
 	for _, image := range item.Images {
-		gallery = append(gallery, s.carImage(image))
+		gallery = append(gallery, carImage(image, s.publicImageBaseURL))
 	}
 	return dto.CarDetail{
-		CarCard: s.carCard(item), Status: item.Status, BodyType: item.BodyType, FuelType: item.FuelType,
+		CarCard: carCard(item, s.publicImageBaseURL), Status: item.Status, BodyType: item.BodyType, FuelType: item.FuelType,
 		Description: item.Description, Gallery: gallery,
 	}, nil
 }
@@ -241,12 +241,12 @@ func (s *CarService) ListPublicBrands(ctx context.Context) ([]dto.CarBrandOption
 func (s *CarService) carCards(items []model.Car) []dto.CarCard {
 	data := make([]dto.CarCard, 0, len(items))
 	for _, item := range items {
-		data = append(data, s.carCard(item))
+		data = append(data, carCard(item, s.publicImageBaseURL))
 	}
 	return data
 }
 
-func (s *CarService) carCard(item model.Car) dto.CarCard {
+func carCard(item model.Car, publicImageBaseURL string) dto.CarCard {
 	result := dto.CarCard{
 		ID: item.ID, BrandID: item.BrandID, BrandName: item.Brand.Name,
 		Model: item.Model, Trim: item.Trim, Slug: item.Slug, Category: item.Category,
@@ -254,7 +254,7 @@ func (s *CarService) carCard(item model.Car) dto.CarCard {
 	}
 	for _, image := range item.Images {
 		if image.Kind == model.CarCover {
-			cover := s.carImage(image)
+			cover := carImage(image, publicImageBaseURL)
 			result.Cover = &cover
 			break
 		}
@@ -264,7 +264,7 @@ func (s *CarService) carCard(item model.Car) dto.CarCard {
 
 func (s *CarService) adminCarCard(item model.Car) dto.AdminCarCard {
 	return dto.AdminCarCard{
-		CarCard: s.carCard(item), Status: item.Status,
+		CarCard: carCard(item, s.publicImageBaseURL), Status: item.Status,
 		CreatedAt: item.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt: item.UpdatedAt.UTC().Format(time.RFC3339),
 	}
@@ -282,13 +282,13 @@ func (s *CarService) adminCarDetail(item model.Car) dto.AdminCarDetail {
 }
 
 func (s *CarService) adminCarImage(image model.CarImage) dto.AdminCarImageResponse {
-	return dto.AdminCarImageResponse{CarImageResponse: s.carImage(image), ID: image.ID, ObjectKey: image.ObjectKey, Kind: image.Kind}
+	return dto.AdminCarImageResponse{CarImageResponse: carImage(image, s.publicImageBaseURL), ID: image.ID, ObjectKey: image.ObjectKey, Kind: image.Kind}
 }
 
-func (s *CarService) carImage(image model.CarImage) dto.CarImageResponse {
+func carImage(image model.CarImage, publicImageBaseURL string) dto.CarImageResponse {
 	result := dto.CarImageResponse{AltText: image.AltText, Label: image.Label}
-	if s.publicImageBaseURL != "" {
-		imageURL := s.publicImageBaseURL + "/" + image.ObjectKey
+	if publicImageBaseURL != "" {
+		imageURL := publicImageBaseURL + "/" + image.ObjectKey
 		result.URL = &imageURL
 	}
 	return result

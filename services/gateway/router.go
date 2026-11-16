@@ -57,6 +57,7 @@ func newRouter(identityURL, catalogURL *url.URL, logger *slog.Logger) *gin.Engin
 
 	catalogRoutes := v1.Group("/catalog")
 	catalogRoutes.GET("/home/banners", catalog)
+	catalogRoutes.GET("/home/featured-cars", catalog)
 	catalogRoutes.GET("/brands", catalog)
 	catalogRoutes.GET("/cars", catalog)
 	catalogRoutes.GET("/cars/:slug", catalog)
@@ -80,6 +81,8 @@ func registerCatalogAdmin(admin *gin.RouterGroup, catalog, upload gin.HandlerFun
 	admin.POST("/cars", catalog)
 	admin.GET("/cars/:id", catalog)
 	admin.PATCH("/cars/:id", catalog)
+	admin.GET("/featured-cars", catalog)
+	admin.PUT("/featured-cars", catalog)
 }
 
 func requestHeaders(c *gin.Context) {

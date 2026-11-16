@@ -36,7 +36,7 @@ func (carTestImages) ImageExists(ctx context.Context, key string) (bool, error) 
 func newCarTestRouter(t *testing.T, repo *repository.CarRepository) *gin.Engine {
 	t.Helper()
 	cars := handler.NewCarHandler(service.NewCarService(repo, carTestImages{}, "https://assets.example.test"))
-	return newCatalogTestRouter(t, handler.NewBrandHandler(nil), handler.NewBannerHandler(nil), cars)
+	return newCatalogTestRouter(t, handler.NewBrandHandler(nil), handler.NewBannerHandler(nil), cars, nil)
 }
 
 func TestCarAuthorizationAndInvalidRequests(t *testing.T) {

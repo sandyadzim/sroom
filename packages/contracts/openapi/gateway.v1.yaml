@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.2.0
+  version: 1.3.0
   description: |
     Local entry point for the documented Identity and Catalog routes.
     Request and response schemas are owned by those services. The gateway forwards
@@ -61,6 +61,10 @@ paths:
     $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1banners~1{position}'
   /api/v1/catalog/home/banners:
     $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1home~1banners'
+  /api/v1/catalog/admin/featured-cars:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1featured-cars'
+  /api/v1/catalog/home/featured-cars:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1home~1featured-cars'
   /api/v1/catalog/admin/cars:
     $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars'
   /api/v1/catalog/admin/cars/{id}:
@@ -359,6 +363,29 @@ paths:
       responses:
         '200':
           $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1banners~1{position}/delete/responses/200'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+  /api/v1/staff/catalog/admin/featured-cars:
+    get:
+      operationId: staffListFeaturedCars
+      summary: Staff list Featured Cars
+      security:
+        - staffCookie: []
+      responses:
+        '200':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1featured-cars/get/responses/200'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+    put:
+      operationId: staffReplaceFeaturedCars
+      summary: Staff replace Featured Cars in display order
+      security:
+        - staffCookie: []
+      requestBody:
+        $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1featured-cars/put/requestBody'
+      responses:
+        '200':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1featured-cars/put/responses/200'
         default:
           $ref: './catalog.v1.yaml#/components/responses/Error'
   /api/v1/staff/catalog/admin/cars:

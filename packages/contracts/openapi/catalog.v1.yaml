@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Catalog API
-  version: 1.5.0
+  version: 1.6.0
   description: |
     The local gateway forwards the same Catalog API. An incoming X-Request-ID
     with 1-64 ASCII letters, digits, underscores, or hyphens is preserved.
@@ -217,6 +217,84 @@ paths:
                     maxItems: 3
                     items:
                       $ref: '#/components/schemas/PublicBanner'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/catalog/admin/featured-cars:
+    get:
+      operationId: listAdminFeaturedCars
+      summary: Read the ordered Featured Cars selection (OWNER or ADMIN)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Selected cars in display order, including their current status.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminFeaturedCars'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      operationId: replaceFeaturedCars
+      summary: Replace the Featured Cars selection (OWNER or ADMIN)
+      description: Array order defines display order. Send an empty array to clear the selection. Inactive cars are retained in the admin selection and excluded from public results.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [car_ids]
+              properties:
+                car_ids:
+                  type: array
+                  maxItems: 3
+                  uniqueItems: true
+                  items: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Saved selection in the submitted order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message, data]
+                properties:
+                  message: { type: string }
+                  data:
+                    $ref: '#/components/schemas/AdminFeaturedCars'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/catalog/home/featured-cars:
+    get:
+      operationId: listPublicFeaturedCars
+      summary: List selected active cars in display order
+      security: []
+      responses:
+        '200':
+          description: Up to three active selections in the saved order. An empty selection returns an empty array.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    maxItems: 3
+                    items:
+                      $ref: '#/components/schemas/CarCard'
         default:
           $ref: '#/components/responses/Error'
   /api/v1/catalog/admin/cars:
@@ -576,6 +654,16 @@ components:
               description: Cover first, followed by gallery images in the order they were saved.
               items:
                 $ref: '#/components/schemas/CarImage'
+    AdminFeaturedCars:
+      type: array
+      maxItems: 3
+      items:
+        allOf:
+          - $ref: '#/components/schemas/CarCard'
+          - type: object
+            required: [status]
+            properties:
+              status: { type: string, enum: [active, inactive] }
     AdminCarCard:
       allOf:
         - $ref: '#/components/schemas/CarCard'

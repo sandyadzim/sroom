@@ -117,7 +117,7 @@ func TestImageUpload(t *testing.T) {
 				return nil
 			})
 
-			router, err := New(client, handler.NewBrandHandler(nil), handler.NewBannerHandler(nil), handler.NewCarHandler(nil), store)
+			router, err := New(client, handler.NewBrandHandler(nil), handler.NewBannerHandler(nil), handler.NewCarHandler(nil), nil, store)
 			if err != nil {
 				t.Fatal(err)
 			}

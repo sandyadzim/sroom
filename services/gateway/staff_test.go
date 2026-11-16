@@ -190,3 +190,32 @@ func TestStaffCustomerStatus(t *testing.T) {
 		t.Fatalf("upstream calls = %d, want 1", calls)
 	}
 }
+
+func TestStaffFeaturedCarsRoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	const origin = "https://staff.example.test"
+	const payload = `{"car_ids":[]}`
+	t.Setenv("WEB_ORIGINS", origin)
+	upstream := testUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/catalog/admin/featured-cars" || r.Header.Get("Authorization") != "Bearer fixture-session" {
+			t.Error("expected Featured Cars path and translated staff session")
+		}
+		if r.Method == http.MethodPut {
+			body, err := io.ReadAll(r.Body)
+			if err != nil || string(body) != payload {
+				t.Error("expected the Featured Cars selection payload")
+			}
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	router := newRouter(upstream, upstream, testLogger())
+	for _, method := range []string{http.MethodGet, http.MethodPut} {
+		req := httptest.NewRequest(method, staffPath+"/catalog/admin/featured-cars", strings.NewReader(payload))
+		req.Header.Set("Origin", origin)
+		req.Header.Set("Content-Type", "application/json")
+		req.AddCookie(&http.Cookie{Name: staffCookieName, Value: "fixture-session"})
+		if res := request(router, req); res.Code != http.StatusOK {
+			t.Fatalf("%s: status = %d, want 200", method, res.Code)
+		}
+	}
+}

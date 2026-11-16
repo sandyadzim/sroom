@@ -1,6 +1,6 @@
 # Catalog service
 
-Vehicle catalog, brand management, and homepage hero banners for SROOM, built with Go, Gin, GORM, PostgreSQL, and Cloudflare R2.
+Vehicle catalog, brand management, and homepage banners and featured cars for SROOM, built with Go, Gin, GORM, PostgreSQL, and Cloudflare R2.
 
 ## Getting started
 
@@ -31,18 +31,21 @@ Local base URL is `http://localhost:8082/api/v1/catalog`. Admin routes require a
 | Method | Path | Access |
 |---|---|---|
 | GET | `/cars`, `/cars/{slug}`, `/cars/{slug}/related` | Public |
-| GET | `/brands`, `/home/banners` | Public |
+| GET | `/brands`, `/home/banners`, `/home/featured-cars` | Public |
 | GET, POST | `/admin/brands` | OWNER/ADMIN |
 | PATCH | `/admin/brands/{id}` | OWNER/ADMIN |
 | GET, POST | `/admin/cars` | OWNER/ADMIN |
 | GET, PATCH | `/admin/cars/{id}` | OWNER/ADMIN |
 | GET | `/admin/banners` | OWNER/ADMIN |
 | GET, PUT, DELETE | `/admin/banners/{position}` | OWNER/ADMIN |
+| GET, PUT | `/admin/featured-cars` | OWNER/ADMIN |
 | POST | `/admin/images` | OWNER/ADMIN |
 
 - Upload files through `/admin/images`, then submit the returned object keys with the Car, Brand, or Banner data. Creating a Car requires one cover and at least one gallery photo.
 - Public lists and recommendations show active variants. An inactive variant linked to a Hero banner still has a public detail page with `status: inactive`.
 - The Hero has three fixed slots. Save a slot with `car_id` and banner copy and image. Filled slots stay visible if the linked Car is inactive. Existing manual Brand, model, and slug inputs remain supported.
+
+- Featured Cars accepts up to three Car IDs in display order. Inactive selections stay in the admin list and are skipped in the public list.
 
 See [OpenAPI](../../packages/contracts/openapi/catalog.v1.yaml) for the contract and [DEVELOPMENT.md](DEVELOPMENT.md) for Bruno examples.
 

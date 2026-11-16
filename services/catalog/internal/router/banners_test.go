@@ -18,7 +18,7 @@ const publicBannersPath = "/api/v1/catalog/home/banners"
 
 func TestBannerAuthorizationAndValidation(t *testing.T) {
 	banners := handler.NewBannerHandler(service.NewBannerService(nil, testImages{}, ""))
-	router := newCatalogTestRouter(t, handler.NewBrandHandler(nil), banners, handler.NewCarHandler(nil))
+	router := newCatalogTestRouter(t, handler.NewBrandHandler(nil), banners, handler.NewCarHandler(nil), nil)
 	catalogRequest(t, router, "GET", adminBannersPath, "", "", 401)
 	catalogRequest(t, router, "PUT", adminBannersPath+"/1", "CUSTOMER", "{}", 403)
 	catalogRequest(t, router, "DELETE", adminBannersPath+"/1", "CUSTOMER", "", 403)
@@ -34,7 +34,7 @@ func TestBannerSlotsPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	banners := handler.NewBannerHandler(service.NewBannerService(repository.NewBannerRepository(db), testImages{}, "https://assets.example.test/"))
-	router := newCatalogTestRouter(t, handler.NewBrandHandler(nil), banners, handler.NewCarHandler(nil))
+	router := newCatalogTestRouter(t, handler.NewBrandHandler(nil), banners, handler.NewCarHandler(nil), nil)
 
 	var adminList struct {
 		Data []dto.BannerResponse
@@ -127,7 +127,7 @@ func TestBannerCarReferencePostgres(t *testing.T) {
 	honda := createCarTestBrand(t, brands, "Honda")
 	banners := handler.NewBannerHandler(service.NewBannerService(repository.NewBannerRepository(db), testImages{}, "https://assets.example.test"))
 	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db), carTestImages{}, ""))
-	router := newCatalogTestRouter(t, handler.NewBrandHandler(nil), banners, cars)
+	router := newCatalogTestRouter(t, handler.NewBrandHandler(nil), banners, cars, nil)
 
 	active := model.CarActive
 	req := carTestRequest(toyota.ID, "Fortuner", 600000)
