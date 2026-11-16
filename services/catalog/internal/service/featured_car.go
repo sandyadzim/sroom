@@ -15,7 +15,7 @@ import (
 
 const maxFeaturedCars = 3
 
-var ErrInvalidFeaturedCars = errors.New("car_ids must be an array of up to three distinct car IDs")
+var ErrInvalidFeaturedCars = errors.New("car_ids must contain up to three slots with distinct car IDs or null")
 
 type FeaturedCarService struct {
 	repo               *repository.FeaturedCarRepository
@@ -40,20 +40,23 @@ func (s *FeaturedCarService) Replace(ctx context.Context, req dto.UpdateFeatured
 	if req.CarIDs == nil || len(req.CarIDs) > maxFeaturedCars {
 		return nil, ErrInvalidFeaturedCars
 	}
-	carIDs := make([]string, 0, len(req.CarIDs))
+	selections := make([]model.FeaturedCar, 0, len(req.CarIDs))
 	seen := make(map[uuid.UUID]bool, len(req.CarIDs))
-	for _, rawID := range req.CarIDs {
-		id, err := uuid.Parse(rawID)
-		if len(rawID) != 36 || err != nil || seen[id] {
+	for index, rawID := range req.CarIDs {
+		if rawID == nil {
+			continue
+		}
+		id, err := uuid.Parse(*rawID)
+		if len(*rawID) != 36 || err != nil || seen[id] {
 			return nil, ErrInvalidFeaturedCars
 		}
 		seen[id] = true
-		carIDs = append(carIDs, id.String())
+		selections = append(selections, model.FeaturedCar{Position: index + 1, CarID: id.String()})
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	cars, err := s.repo.Replace(ctx, carIDs)
+	cars, err := s.repo.Replace(ctx, selections)
 	if err != nil {
 		return nil, err
 	}
@@ -69,16 +72,17 @@ func (s *FeaturedCarService) ListPublic(ctx context.Context) ([]dto.CarCard, err
 	}
 	data := make([]dto.CarCard, 0, len(cars))
 	for _, car := range cars {
-		data = append(data, carCard(car, s.publicImageBaseURL))
+		data = append(data, carCard(car.Car, s.publicImageBaseURL))
 	}
 	return data, nil
 }
 
-func (s *FeaturedCarService) adminCards(cars []model.Car) []dto.AdminFeaturedCar {
+func (s *FeaturedCarService) adminCards(cars []model.FeaturedCarSelection) []dto.AdminFeaturedCar {
 	data := make([]dto.AdminFeaturedCar, 0, len(cars))
 	for _, car := range cars {
 		data = append(data, dto.AdminFeaturedCar{
-			CarCard: carCard(car, s.publicImageBaseURL),
+			CarCard: carCard(car.Car, s.publicImageBaseURL),
+			Position: car.Position,
 			Status:  car.Status,
 		})
 	}

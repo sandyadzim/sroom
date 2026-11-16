@@ -16,8 +16,8 @@ func NewFeaturedCarRepository(db *gorm.DB) *FeaturedCarRepository {
 	return &FeaturedCarRepository{db: db}
 }
 
-func (r *FeaturedCarRepository) List(ctx context.Context, activeOnly bool) ([]model.Car, error) {
-	var cars []model.Car
+func (r *FeaturedCarRepository) List(ctx context.Context, activeOnly bool) ([]model.FeaturedCarSelection, error) {
+	var cars []model.FeaturedCarSelection
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var err error
 		cars, err = listFeaturedCars(tx, activeOnly)
@@ -26,15 +26,19 @@ func (r *FeaturedCarRepository) List(ctx context.Context, activeOnly bool) ([]mo
 	return cars, err
 }
 
-func (r *FeaturedCarRepository) Replace(ctx context.Context, carIDs []string) ([]model.Car, error) {
-	var cars []model.Car
+func (r *FeaturedCarRepository) Replace(ctx context.Context, selections []model.FeaturedCar) ([]model.FeaturedCarSelection, error) {
+	var cars []model.FeaturedCarSelection
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Serialize replacements, including when the table is empty.
 		if err := tx.Exec("LOCK TABLE featured_cars IN SHARE ROW EXCLUSIVE MODE").Error; err != nil {
 			return err
 		}
 
-		if len(carIDs) > 0 {
+		if len(selections) > 0 {
+			carIDs := make([]string, 0, len(selections))
+			for _, selection := range selections {
+				carIDs = append(carIDs, selection.CarID)
+			}
 			var count int64
 			if err := tx.Model(&model.Car{}).Where("id IN ?", carIDs).Count(&count).Error; err != nil {
 				return err
@@ -47,11 +51,7 @@ func (r *FeaturedCarRepository) Replace(ctx context.Context, carIDs []string) ([
 		if err := tx.Exec("DELETE FROM featured_cars").Error; err != nil {
 			return err
 		}
-		if len(carIDs) > 0 {
-			selections := make([]model.FeaturedCar, 0, len(carIDs))
-			for index, id := range carIDs {
-				selections = append(selections, model.FeaturedCar{Position: index + 1, CarID: id})
-			}
+		if len(selections) > 0 {
 			if err := tx.Create(&selections).Error; err != nil {
 				return err
 			}
@@ -64,15 +64,15 @@ func (r *FeaturedCarRepository) Replace(ctx context.Context, carIDs []string) ([
 	return cars, err
 }
 
-func listFeaturedCars(db *gorm.DB, activeOnly bool) ([]model.Car, error) {
+func listFeaturedCars(db *gorm.DB, activeOnly bool) ([]model.FeaturedCarSelection, error) {
 	query := withCarCover(db.Model(&model.Car{})).
-		Select("cars.*").
+		Select("cars.*, featured_cars.position").
 		Joins("JOIN featured_cars ON featured_cars.car_id = cars.id").
 		Order("featured_cars.position")
 	if activeOnly {
 		query = query.Where("cars.status = ?", model.CarActive)
 	}
-	var cars []model.Car
+	var cars []model.FeaturedCarSelection
 	err := query.Find(&cars).Error
 	return cars, err
 }

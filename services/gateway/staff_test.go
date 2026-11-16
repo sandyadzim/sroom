@@ -194,7 +194,7 @@ func TestStaffCustomerStatus(t *testing.T) {
 func TestStaffFeaturedCarsRoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	const origin = "https://staff.example.test"
-	const payload = `{"car_ids":[]}`
+	const payload = `{"car_ids":[null,null,"00000000-0000-4000-8000-000000000001"]}`
 	t.Setenv("WEB_ORIGINS", origin)
 	upstream := testUpstream(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/catalog/admin/featured-cars" || r.Header.Get("Authorization") != "Bearer fixture-session" {

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Catalog API
-  version: 1.7.0
+  version: 1.8.0
   description: |
     The local gateway forwards the same Catalog API. An incoming X-Request-ID
     with 1-64 ASCII letters, digits, underscores, or hyphens is preserved.
@@ -227,7 +227,7 @@ paths:
         - bearerAuth: []
       responses:
         '200':
-          description: Selected cars in display order, including their current status.
+          description: Occupied slots in display order, including each car's saved position and current status.
           content:
             application/json:
               schema:
@@ -241,7 +241,7 @@ paths:
     put:
       operationId: replaceFeaturedCars
       summary: Replace the Featured Cars selection (OWNER or ADMIN)
-      description: Array order defines display order. Send an empty array to clear the selection. Inactive cars are retained in the admin selection and excluded from public results.
+      description: Array indexes correspond to slots 1 to 3. Use null to leave a slot empty. Omitted trailing slots are empty. Send an empty array to clear all slots. Non-null car IDs must be distinct. Inactive cars are retained in the admin selection and excluded from public results.
       security:
         - bearerAuth: []
       requestBody:
@@ -256,11 +256,11 @@ paths:
                 car_ids:
                   type: array
                   maxItems: 3
-                  uniqueItems: true
-                  items: { type: string, format: uuid }
+                  items: { type: string, format: uuid, nullable: true }
+                  example: ["00000000-0000-4000-8000-000000000001", null, "00000000-0000-4000-8000-000000000002"]
       responses:
         '200':
-          description: Saved selection in the submitted order.
+          description: Occupied slots with their saved positions.
           content:
             application/json:
               schema:
@@ -797,8 +797,9 @@ components:
         allOf:
           - $ref: '#/components/schemas/CarCard'
           - type: object
-            required: [status]
+            required: [position, status]
             properties:
+              position: { type: integer, minimum: 1, maximum: 3 }
               status: { type: string, enum: [active, inactive] }
     AdminCarCard:
       allOf:

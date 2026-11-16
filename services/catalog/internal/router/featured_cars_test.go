@@ -27,7 +27,7 @@ func TestFeaturedCarsAuthorizationAndInput(t *testing.T) {
 	for _, body := range []string{
 		`{}`,
 		`{"car_ids":null}`,
-		`{"car_ids":[null]}`,
+		`{"car_ids":[null,null,null,null]}`,
 		`{"car_ids":"invalid"}`,
 		`{"car_ids":["invalid"]}`,
 		`{"car_ids":[],"status":"active"}`,
@@ -56,8 +56,8 @@ func TestFeaturedCarsPostgres(t *testing.T) {
 	}
 	first, second, third, fourth := variants[0].ID, variants[1].ID, variants[2].ID, variants[3].ID
 
-	payload := func(ids ...string) string {
-		return carJSON(t, dto.UpdateFeaturedCarsRequest{CarIDs: ids})
+	payload := func(ids ...any) string {
+		return carJSON(t, map[string]any{"car_ids": ids})
 	}
 	var saved struct {
 		Data    []dto.AdminFeaturedCar
@@ -74,6 +74,32 @@ func TestFeaturedCarsPostgres(t *testing.T) {
 		public.Data[0].Cover == nil || public.Data[0].Cover.URL == nil || *public.Data[0].Cover.URL != "https://assets.example.test/"+uploadedKey {
 		t.Fatalf("expected only selected cars in order with Catalog cover data: %+v", public.Data)
 	}
+
+	assertGap := func(body []byte) {
+		t.Helper()
+		decodeCarJSON(t, body, &saved)
+		if len(saved.Data) != 2 || saved.Data[0].ID != third || saved.Data[0].Position != 1 ||
+			saved.Data[1].ID != second || saved.Data[1].Position != 3 {
+			t.Fatalf("clearing position 2 must preserve positions 1 and 3: %s", body)
+		}
+	}
+	assertGap(catalogRequest(t, router, "PUT", adminFeaturedPath, "ADMIN", payload(third, nil, second), 200))
+	assertGap(catalogRequest(t, router, "GET", adminFeaturedPath, "ADMIN", "", 200))
+	decodeCarJSON(t, catalogRequest(t, router, "GET", publicFeaturedPath, "", "", 200), &public)
+	if len(public.Data) != 2 || public.Data[0].ID != third || public.Data[1].ID != second {
+		t.Fatalf("the public list should skip the empty slot: %+v", public.Data)
+	}
+	catalogRequest(t, router, "PUT", adminFeaturedPath, "ADMIN", payload(third, second, nil), 200)
+	decodeCarJSON(t, catalogRequest(t, router, "GET", adminFeaturedPath, "ADMIN", "", 200), &saved)
+	if len(saved.Data) != 2 || saved.Data[1].ID != second || saved.Data[1].Position != 2 {
+		t.Fatalf("moving the car into an empty slot must save its new position: %+v", saved.Data)
+	}
+	catalogRequest(t, router, "PUT", adminFeaturedPath, "ADMIN", payload(nil, nil, second), 200)
+	decodeCarJSON(t, catalogRequest(t, router, "GET", adminFeaturedPath, "ADMIN", "", 200), &saved)
+	if len(saved.Data) != 1 || saved.Data[0].ID != second || saved.Data[0].Position != 3 {
+		t.Fatalf("multiple empty slots must preserve the remaining position: %+v", saved.Data)
+	}
+	catalogRequest(t, router, "PUT", adminFeaturedPath, "ADMIN", payload(third, first, second), 200)
 
 	catalogRequest(t, router, "PUT", adminFeaturedPath, "ADMIN", payload(first, strings.ToUpper(first)), 400)
 	catalogRequest(t, router, "PUT", adminFeaturedPath, "ADMIN", payload(first, second, third, fourth), 400)
@@ -100,7 +126,7 @@ func TestFeaturedCarsPostgres(t *testing.T) {
 	}
 
 	// Replacements starting from an empty table must each succeed as a complete list.
-	catalogRequest(t, router, "PUT", adminFeaturedPath, "ADMIN", `{"car_ids":[]}`, 200)
+	catalogRequest(t, router, "PUT", adminFeaturedPath, "ADMIN", `{"car_ids":[null,null,null]}`, 200)
 	bodies := []string{payload(first, second), payload(third, fourth)}
 	var writes sync.WaitGroup
 	for _, body := range bodies {
