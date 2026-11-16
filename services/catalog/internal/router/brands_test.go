@@ -43,10 +43,10 @@ func (testImages) ImageExists(_ context.Context, key string) (bool, error) {
 func newBrandTestRouter(t *testing.T, repo *repository.BrandRepository) *gin.Engine {
 	t.Helper()
 	brandHandler := handler.NewBrandHandler(service.NewBrandService(repo, testImages{}, "https://assets.example.test/"))
-	return newCatalogTestRouter(t, brandHandler, handler.NewBannerHandler(nil), handler.NewCarHandler(nil), nil)
+	return newCatalogTestRouter(t, brandHandler, handler.NewBannerHandler(nil), handler.NewCarHandler(nil), nil, nil)
 }
 
-func newCatalogTestRouter(t *testing.T, brands *handler.BrandHandler, banners *handler.BannerHandler, cars *handler.CarHandler, featuredCars *handler.FeaturedCarHandler) *gin.Engine {
+func newCatalogTestRouter(t *testing.T, brands *handler.BrandHandler, banners *handler.BannerHandler, cars *handler.CarHandler, featuredCars *handler.FeaturedCarHandler, units *handler.CarUnitHandler) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	identityServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +62,7 @@ func newCatalogTestRouter(t *testing.T, brands *handler.BrandHandler, banners *h
 	if err != nil {
 		t.Fatal(err)
 	}
-	router, err := New(client, brands, banners, cars, featuredCars, nil)
+	router, err := New(client, brands, banners, cars, featuredCars, units, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,6 +280,7 @@ func catalogTestDatabase(t *testing.T) *gorm.DB {
 		"000008_order_car_images.up.sql",
 		"000009_link_banners_to_cars.up.sql",
 		"000010_create_featured_cars.up.sql",
+		"000011_create_car_units.up.sql",
 	} {
 		sql, err := os.ReadFile("../../migrations/" + file)
 		if err != nil {

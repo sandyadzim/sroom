@@ -60,6 +60,10 @@ func TestRoutes(t *testing.T) {
 		{"catalog", "POST", "/admin/cars"},
 		{"catalog", "GET", "/admin/cars/test-id"},
 		{"catalog", "PATCH", "/admin/cars/test-id"},
+		{"catalog", "GET", "/admin/cars/test-id/units?status=active"},
+		{"catalog", "POST", "/admin/cars/test-id/units"},
+		{"catalog", "GET", "/admin/units/test-id"},
+		{"catalog", "PATCH", "/admin/units/test-id"},
 	} {
 		path := "/api/v1/" + test.service + test.path
 		t.Run(test.method+" "+path, func(t *testing.T) {

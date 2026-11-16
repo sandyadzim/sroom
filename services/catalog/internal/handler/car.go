@@ -39,7 +39,7 @@ func (h *CarHandler) List(c *gin.Context) {
 }
 
 func (h *CarHandler) Detail(c *gin.Context) {
-	id, ok := readCarID(c, "id")
+	id, ok := readUUIDParam(c, "id")
 	if !ok {
 		return
 	}
@@ -53,7 +53,7 @@ func (h *CarHandler) Detail(c *gin.Context) {
 
 func (h *CarHandler) Create(c *gin.Context) {
 	var req dto.CreateCarRequest
-	if !readCarJSON(c, &req) {
+	if !readNonNullJSON(c, &req, "car") {
 		return
 	}
 	result, err := h.service.Create(c.Request.Context(), req)
@@ -65,12 +65,12 @@ func (h *CarHandler) Create(c *gin.Context) {
 }
 
 func (h *CarHandler) Update(c *gin.Context) {
-	id, ok := readCarID(c, "id")
+	id, ok := readUUIDParam(c, "id")
 	if !ok {
 		return
 	}
 	var req dto.UpdateCarRequest
-	if !readCarJSON(c, &req) {
+	if !readNonNullJSON(c, &req, "car") {
 		return
 	}
 	result, err := h.service.Update(c.Request.Context(), id, req)
@@ -134,7 +134,7 @@ func (h *CarHandler) ListPublicBrands(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
-func readCarID(c *gin.Context, param string) (string, bool) {
+func readUUIDParam(c *gin.Context, param string) (string, bool) {
 	id := c.Param(param)
 	if len(id) != 36 || uuid.Validate(id) != nil {
 		response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", param+" must be a UUID")
@@ -143,7 +143,7 @@ func readCarID(c *gin.Context, param string) (string, bool) {
 	return id, true
 }
 
-func readCarJSON(c *gin.Context, target any) bool {
+func readNonNullJSON(c *gin.Context, target any, resource string) bool {
 	var raw json.RawMessage
 	if !readJSON(c, &raw) {
 		return false
@@ -155,14 +155,14 @@ func readCarJSON(c *gin.Context, target any) bool {
 	}
 	for _, value := range fields {
 		if bytes.Equal(value, []byte("null")) {
-			response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", "car fields must not be null")
+			response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", resource+" fields must not be null")
 			return false
 		}
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {
-		response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", "invalid car JSON")
+		response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", "invalid "+resource+" JSON")
 		return false
 	}
 	return true

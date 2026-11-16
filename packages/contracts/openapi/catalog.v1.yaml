@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Catalog API
-  version: 1.6.0
+  version: 1.7.0
   description: |
     The local gateway forwards the same Catalog API. An incoming X-Request-ID
     with 1-64 ASCII letters, digits, underscores, or hyphens is preserved.
@@ -389,6 +389,117 @@ paths:
           $ref: '#/components/responses/CarSaved'
         default:
           $ref: '#/components/responses/Error'
+  /api/v1/catalog/admin/cars/{id}/units:
+    parameters:
+      - $ref: '#/components/parameters/CarUnitID'
+    get:
+      operationId: listCarUnits
+      summary: List the physical units belonging to a car (OWNER or ADMIN)
+      description: Newest units first. An existing car with no matching units returns an empty page.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, inactive, ''] }
+          description: Omit or leave empty to list both statuses.
+        - $ref: '#/components/parameters/CarPage'
+        - $ref: '#/components/parameters/CarLimit'
+      responses:
+        '200':
+          description: Page of physical units for the selected car.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, page]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CarUnit'
+                  page:
+                    $ref: '#/components/schemas/CarPage'
+        '404':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: createCarUnit
+      summary: Create a physical unit for a car (OWNER or ADMIN)
+      description: Unit codes are unique across Catalog regardless of case. Unknown cars return CAR_NOT_FOUND.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [internal_code]
+              additionalProperties: false
+              properties:
+                internal_code:
+                  $ref: '#/components/schemas/CarUnitCode'
+                status: { type: string, enum: [active, inactive], default: inactive }
+      responses:
+        '201':
+          $ref: '#/components/responses/CarUnitSaved'
+        '409':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/catalog/admin/units/{id}:
+    parameters:
+      - $ref: '#/components/parameters/CarUnitID'
+    get:
+      operationId: getCarUnit
+      summary: Read a physical unit (OWNER or ADMIN)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Physical unit identified by its own ID.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CarUnit'
+        '404':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+    patch:
+      operationId: updateCarUnit
+      summary: Update a physical unit's code or status (OWNER or ADMIN)
+      description: Send at least one field. The parent car stays fixed. A duplicate internal code returns CAR_UNIT_CODE_TAKEN.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                internal_code:
+                  $ref: '#/components/schemas/CarUnitCode'
+                status:
+                  $ref: '#/components/schemas/CarUnitStatus'
+      responses:
+        '200':
+          $ref: '#/components/responses/CarUnitSaved'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /api/v1/catalog/cars:
     get:
       operationId: listPublicCars
@@ -538,6 +649,11 @@ components:
       in: query
       description: Recommended means newest first, with descending ID as the tiebreaker.
       schema: { type: string, default: recommended, enum: [recommended, price-asc, price-desc, name-asc] }
+    CarUnitID:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
     CarPage:
       name: page
       in: query
@@ -617,6 +733,26 @@ components:
             id: { type: string, format: uuid }
             object_key: { type: string }
             kind: { type: string, enum: [cover, gallery] }
+    CarUnit:
+      type: object
+      required: [id, car_id, internal_code, status, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        car_id: { type: string, format: uuid }
+        internal_code:
+          $ref: '#/components/schemas/CarUnitCode'
+        status:
+          $ref: '#/components/schemas/CarUnitStatus'
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CarUnitCode:
+      type: string
+      minLength: 1
+      maxLength: 100
+      description: Trim leading and trailing whitespace before storage. The trimmed code cannot be blank or contain control characters.
+    CarUnitStatus:
+      type: string
+      enum: [active, inactive]
     CarCard:
       type: object
       required: [id, brand_id, brand_name, model, trim, slug, category, seats, transmission, daily_rate_idr, cover]
@@ -867,6 +1003,17 @@ components:
               message: { type: string }
               data:
                 $ref: '#/components/schemas/Brand'
+    CarUnitSaved:
+      description: Saved physical unit.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [message, data]
+            properties:
+              message: { type: string }
+              data:
+                $ref: '#/components/schemas/CarUnit'
     Error:
       description: |
         400 invalid input or image key, 401 invalid or missing session, 403 role denied,

@@ -39,6 +39,8 @@ Local base URL is `http://localhost:8082/api/v1/catalog`. Admin routes require a
 | GET | `/admin/banners` | OWNER/ADMIN |
 | GET, PUT, DELETE | `/admin/banners/{position}` | OWNER/ADMIN |
 | GET, PUT | `/admin/featured-cars` | OWNER/ADMIN |
+| GET, POST | `/admin/cars/{id}/units` | OWNER/ADMIN |
+| GET, PATCH | `/admin/units/{id}` | OWNER/ADMIN |
 | POST | `/admin/images` | OWNER/ADMIN |
 
 - Upload files through `/admin/images`, then submit the returned object keys with the Car, Brand, or Banner data. Creating a Car requires one cover and at least one gallery photo.
@@ -46,6 +48,8 @@ Local base URL is `http://localhost:8082/api/v1/catalog`. Admin routes require a
 - The Hero has three fixed slots. Save a slot with `car_id` and banner copy and image. Filled slots stay visible if the linked Car is inactive. Existing manual Brand, model, and slug inputs remain supported.
 
 - Featured Cars accepts up to three Car IDs in display order. Inactive selections stay in the admin list and are skipped in the public list.
+
+- Physical units have a unique case-insensitive internal code and default to inactive. Unit records appear only in admin APIs.
 
 See [OpenAPI](../../packages/contracts/openapi/catalog.v1.yaml) for the contract and [DEVELOPMENT.md](DEVELOPMENT.md) for Bruno examples.
 

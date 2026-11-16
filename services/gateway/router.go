@@ -81,6 +81,10 @@ func registerCatalogAdmin(admin *gin.RouterGroup, catalog, upload gin.HandlerFun
 	admin.POST("/cars", catalog)
 	admin.GET("/cars/:id", catalog)
 	admin.PATCH("/cars/:id", catalog)
+	admin.GET("/cars/:id/units", catalog)
+	admin.POST("/cars/:id/units", catalog)
+	admin.GET("/units/:id", catalog)
+	admin.PATCH("/units/:id", catalog)
 	admin.GET("/featured-cars", catalog)
 	admin.PUT("/featured-cars", catalog)
 }

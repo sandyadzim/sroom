@@ -32,7 +32,7 @@ func parseCarFilters(query url.Values, admin bool) (model.CarFilter, bool) {
 	filters := model.CarFilter{
 		Search: strings.TrimSpace(query.Get("search")), BrandID: query.Get("brand_id"),
 		Category: query.Get("category"), Transmission: query.Get("transmission"),
-		Status: query.Get("status"), Sort: query.Get("sort"), Page: 1, Limit: 20,
+		Status: query.Get("status"), Sort: query.Get("sort"),
 	}
 	for key := range query {
 		switch key {
@@ -53,21 +53,9 @@ func parseCarFilters(query url.Values, admin bool) (model.CarFilter, bool) {
 		!slices.Contains([]string{"", "recommended", "price-asc", "price-desc", "name-asc"}, filters.Sort) {
 		return filters, false
 	}
-	if query.Has("page") {
-		page, err := strconv.Atoi(query.Get("page"))
-		if err != nil || page < 1 {
-			return filters, false
-		}
-		filters.Page = page
-	}
-	if query.Has("limit") {
-		limit, err := strconv.Atoi(query.Get("limit"))
-		if err != nil || limit < 1 || limit > 100 {
-			return filters, false
-		}
-		filters.Limit = limit
-	}
-	if filters.Page-1 > math.MaxInt/filters.Limit {
+	var ok bool
+	filters.Page, filters.Limit, ok = parsePagination(query)
+	if !ok {
 		return filters, false
 	}
 	if query.Has("seats") {
@@ -95,4 +83,26 @@ func parseCarFilters(query url.Values, admin bool) (model.CarFilter, bool) {
 		return filters, false
 	}
 	return filters, true
+}
+
+func parsePagination(query url.Values) (int, int, bool) {
+	pageNumber, pageLimit := 1, 20
+	if query.Has("page") {
+		page, err := strconv.Atoi(query.Get("page"))
+		if err != nil || page < 1 {
+			return 0, 0, false
+		}
+		pageNumber = page
+	}
+	if query.Has("limit") {
+		limit, err := strconv.Atoi(query.Get("limit"))
+		if err != nil || limit < 1 || limit > 100 {
+			return 0, 0, false
+		}
+		pageLimit = limit
+	}
+	if pageNumber-1 > math.MaxInt/pageLimit {
+		return 0, 0, false
+	}
+	return pageNumber, pageLimit, true
 }

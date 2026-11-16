@@ -19,7 +19,7 @@ const publicFeaturedPath = "/api/v1/catalog/home/featured-cars"
 
 func TestFeaturedCarsAuthorizationAndInput(t *testing.T) {
 	featured := handler.NewFeaturedCarHandler(service.NewFeaturedCarService(nil, ""))
-	router := newCatalogTestRouter(t, nil, nil, nil, featured)
+	router := newCatalogTestRouter(t, nil, nil, nil, featured, nil)
 	for _, method := range []string{"GET", "PUT"} {
 		catalogRequest(t, router, method, adminFeaturedPath, "", "", 401)
 		catalogRequest(t, router, method, adminFeaturedPath, "CUSTOMER", "", 403)
@@ -41,7 +41,7 @@ func TestFeaturedCarsPostgres(t *testing.T) {
 	brand := createCarTestBrand(t, repository.NewBrandRepository(db), "Toyota")
 	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db), carTestImages{}, ""))
 	featured := handler.NewFeaturedCarHandler(service.NewFeaturedCarService(repository.NewFeaturedCarRepository(db), "https://assets.example.test/"))
-	router := newCatalogTestRouter(t, nil, nil, cars, featured)
+	router := newCatalogTestRouter(t, nil, nil, cars, featured, nil)
 
 	if body := catalogRequest(t, router, "GET", publicFeaturedPath, "", "", 200); string(body) != `{"data":[]}` {
 		t.Fatalf("expected an empty public list: %s", body)

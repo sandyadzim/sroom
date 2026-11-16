@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func New(identityClient *identity.Client, brands *handler.BrandHandler, banners *handler.BannerHandler, cars *handler.CarHandler, featuredCars *handler.FeaturedCarHandler, imageStore handler.ImageStore) (*gin.Engine, error) {
+func New(identityClient *identity.Client, brands *handler.BrandHandler, banners *handler.BannerHandler, cars *handler.CarHandler, featuredCars *handler.FeaturedCarHandler, units *handler.CarUnitHandler, imageStore handler.ImageStore) (*gin.Engine, error) {
 	engine := gin.New()
 	if err := engine.SetTrustedProxies(nil); err != nil {
 		return nil, err
@@ -59,6 +59,12 @@ func New(identityClient *identity.Client, brands *handler.BrandHandler, banners 
 	carRoutes.POST("", cars.Create)
 	carRoutes.GET("/:id", cars.Detail)
 	carRoutes.PATCH("/:id", cars.Update)
+	carRoutes.GET("/:id/units", units.List)
+	carRoutes.POST("/:id/units", units.Create)
+
+	unitRoutes := admin.Group("/units", defaultBodyLimit)
+	unitRoutes.GET("/:id", units.Detail)
+	unitRoutes.PATCH("/:id", units.Update)
 
 	featuredRoutes := admin.Group("/featured-cars", defaultBodyLimit)
 	featuredRoutes.GET("", featuredCars.List)

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.3.0
+  version: 1.4.0
   description: |
     Local entry point for the documented Identity and Catalog routes.
     Request and response schemas are owned by those services. The gateway forwards
@@ -69,6 +69,10 @@ paths:
     $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars'
   /api/v1/catalog/admin/cars/{id}:
     $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars~1{id}'
+  /api/v1/catalog/admin/cars/{id}/units:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars~1{id}~1units'
+  /api/v1/catalog/admin/units/{id}:
+    $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1units~1{id}'
   /api/v1/catalog/cars:
     $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1cars'
   /api/v1/catalog/cars/{slug}:
@@ -445,6 +449,60 @@ paths:
       responses:
         '200':
           $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars~1{id}/patch/responses/200'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+  /api/v1/staff/catalog/admin/cars/{id}/units:
+    parameters:
+      - $ref: './catalog.v1.yaml#/components/parameters/CarUnitID'
+    get:
+      operationId: staffListCarUnits
+      summary: List units for a car (OWNER or ADMIN)
+      security:
+        - staffCookie: []
+      parameters:
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars~1{id}~1units/get/parameters/0'
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars~1{id}~1units/get/parameters/1'
+        - $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars~1{id}~1units/get/parameters/2'
+      responses:
+        '200':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars~1{id}~1units/get/responses/200'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+    post:
+      operationId: staffCreateCarUnit
+      summary: Create a physical unit (OWNER or ADMIN)
+      security:
+        - staffCookie: []
+      requestBody:
+        $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars~1{id}~1units/post/requestBody'
+      responses:
+        '201':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1cars~1{id}~1units/post/responses/201'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+  /api/v1/staff/catalog/admin/units/{id}:
+    parameters:
+      - $ref: './catalog.v1.yaml#/components/parameters/CarUnitID'
+    get:
+      operationId: staffGetCarUnit
+      summary: Read a physical unit (OWNER or ADMIN)
+      security:
+        - staffCookie: []
+      responses:
+        '200':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1units~1{id}/get/responses/200'
+        default:
+          $ref: './catalog.v1.yaml#/components/responses/Error'
+    patch:
+      operationId: staffUpdateCarUnit
+      summary: Update unit code or status (OWNER or ADMIN)
+      security:
+        - staffCookie: []
+      requestBody:
+        $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1units~1{id}/patch/requestBody'
+      responses:
+        '200':
+          $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1admin~1units~1{id}/patch/responses/200'
         default:
           $ref: './catalog.v1.yaml#/components/responses/Error'
 components:

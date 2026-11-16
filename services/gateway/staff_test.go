@@ -219,3 +219,30 @@ func TestStaffFeaturedCarsRoutes(t *testing.T) {
 		}
 	}
 }
+
+func TestStaffCarUnitRoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	const origin = "https://staff.example.test"
+	t.Setenv("WEB_ORIGINS", origin)
+	upstream := testUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer fixture-session" {
+			t.Error("expected translated staff session")
+		}
+		_, _ = io.WriteString(w, r.Method+" "+r.URL.RequestURI())
+	})
+	app := newRouter(upstream, upstream, testLogger())
+	for _, route := range []struct{ method, path string }{
+		{"GET", "/catalog/admin/cars/test-id/units?status=active"},
+		{"POST", "/catalog/admin/cars/test-id/units"},
+		{"GET", "/catalog/admin/units/test-id"},
+		{"PATCH", "/catalog/admin/units/test-id"},
+	} {
+		req := httptest.NewRequest(route.method, staffPath+route.path, nil)
+		req.Header.Set("Origin", origin)
+		req.AddCookie(&http.Cookie{Name: staffCookieName, Value: "fixture-session"})
+		res := request(app, req)
+		if res.Code != http.StatusOK || res.Body.String() != route.method+" /api/v1"+route.path {
+			t.Fatalf("%s %s: unexpected proxy response %d %s", route.method, route.path, res.Code, res.Body)
+		}
+	}
+}
