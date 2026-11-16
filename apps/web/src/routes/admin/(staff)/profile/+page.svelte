@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import AdminDetailRow from '#lib/components/admin/AdminDetailRow.svelte';
+	import AdminDetailSection from '#lib/components/admin/AdminDetailSection.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { staffProfileQuery } from '#lib/queries/identity.ts';
@@ -23,21 +25,11 @@
 
 <h1 class="text-3xl/10 font-bold tracking-tight sm:text-4xl/12">Profile</h1>
 
-<section
-	aria-labelledby="account-details"
-	class="mt-8 grid gap-4 border-t border-line pt-6 lg:grid-cols-[minmax(12rem,1fr)_minmax(0,2fr)] lg:gap-8"
->
-	<h2 id="account-details" class="text-lg/7 font-semibold">Account details</h2>
-
-	<dl class="min-w-0 divide-y divide-line rounded-xl bg-page px-4 sm:px-5">
-		{#each fields as { label, value } (label)}
-			<div class="grid gap-1 py-4 text-sm/6 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-4">
-				<dt class="text-ink-muted">{label}</dt>
-				<dd class="font-medium wrap-anywhere">{value}</dd>
-			</div>
-		{/each}
-	</dl>
-</section>
+<AdminDetailSection title="Account details">
+	{#each fields as { label, value } (label)}
+		<AdminDetailRow {label}>{value}</AdminDetailRow>
+	{/each}
+</AdminDetailSection>
 
 <section
 	aria-labelledby="password-heading"

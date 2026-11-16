@@ -134,7 +134,7 @@
 <div class="max-w-6xl">
 	<header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
 		<div>
-			<h1 class="text-2xl/8 font-bold tracking-tight sm:text-3xl/10">Featured Cars</h1>
+			<h1 class="text-3xl/10 font-bold tracking-tight sm:text-4xl/12">Featured Cars</h1>
 			<p class="mt-2 text-sm/6 text-ink-muted">
 				Choose up to three cars and set their display order.
 			</p>

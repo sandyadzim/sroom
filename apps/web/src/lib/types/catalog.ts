@@ -150,3 +150,16 @@ export type CarFields = Pick<
 export type CreateCarInput = CarFields & { cover: CarPhotoInput; gallery: CarPhotoInput[] };
 export type UpdateCarInput = Partial<CreateCarInput>;
 export type SavedCar = { data: AdminCarDetail; message: string };
+
+export type CarUnit = {
+	id: string;
+	car_id: string;
+	internal_code: string;
+	status: 'active' | 'inactive';
+	created_at: string;
+	updated_at: string;
+};
+
+export type CreateCarUnitInput = Pick<CarUnit, 'internal_code' | 'status'>;
+export type UpdateCarUnitInput = Partial<CreateCarUnitInput>;
+export type SavedCarUnit = { data: CarUnit; message: string };

@@ -8,6 +8,7 @@
 	import { carsEndpoint, createCar, updateCar } from '#lib/api/catalog/car.ts';
 	import { uploadCatalogImage } from '#lib/api/catalog/image.ts';
 	import { getApiError } from '#lib/api/staff.ts';
+	import AdminFormActions from '#lib/components/admin/AdminFormActions.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import NumberField from '#lib/components/ui/NumberField.svelte';
 	import SelectField from '#lib/components/ui/SelectField.svelte';
@@ -304,7 +305,7 @@
 	}
 </script>
 
-<form bind:this={form} class="mt-6 max-w-2xl" novalidate onsubmit={submit}>
+<form bind:this={form} class="mt-6 max-w-2xl" novalidate aria-busy={busy} onsubmit={submit}>
 	<ol aria-label="Car form steps" class="grid grid-cols-4 gap-1 border-b border-line pb-3 sm:gap-2">
 		{#each steps as item, index (item.label)}
 			<li
@@ -510,7 +511,11 @@
 		{/if}
 	</section>
 
-	<div class="mt-6 flex flex-wrap items-center gap-2">
+	<AdminFormActions>
+		<Button href={cancelHref} variant="ghost">Cancel</Button>
+		{#if step > 0}
+			<Button variant="secondary" disabled={busy} onclick={() => goToStep(step - 1)}>Back</Button>
+		{/if}
 		<Button type="submit" disabled={blocked}>
 			{step < imageStep
 				? 'Continue'
@@ -520,11 +525,7 @@
 						? 'Save changes'
 						: 'Create car'}
 		</Button>
-		{#if step > 0}
-			<Button variant="secondary" disabled={busy} onclick={() => goToStep(step - 1)}>Back</Button>
-		{/if}
-		<Button href={cancelHref} variant="ghost">Cancel</Button>
-	</div>
+	</AdminFormActions>
 </form>
 
 {#snippet stepMarker(index: number)}

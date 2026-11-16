@@ -9,6 +9,7 @@
 		updateAdminAccount
 	} from '#lib/api/identity/admin.ts';
 	import { getApiError } from '#lib/api/staff.ts';
+	import AdminFormActions from '#lib/components/admin/AdminFormActions.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import SelectField from '#lib/components/ui/SelectField.svelte';
 	import TextField from '#lib/components/ui/TextField.svelte';
@@ -191,7 +192,8 @@
 		/>
 	</div>
 
-	<div class="mt-6 flex flex-wrap items-center gap-3">
+	<AdminFormActions>
+		<Button href={cancelHref} variant="secondary">Cancel</Button>
 		<Button type="submit" disabled={saveAdmin.isPending || !hasChanges}>
 			{#if saveAdmin.isPending}
 				{isCreate ? 'Creating admin…' : 'Saving changes…'}
@@ -199,6 +201,5 @@
 				{isCreate ? 'Create admin' : 'Save changes'}
 			{/if}
 		</Button>
-		<Button href={cancelHref} variant="ghost">Cancel</Button>
-	</div>
+	</AdminFormActions>
 </form>

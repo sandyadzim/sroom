@@ -6,6 +6,8 @@
 	import { fetchCustomer } from '#lib/api/identity/customer.ts';
 	import { getApiError } from '#lib/api/staff.ts';
 	import CustomerStatusForm from '#lib/components/admin/CustomerStatusForm.svelte';
+	import AdminDetailRow from '#lib/components/admin/AdminDetailRow.svelte';
+	import AdminDetailSection from '#lib/components/admin/AdminDetailSection.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Link from '#lib/components/ui/Link.svelte';
 	import { formatWitaDateTime } from '#lib/utils/date.ts';
@@ -63,38 +65,23 @@
 	</div>
 {:else if account.isSuccess}
 	{@const customer = account.data}
-	<section
-		aria-labelledby="customer-account-details"
-		class="mt-6 grid gap-4 border-t border-line pt-6 lg:grid-cols-[minmax(12rem,1fr)_minmax(0,2fr)] lg:gap-8"
-	>
-		<h2 id="customer-account-details" class="text-lg/7 font-semibold">Account details</h2>
-		<dl class="min-w-0 divide-y divide-line rounded-xl bg-page px-4 sm:px-5">
-			{@render detailRow('Full name', customer.full_name.trim() || '—')}
-			{@render detailRow('Email', customer.email)}
-			{@render detailRow('Account ID', customer.id)}
-			{@render detailRow(
-				'Registered at',
-				formatWitaDateTime(customer.created_at),
-				customer.created_at
-			)}
-			{@render detailRow(
-				'Last updated',
-				formatWitaDateTime(customer.updated_at),
-				customer.updated_at
-			)}
-		</dl>
-	</section>
+	<AdminDetailSection title="Account details">
+		<AdminDetailRow label="Full name">{customer.full_name.trim() || '—'}</AdminDetailRow>
+		<AdminDetailRow label="Email">{customer.email}</AdminDetailRow>
+		<AdminDetailRow label="Account ID">{customer.id}</AdminDetailRow>
+		<AdminDetailRow label="Registered at">
+			<time datetime={customer.created_at} class="tabular-nums"
+				>{formatWitaDateTime(customer.created_at)}</time
+			>
+		</AdminDetailRow>
+		<AdminDetailRow label="Last updated">
+			<time datetime={customer.updated_at} class="tabular-nums"
+				>{formatWitaDateTime(customer.updated_at)}</time
+			>
+		</AdminDetailRow>
+	</AdminDetailSection>
 
 	{#key customer.id}
 		<CustomerStatusForm {customer} />
 	{/key}
 {/if}
-
-{#snippet detailRow(label: string, value: string, datetime?: string)}
-	<div class="grid gap-1 py-4 text-sm/6 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-4">
-		<dt class="text-ink-muted">{label}</dt>
-		<dd class="font-medium wrap-anywhere">
-			{#if datetime}<time {datetime} class="tabular-nums">{value}</time>{:else}{value}{/if}
-		</dd>
-	</div>
-{/snippet}

@@ -14,12 +14,15 @@ function carPath(id: string) {
 	return `${carsEndpoint}/${encodeURIComponent(id)}`;
 }
 
-export async function fetchActiveCarsForSelect(search: string, signal?: AbortSignal) {
+export async function fetchCarsForSelect(
+	{ search, status }: { search?: string; status?: AdminCar['status'] },
+	signal?: AbortSignal
+) {
 	const cars: AdminCar[] = [];
 	const limit = 100;
 	for (let page = 1; ; page += 1) {
 		const { data } = await staffApi.get<TablePage<AdminCar>>(carsEndpoint, {
-			params: { page, limit, sort: 'name-asc', status: 'active', search: search || undefined },
+			params: { page, limit, sort: 'name-asc', status, search: search || undefined },
 			signal
 		});
 		cars.push(...data.data);

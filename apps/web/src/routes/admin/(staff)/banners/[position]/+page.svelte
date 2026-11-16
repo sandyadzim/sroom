@@ -32,7 +32,7 @@
 	<ArrowLeft size={16} strokeWidth={1.5} aria-hidden="true" />
 	Back to banners
 </Link>
-<h1 class="mt-2 text-2xl/8 font-bold tracking-tight sm:text-3xl/10">
+<h1 class="mt-2 text-3xl/10 font-bold tracking-tight sm:text-4xl/12">
 	{title}{#if position}<span class="text-ink-muted">{` · Slot ${position}`}</span>{/if}
 </h1>
 

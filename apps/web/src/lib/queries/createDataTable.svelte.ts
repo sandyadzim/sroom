@@ -99,7 +99,8 @@ export function createDataTable<Row>(getConfig: () => DataTableConfig<Row>) {
 	}
 
 	function buildSearch(filterSearch: string, nextPage: number, limit: number) {
-		const search = new SvelteURLSearchParams(filterSearch);
+		const search = new SvelteURLSearchParams(config.urlContext);
+		for (const [key, value] of new SvelteURLSearchParams(filterSearch)) search.set(key, value);
 		if (nextPage > 1) search.set('page', String(nextPage));
 		if (limit !== config.pageSize) search.set('limit', String(limit));
 		return search.toString();

@@ -13,7 +13,7 @@
 </svelte:head>
 
 <div class="mb-7">
-	<h1 class="text-2xl/8 font-bold tracking-tight sm:text-3xl/10">Banners</h1>
+	<h1 class="text-3xl/10 font-bold tracking-tight sm:text-4xl/12">Banners</h1>
 	<p class="mt-2 text-sm/6 text-ink-muted">
 		Manage the three positions in the homepage hero. Slot numbers set the display order.
 	</p>

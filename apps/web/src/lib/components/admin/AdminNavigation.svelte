@@ -39,7 +39,6 @@
 	} = $props();
 
 	const operations = [
-		{ label: 'Physical units', icon: Warehouse },
 		{ label: 'Bookings', icon: CalendarDays },
 		{ label: 'Payments', icon: CreditCard },
 		{ label: 'Reports', icon: ChartColumn }
@@ -47,6 +46,7 @@
 	const catalogLinks = [
 		{ label: 'Brands', icon: Tag, route: '/admin/(staff)/brands' },
 		{ label: 'Cars', icon: CarFront, route: '/admin/(staff)/cars' },
+		{ label: 'Physical units', icon: Warehouse, route: '/admin/(staff)/units' },
 		{ label: 'Banners', icon: PanelsTopLeft, route: '/admin/(staff)/banners' },
 		{ label: 'Featured Cars', icon: Star, route: '/admin/(staff)/featured-cars' }
 	] as const;

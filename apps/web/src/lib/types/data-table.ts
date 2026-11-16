@@ -27,6 +27,8 @@ export type DataTableConfig<Row> = {
 	rowKey: (row: Row) => string;
 	columns: readonly TableColumn<Row>[];
 	filters?: readonly TableFilter[];
+	/** Route context retained in the address bar, such as a parent ID. */
+	urlContext?: Readonly<Record<string, string>>;
 	pageSize: number;
 	pageSizes?: readonly number[];
 	emptyMessage: string;

@@ -4,6 +4,8 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import { isAxiosError } from 'axios';
 	import { getApiError } from '#lib/api/staff.ts';
+	import AdminDetailRow from '#lib/components/admin/AdminDetailRow.svelte';
+	import AdminDetailSection from '#lib/components/admin/AdminDetailSection.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Link from '#lib/components/ui/Link.svelte';
 	import StatusBadge from '#lib/components/ui/StatusBadge.svelte';
@@ -75,45 +77,27 @@
 			<AdminAccountForm mode="edit" account={admin} />
 		{/key}
 	{:else}
-		<section
-			aria-labelledby="account-details"
-			class="mt-6 grid gap-4 border-t border-line pt-6 lg:grid-cols-[minmax(12rem,1fr)_minmax(0,2fr)] lg:gap-8"
-		>
-			<h2 id="account-details" class="text-lg/7 font-semibold">Account details</h2>
-			<dl class="min-w-0 divide-y divide-line rounded-xl bg-page px-4 sm:px-5">
-				{@render detailRow('Full name', admin.full_name.trim() || '—')}
-				{@render detailRow('Email', admin.email)}
-				{@render detailRow('Role', admin.role)}
-				{@render detailRow('Status', admin.status === 'active' ? 'Active' : 'Inactive', {
-					tone: admin.status === 'active' ? 'success' : 'danger'
-				})}
-				{@render detailRow('Account ID', admin.id)}
-				{@render detailRow('Created at', formatWitaDateTime(admin.created_at), {
-					datetime: admin.created_at
-				})}
-				{@render detailRow('Last updated', formatWitaDateTime(admin.updated_at), {
-					datetime: admin.updated_at
-				})}
-			</dl>
-		</section>
+		<AdminDetailSection title="Account details">
+			<AdminDetailRow label="Full name">{admin.full_name.trim() || '—'}</AdminDetailRow>
+			<AdminDetailRow label="Email">{admin.email}</AdminDetailRow>
+			<AdminDetailRow label="Role">{admin.role}</AdminDetailRow>
+			<AdminDetailRow label="Status">
+				<StatusBadge
+					label={admin.status === 'active' ? 'Active' : 'Inactive'}
+					tone={admin.status === 'active' ? 'success' : 'danger'}
+				/>
+			</AdminDetailRow>
+			<AdminDetailRow label="Account ID">{admin.id}</AdminDetailRow>
+			<AdminDetailRow label="Created at">
+				<time datetime={admin.created_at} class="tabular-nums"
+					>{formatWitaDateTime(admin.created_at)}</time
+				>
+			</AdminDetailRow>
+			<AdminDetailRow label="Last updated">
+				<time datetime={admin.updated_at} class="tabular-nums"
+					>{formatWitaDateTime(admin.updated_at)}</time
+				>
+			</AdminDetailRow>
+		</AdminDetailSection>
 	{/if}
 {/if}
-
-{#snippet detailRow(
-	label: string,
-	value: string,
-	options?: { tone?: 'success' | 'danger'; datetime?: string }
-)}
-	<div class="grid gap-1 py-4 text-sm/6 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-4">
-		<dt class="text-ink-muted">{label}</dt>
-		<dd class="font-medium wrap-anywhere">
-			{#if options?.tone}
-				<StatusBadge label={value} tone={options.tone} />
-			{:else if options?.datetime}
-				<time datetime={options.datetime} class="tabular-nums">{value}</time>
-			{:else}
-				{value}
-			{/if}
-		</dd>
-	</div>
-{/snippet}

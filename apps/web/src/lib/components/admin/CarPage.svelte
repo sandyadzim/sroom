@@ -61,7 +61,14 @@
 </Link>
 <header class="mt-2 flex flex-wrap items-start justify-between gap-3">
 	<div class="min-w-0">
-		<h1 class="text-2xl/8 font-bold tracking-tight wrap-break-word sm:text-3xl/10">{title}</h1>
+		<h1
+			class={[
+				'font-bold tracking-tight wrap-break-word',
+				editing ? 'text-3xl/10 sm:text-4xl/12' : 'text-2xl/8 sm:text-3xl/10'
+			]}
+		>
+			{title}
+		</h1>
 		{#if car && (car.trim || editing)}
 			<p class="mt-1 text-sm wrap-break-word text-ink-muted">
 				{editing ? `${name} ${car.trim}`.trimEnd() : car.trim}
@@ -69,9 +76,17 @@
 		{/if}
 	</div>
 	{#if car && !editing}
-		<Button href={resolve('/admin/(staff)/cars/[id]/edit', { id: car.id })}>
-			<Pencil size={16} strokeWidth={1.5} aria-hidden="true" /> Edit car
-		</Button>
+		<div class="flex flex-wrap gap-2">
+			<Button
+				href={`${resolve('/admin/(staff)/units')}?car=${encodeURIComponent(car.id)}`}
+				variant="secondary"
+			>
+				Manage units
+			</Button>
+			<Button href={resolve('/admin/(staff)/cars/[id]/edit', { id: car.id })}>
+				<Pencil size={16} strokeWidth={1.5} aria-hidden="true" /> Edit car
+			</Button>
+		</div>
 	{/if}
 </header>
 

@@ -5,6 +5,7 @@
 	import { brandsEndpoint, createBrand, updateBrand } from '#lib/api/catalog/brand.ts';
 	import { uploadCatalogImage } from '#lib/api/catalog/image.ts';
 	import { getApiError } from '#lib/api/staff.ts';
+	import AdminFormActions from '#lib/components/admin/AdminFormActions.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Dialog from '#lib/components/ui/Dialog.svelte';
 	import ImagePreviewDialog from '#lib/components/ui/ImagePreviewDialog.svelte';
@@ -341,13 +342,13 @@
 			</div>
 		</div>
 
-		<div class="mt-6 flex flex-wrap justify-end gap-2 border-t border-line pt-4">
+		<AdminFormActions>
 			<Button variant="secondary" disabled={saveBrand.isPending} onclick={() => setOpen(false)}>
 				Cancel
 			</Button>
 			<Button type="submit" disabled={busy || !hasChanges}>
 				{saveBrand.isPending ? 'Saving…' : brand ? 'Save changes' : 'Create brand'}
 			</Button>
-		</div>
+		</AdminFormActions>
 	</form>
 </Dialog>

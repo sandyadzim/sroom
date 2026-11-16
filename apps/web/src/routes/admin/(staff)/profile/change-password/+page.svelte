@@ -5,6 +5,7 @@
 	import { createMutation } from '@tanstack/svelte-query';
 	import { changePassword } from '#lib/api/identity/profile.ts';
 	import { getApiError } from '#lib/api/staff.ts';
+	import AdminFormActions from '#lib/components/admin/AdminFormActions.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Link from '#lib/components/ui/Link.svelte';
 	import TextField from '#lib/components/ui/TextField.svelte';
@@ -124,10 +125,10 @@
 		/>
 	</div>
 
-	<div class="mt-6 flex flex-wrap items-center gap-3">
+	<AdminFormActions>
+		<Button href={profileHref} variant="secondary">Cancel</Button>
 		<Button type="submit" disabled={updatePassword.isPending}>
 			{updatePassword.isPending ? 'Updating password…' : 'Update password'}
 		</Button>
-		<Button href={profileHref} variant="ghost">Cancel</Button>
-	</div>
+	</AdminFormActions>
 </form>

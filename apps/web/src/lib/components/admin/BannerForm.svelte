@@ -7,9 +7,10 @@
 	import { saveBannerSlot } from '#lib/api/catalog/banner.ts';
 	import { uploadCatalogImage } from '#lib/api/catalog/image.ts';
 	import { getApiError } from '#lib/api/staff.ts';
+	import AdminFormActions from '#lib/components/admin/AdminFormActions.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import ImageWithPlaceholder from '#lib/components/ui/ImageWithPlaceholder.svelte';
-	import SelectField from '#lib/components/ui/SelectField.svelte';
+	import CarSelectField from './CarSelectField.svelte';
 	import TextField from '#lib/components/ui/TextField.svelte';
 	import { bannerSlotQuery, bannerSlotsQuery } from '#lib/queries/banner.ts';
 	import { activeCarOptionsQuery } from '#lib/queries/car.ts';
@@ -197,7 +198,7 @@
 >
 	<div class="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
 		<div class="space-y-5">
-			<SelectField
+			<CarSelectField
 				id={`${formId}-car_id`}
 				name="car_id"
 				label="Car variant"
@@ -207,6 +208,7 @@
 						? 'Loading cars…'
 						: 'Select an active car'}
 				options={carOptions}
+				activeOnly
 				bind:value={values.car_id}
 				help={original && !original.car_id && !values.car_id
 					? `This slot shows ${original.brand_name} ${original.car_model}. Select an active car to link it.`
@@ -344,10 +346,10 @@
 		</div>
 	</div>
 
-	<div class="mt-6 flex flex-wrap justify-end gap-2 border-t border-line pt-4">
+	<AdminFormActions>
 		<Button href={listHref} variant="secondary">Cancel</Button>
 		<Button type="submit" disabled={save.isPending || !!upload || !canSave}>
 			{save.isPending ? 'Saving…' : 'Save banner'}
 		</Button>
-	</div>
+	</AdminFormActions>
 </form>

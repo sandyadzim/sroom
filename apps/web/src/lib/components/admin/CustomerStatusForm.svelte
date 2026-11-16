@@ -4,6 +4,7 @@
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { customersEndpoint, updateCustomerStatus } from '#lib/api/identity/customer.ts';
 	import { getApiError } from '#lib/api/staff.ts';
+	import AdminFormActions from '#lib/components/admin/AdminFormActions.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import SelectField from '#lib/components/ui/SelectField.svelte';
 	import StatusBadge from '#lib/components/ui/StatusBadge.svelte';
@@ -59,7 +60,7 @@
 		<h2 id="customer-account-status" class="text-lg/7 font-semibold">Sign-in status</h2>
 		<StatusBadge label={active ? 'Active' : 'Inactive'} tone={active ? 'success' : 'danger'} />
 	</div>
-	<form method="post" onsubmit={submit} aria-busy={saveStatus.isPending} class="max-w-sm space-y-4">
+	<form method="post" onsubmit={submit} aria-busy={saveStatus.isPending} class="max-w-sm">
 		<SelectField
 			name="status"
 			label="New status"
@@ -71,11 +72,13 @@
 				selectedStatus = value === 'inactive' ? 'inactive' : 'active';
 			}}
 		/>
-		<Button
-			type="submit"
-			disabled={!selectedStatus || selectedStatus === customer.status || saveStatus.isPending}
-		>
-			{saveStatus.isPending ? 'Saving…' : 'Save status'}
-		</Button>
+		<AdminFormActions>
+			<Button
+				type="submit"
+				disabled={!selectedStatus || selectedStatus === customer.status || saveStatus.isPending}
+			>
+				{saveStatus.isPending ? 'Saving…' : 'Save status'}
+			</Button>
+		</AdminFormActions>
 	</form>
 </section>

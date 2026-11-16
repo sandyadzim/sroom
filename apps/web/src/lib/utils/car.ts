@@ -37,6 +37,10 @@ export const carStatuses = [
 	{ value: 'inactive', label: 'Inactive' }
 ] as const;
 
+export function carVariantName(car: Pick<AdminCarDetail, 'brand_name' | 'model' | 'trim'>) {
+	return [car.brand_name, car.model, car.trim].filter(Boolean).join(' ');
+}
+
 export function carOptionLabel(
 	options: readonly { value: string; label: string }[],
 	value: string
