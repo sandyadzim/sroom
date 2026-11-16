@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Catalog API
-  version: 1.4.0
+  version: 1.5.0
   description: |
     The local gateway forwards the same Catalog API. An incoming X-Request-ID
     with 1-64 ASCII letters, digits, underscores, or hyphens is preserved.
@@ -172,6 +172,7 @@ paths:
     put:
       operationId: saveBannerSlot
       summary: Fill or replace the content of a Hero slot
+      description: Send car_id to use a Car variant, including an inactive variant. The existing manual fields remain supported for older clients.
       security:
         - bearerAuth: []
       requestBody:
@@ -183,6 +184,8 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/BannerSaved'
+        '404':
+          $ref: '#/components/responses/Error'
         default:
           $ref: '#/components/responses/Error'
     delete:
@@ -199,6 +202,7 @@ paths:
     get:
       operationId: listHomeBanners
       summary: List filled Hero slots in position order
+      description: A filled slot remains visible when its linked Car becomes inactive.
       responses:
         '200':
           description: Zero to three public Hero banners.
@@ -336,7 +340,11 @@ paths:
       - $ref: '#/components/parameters/CarSlug'
     get:
       operationId: getPublicCar
-      summary: Read the details and photos of an active car
+      summary: Read the details and photos of a car
+      description: |
+        Active cars and inactive cars linked to a Hero banner are readable.
+        An inactive car cannot be used for checkout. Unknown slugs and
+        inactive cars without a linked banner return CAR_NOT_FOUND.
       responses:
         '200':
           description: The requested public car.
@@ -362,7 +370,7 @@ paths:
           schema: { type: integer, default: 3, minimum: 1, maximum: 12 }
       responses:
         '200':
-          description: Other active cars. The source car must also be active.
+          description: Other active cars. The source may be active or linked to a Hero banner.
           content:
             application/json:
               schema:
@@ -557,8 +565,9 @@ components:
       allOf:
         - $ref: '#/components/schemas/CarCard'
         - type: object
-          required: [body_type, fuel_type, description, gallery]
+          required: [status, body_type, fuel_type, description, gallery]
           properties:
+            status: { type: string, enum: [active, inactive] }
             body_type: { type: string }
             fuel_type: { type: string }
             description: { type: string }
@@ -618,6 +627,22 @@ components:
         page:
           $ref: '#/components/schemas/CarPage'
     BannerInput:
+      oneOf:
+        - $ref: '#/components/schemas/LinkedBannerInput'
+        - $ref: '#/components/schemas/ManualBannerInput'
+    LinkedBannerInput:
+      type: object
+      additionalProperties: false
+      required: [car_id, headline_line_1, headline_line_2, description, image_object_key]
+      properties:
+        car_id: { type: string, format: uuid }
+        headline_line_1: { type: string, minLength: 1, maxLength: 100 }
+        headline_line_2: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        image_object_key:
+          type: string
+          description: Existing object key from Catalog image upload.
+    ManualBannerInput:
       type: object
       additionalProperties: false
       required: [brand_id, car_model, car_slug, headline_line_1, headline_line_2, description, image_object_key]
@@ -639,8 +664,9 @@ components:
         content:
           type: object
           nullable: true
-          required: [brand_id, brand_name, car_model, car_slug, headline_line_1, headline_line_2, description, image_object_key, image_url]
+          required: [car_id, brand_id, brand_name, car_model, car_slug, headline_line_1, headline_line_2, description, image_object_key, image_url]
           properties:
+            car_id: { type: string, format: uuid, nullable: true }
             brand_id: { type: string, format: uuid }
             brand_name: { type: string }
             car_model: { type: string }

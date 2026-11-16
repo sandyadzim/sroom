@@ -95,11 +95,16 @@ func (r *CarRepository) FindByID(ctx context.Context, id string) (model.Car, err
 	return findCarDetail(r.db.WithContext(ctx).Where("id = ?", id))
 }
 
+func publicCarBySlug(db *gorm.DB, slug string) *gorm.DB {
+	return db.Where("cars.slug = ?", slug).
+		Where("(cars.status = ? OR EXISTS (SELECT 1 FROM banners WHERE banners.car_id = cars.id))", model.CarActive)
+}
+
 func (r *CarRepository) FindPublic(ctx context.Context, slug string) (model.Car, error) {
 	var car model.Car
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var err error
-		car, err = findCarDetail(tx.Where("slug = ? AND status = ?", slug, model.CarActive))
+		car, err = findCarDetail(publicCarBySlug(tx, slug))
 		return err
 	}, &carReadOptions)
 	return car, err
@@ -109,7 +114,7 @@ func (r *CarRepository) ListRelated(ctx context.Context, slug string, limit int)
 	var cars []model.Car
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var source model.Car
-		err := tx.Select("id").First(&source, "slug = ? AND status = ?", slug, model.CarActive).Error
+		err := publicCarBySlug(tx, slug).Select("id").First(&source).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrCarNotFound
 		}

@@ -54,8 +54,23 @@ func (s *BannerService) Update(ctx context.Context, position int, req dto.Update
 			return dto.BannerResponse{}, ErrInvalidBanner
 		}
 	}
-	if validate.Struct(req) != nil || !validCarSlug(req.CarSlug) {
+	if validate.Struct(req) != nil {
 		return dto.BannerResponse{}, ErrInvalidBanner
+	}
+	banner := model.Banner{
+		Position: position, HeadlineLine1: &req.HeadlineLine1, HeadlineLine2: &req.HeadlineLine2,
+		Description: &req.Description, ImageObjectKey: &req.ImageObjectKey,
+	}
+	if req.CarID != "" {
+		if req.BrandID != "" || req.CarModel != "" || req.CarSlug != "" {
+			return dto.BannerResponse{}, ErrInvalidBanner
+		}
+		banner.CarID = &req.CarID
+	} else {
+		if req.BrandID == "" || req.CarModel == "" || !validCarSlug(req.CarSlug) {
+			return dto.BannerResponse{}, ErrInvalidBanner
+		}
+		banner.BrandID, banner.CarModel, banner.CarSlug = &req.BrandID, &req.CarModel, &req.CarSlug
 	}
 	if err := checkImage(ctx, s.images, &req.ImageObjectKey); err != nil {
 		return dto.BannerResponse{}, err
@@ -63,11 +78,7 @@ func (s *BannerService) Update(ctx context.Context, position int, req dto.Update
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	item, err := s.repo.Update(ctx, model.Banner{
-		Position: position, BrandID: &req.BrandID, CarModel: &req.CarModel, CarSlug: &req.CarSlug,
-		HeadlineLine1: &req.HeadlineLine1, HeadlineLine2: &req.HeadlineLine2,
-		Description: &req.Description, ImageObjectKey: &req.ImageObjectKey,
-	})
+	item, err := s.repo.Update(ctx, banner)
 	if err != nil {
 		return dto.BannerResponse{}, err
 	}
@@ -109,10 +120,16 @@ func (s *BannerService) bannerResponse(item model.Banner) dto.BannerResponse {
 		return result
 	}
 	result.Content = &dto.BannerContent{
-		BrandID: *item.BrandID, BrandName: item.Brand.Name,
+		CarID: item.CarID, BrandID: *item.BrandID, BrandName: item.Brand.Name,
 		CarModel: *item.CarModel, CarSlug: *item.CarSlug,
 		HeadlineLine1: *item.HeadlineLine1, HeadlineLine2: *item.HeadlineLine2,
 		Description: *item.Description, ImageObjectKey: *item.ImageObjectKey,
+	}
+	if item.Car != nil {
+		result.Content.BrandID = item.Car.BrandID
+		result.Content.BrandName = item.Car.Brand.Name
+		result.Content.CarModel = item.Car.Model
+		result.Content.CarSlug = item.Car.Slug
 	}
 	if s.publicImageBaseURL != "" {
 		imageURL := s.publicImageBaseURL + "/" + *item.ImageObjectKey

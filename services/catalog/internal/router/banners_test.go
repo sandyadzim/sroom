@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"testing"
 
 	"catalog/internal/dto"
@@ -116,5 +117,127 @@ func TestBannerSlotsPostgres(t *testing.T) {
 	}
 	if len(publicList.Data) != 1 || publicList.Data[0].Slug != "yaris" {
 		t.Fatalf("expected only slot 3 to remain public, got %s", public)
+	}
+}
+
+func TestBannerCarReferencePostgres(t *testing.T) {
+	db := catalogTestDatabase(t)
+	brands := repository.NewBrandRepository(db)
+	toyota := createCarTestBrand(t, brands, "Toyota")
+	honda := createCarTestBrand(t, brands, "Honda")
+	banners := handler.NewBannerHandler(service.NewBannerService(repository.NewBannerRepository(db), testImages{}, "https://assets.example.test"))
+	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db), carTestImages{}, ""))
+	router := newCatalogTestRouter(t, handler.NewBrandHandler(nil), banners, cars)
+
+	active := model.CarActive
+	req := carTestRequest(toyota.ID, "Fortuner", 600000)
+	req.Status = &active
+	selected := createTestCar(t, router, req)
+	other := carTestRequest(toyota.ID, "Rush", 500000)
+	other.Status = &active
+	suggestion := createTestCar(t, router, other)
+	unlinked := createTestCar(t, router, carTestRequest(toyota.ID, "Yaris", 450000))
+
+	slot := adminBannersPath + "/1"
+	carPath := publicCarsPath + "/" + selected.Slug
+	banner := dto.UpdateBannerRequest{
+		CarID: selected.ID, HeadlineLine1: "Room for", HeadlineLine2: "bigger plans.",
+		Description: "A demo hero banner.", ImageObjectKey: uploadedKey,
+	}
+	var saved struct{ Data dto.BannerResponse }
+	decodeCarJSON(t, catalogRequest(t, router, "PUT", slot, "OWNER", carJSON(t, banner), 200), &saved)
+	if saved.Data.Content == nil || saved.Data.Content.CarID == nil || *saved.Data.Content.CarID != selected.ID ||
+		saved.Data.Content.CarSlug != selected.Slug || saved.Data.Content.BrandName != "Toyota" {
+		t.Fatalf("expected linked car identity, got %+v", saved.Data.Content)
+	}
+
+	mixed := banner
+	mixed.CarSlug = selected.Slug
+	catalogRequest(t, router, "PUT", slot, "ADMIN", carJSON(t, mixed), 400)
+	banner.CarID = "invalid"
+	catalogRequest(t, router, "PUT", slot, "ADMIN", carJSON(t, banner), 400)
+	banner.CarID = missingBrandID
+	catalogRequest(t, router, "PUT", slot, "ADMIN", carJSON(t, banner), 404)
+	catalogRequest(t, router, "PUT", slot, "CUSTOMER", carJSON(t, banner), 403)
+
+	catalogRequest(t, router, "PATCH", adminCarsPath+"/"+selected.ID, "ADMIN",
+		carJSON(t, map[string]any{"status": "inactive", "model": "Fortuner GR", "brand_id": honda.ID}), 200)
+	var public struct{ Data []dto.PublicBannerResponse }
+	decodeCarJSON(t, catalogRequest(t, router, "GET", publicBannersPath, "", "", 200), &public)
+	if len(public.Data) != 1 || public.Data[0].Slug != selected.Slug || public.Data[0].Model != "Fortuner GR" || public.Data[0].Make != "Honda" {
+		t.Fatalf("expected banner to follow car details and stay visible: %+v", public.Data)
+	}
+
+	var detail struct{ Data dto.CarDetail }
+	decodeCarJSON(t, catalogRequest(t, router, "GET", carPath, "", "", 200), &detail)
+	if detail.Data.Status != model.CarInactive || detail.Data.ID != selected.ID {
+		t.Fatalf("expected detail with inactive status, got %+v", detail.Data)
+	}
+	catalogRequest(t, router, "GET", publicCarsPath+"/"+unlinked.Slug, "", "", 404)
+	var list dto.CarList
+	decodeCarJSON(t, catalogRequest(t, router, "GET", publicCarsPath, "", "", 200), &list)
+	var related struct{ Data []dto.CarCard }
+	decodeCarJSON(t, catalogRequest(t, router, "GET", carPath+"/related", "", "", 200), &related)
+	if len(list.Data) != 1 || list.Data[0].ID != suggestion.ID ||
+		len(related.Data) != 1 || related.Data[0].ID != suggestion.ID {
+		t.Fatal("listing and related results should offer only active cars")
+	}
+
+	// Re-saving via the old form keeps the reference when the brand and slug match.
+	banner.CarID, banner.BrandID, banner.CarModel, banner.CarSlug = "", honda.ID, "Fortuner GR", selected.Slug
+	decodeCarJSON(t, catalogRequest(t, router, "PUT", slot, "ADMIN", carJSON(t, banner), 200), &saved)
+	if saved.Data.Content.CarID == nil || *saved.Data.Content.CarID != selected.ID {
+		t.Fatalf("expected the legacy form to preserve the link: %+v", saved.Data.Content)
+	}
+
+	decodeCarJSON(t, catalogRequest(t, router, "DELETE", slot, "ADMIN", "", 200), &saved)
+	if saved.Data.Content != nil {
+		t.Fatal("expected the slot to be empty after clearing it")
+	}
+	catalogRequest(t, router, "GET", carPath, "", "", 404)
+	catalogRequest(t, router, "GET", carPath+"/related", "", "", 404)
+}
+
+func TestBannerCarReferenceMigrationPostgres(t *testing.T) {
+	db := catalogTestDatabase(t)
+	brands := repository.NewBrandRepository(db)
+	brand := createCarTestBrand(t, brands, "Toyota")
+	otherBrand := createCarTestBrand(t, brands, "Honda")
+	router := newCarTestRouter(t, repository.NewCarRepository(db))
+	car := createTestCar(t, router, carTestRequest(brand.ID, "Fortuner", 600000))
+
+	migrate := func(direction string) {
+		t.Helper()
+		sql, err := os.ReadFile("../../migrations/000009_link_banners_to_cars." + direction + ".sql")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Exec(string(sql)).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	migrate("down")
+	for pos, brandID := range map[int]string{1: brand.ID, 2: otherBrand.ID} {
+		err := db.Exec(`UPDATE banners SET brand_id=?, car_model='Legacy model', car_slug=?,
+			headline_line_1='Room for', headline_line_2='bigger plans.', description='Legacy description',
+			image_object_key=? WHERE position=?`, brandID, car.Slug, uploadedKey, pos).Error
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	migrate("up")
+	banners, err := repository.NewBannerRepository(db).List(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(banners) != 3 || banners[0].CarID == nil || *banners[0].CarID != car.ID ||
+		banners[1].CarID != nil || banners[1].CarModel == nil || *banners[1].CarModel != "Legacy model" ||
+		banners[2].CarID != nil || banners[2].BrandID != nil {
+		t.Fatalf("expected only the matching legacy slot to link and all three slots to survive: %+v", banners)
+	}
+	migrate("down")
+	var modelName string
+	if err := db.Raw("SELECT car_model FROM banners WHERE position = 1").Scan(&modelName).Error; err != nil || modelName != "Legacy model" {
+		t.Fatalf("rollback must preserve the legacy content: %q (%v)", modelName, err)
 	}
 }

@@ -95,6 +95,8 @@ func writeBannerError(c *gin.Context, err error) {
 	switch err {
 	case service.ErrInvalidBanner, service.ErrInvalidImage:
 		response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+	case repository.ErrCarNotFound:
+		response.Error(c, http.StatusNotFound, "CAR_NOT_FOUND", err.Error())
 	case repository.ErrBannerBrand:
 		response.Error(c, http.StatusBadRequest, "BRAND_NOT_FOUND", err.Error())
 	case repository.ErrBannerNotFound:

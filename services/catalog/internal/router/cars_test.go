@@ -106,7 +106,7 @@ func TestCarPublicationPostgres(t *testing.T) {
 	decodeCarJSON(t, body, &public)
 	if len(public.Data.Gallery) != 2 || public.Data.Gallery[0].Label != "Exterior" || public.Data.Gallery[1].Label != "Interior" ||
 		public.Data.Cover == nil || public.Data.Cover.URL == nil || *public.Data.Cover.URL != "https://assets.example.test/"+uploadedKey ||
-		public.Data.FuelType != "diesel" || strings.Contains(string(body), `"object_key"`) || strings.Contains(string(body), `"status"`) {
+		public.Data.FuelType != "diesel" || strings.Contains(string(body), `"object_key"`) || public.Data.Status != model.CarActive {
 		t.Fatalf("unexpected public detail: %s", body)
 	}
 	invalidCover := dto.CarPhotoInput{ObjectKey: missingKey, AltText: "Missing", Label: "Missing"}

@@ -342,6 +342,7 @@ paths:
           $ref: './catalog.v1.yaml#/components/responses/Error'
     put:
       summary: Staff update banner
+      description: Accepts a Car variant ID or the existing manual banner fields.
       security:
         - staffCookie: []
       requestBody:

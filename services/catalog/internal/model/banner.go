@@ -2,6 +2,8 @@ package model
 
 type Banner struct {
 	Position       int     `gorm:"primaryKey;autoIncrement:false"`
+	CarID          *string `gorm:"type:uuid"`
+	Car            *Car
 	BrandID        *string `gorm:"type:uuid"`
 	Brand          *Brand
 	CarModel       *string

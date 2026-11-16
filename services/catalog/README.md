@@ -41,8 +41,8 @@ Local base URL is `http://localhost:8082/api/v1/catalog`. Admin routes require a
 | POST | `/admin/images` | OWNER/ADMIN |
 
 - Upload files through `/admin/images`, then submit the returned object keys with the Car, Brand, or Banner data. Creating a Car requires one cover and at least one gallery photo.
-- Public Car endpoints show active variants. New Cars default to `inactive` and can be published on create or update.
-- The Hero has three fixed slots. The public endpoint returns filled slots in position order.
+- Public lists and recommendations show active variants. An inactive variant linked to a Hero banner still has a public detail page with `status: inactive`.
+- The Hero has three fixed slots. Save a slot with `car_id` and banner copy and image. Filled slots stay visible if the linked Car is inactive. Existing manual Brand, model, and slug inputs remain supported.
 
 See [OpenAPI](../../packages/contracts/openapi/catalog.v1.yaml) for the contract and [DEVELOPMENT.md](DEVELOPMENT.md) for Bruno examples.
 

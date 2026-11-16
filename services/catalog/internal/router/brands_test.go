@@ -278,6 +278,7 @@ func catalogTestDatabase(t *testing.T) *gorm.DB {
 		"000006_create_car_images.up.sql",
 		"000007_add_brand_image_filename.up.sql",
 		"000008_order_car_images.up.sql",
+		"000009_link_banners_to_cars.up.sql",
 	} {
 		sql, err := os.ReadFile("../../migrations/" + file)
 		if err != nil {

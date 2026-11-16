@@ -67,6 +67,7 @@ type CarCard struct {
 
 type CarDetail struct {
 	CarCard
+	Status      string             `json:"status"`
 	BodyType    string             `json:"body_type"`
 	FuelType    string             `json:"fuel_type"`
 	Description string             `json:"description"`

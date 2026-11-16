@@ -206,7 +206,7 @@ func (s *CarService) DetailPublic(ctx context.Context, slug string) (dto.CarDeta
 		gallery = append(gallery, s.carImage(image))
 	}
 	return dto.CarDetail{
-		CarCard: s.carCard(item), BodyType: item.BodyType, FuelType: item.FuelType,
+		CarCard: s.carCard(item), Status: item.Status, BodyType: item.BodyType, FuelType: item.FuelType,
 		Description: item.Description, Gallery: gallery,
 	}, nil
 }
