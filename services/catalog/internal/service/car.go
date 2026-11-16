@@ -224,16 +224,18 @@ func (s *CarService) ListRelated(ctx context.Context, slug string, limit int) ([
 	return s.carCards(items), nil
 }
 
-func (s *CarService) ListPublicBrands(ctx context.Context) ([]dto.CarBrandOption, error) {
+func (s *CarService) ListPublicBrands(ctx context.Context, activeOnly bool) ([]dto.CarBrandOption, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	brands, err := s.repo.ListPublicBrands(ctx)
+	brands, err := s.repo.ListPublicBrands(ctx, activeOnly)
 	if err != nil {
 		return nil, err
 	}
 	data := make([]dto.CarBrandOption, 0, len(brands))
 	for _, brand := range brands {
-		data = append(data, dto.CarBrandOption{ID: brand.ID, Name: brand.Name})
+		data = append(data, dto.CarBrandOption{
+			ID: brand.ID, Name: brand.Name, ImageURL: brandImageURL(s.publicImageBaseURL, brand.ImageObjectKey),
+		})
 	}
 	return data, nil
 }

@@ -127,18 +127,22 @@ func validateBrandImageFilename(key, filename *string) error {
 }
 
 func (s *BrandService) brandResponse(item model.Brand) dto.BrandResponse {
-	result := dto.BrandResponse{
+	return dto.BrandResponse{
 		ID:             item.ID,
 		Name:           item.Name,
 		ImageObjectKey: item.ImageObjectKey,
 		ImageFilename:  item.ImageFilename,
+		ImageURL:       brandImageURL(s.publicImageBaseURL, item.ImageObjectKey),
 		Status:         item.Status,
 		CreatedAt:      item.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:      item.UpdatedAt.UTC().Format(time.RFC3339),
 	}
-	if item.ImageObjectKey != nil && s.publicImageBaseURL != "" {
-		imageURL := s.publicImageBaseURL + "/" + *item.ImageObjectKey
-		result.ImageURL = &imageURL
+}
+
+func brandImageURL(baseURL string, objectKey *string) *string {
+	if baseURL == "" || objectKey == nil {
+		return nil
 	}
-	return result
+	imageURL := baseURL + "/" + *objectKey
+	return &imageURL
 }

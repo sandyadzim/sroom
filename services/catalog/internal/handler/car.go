@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"catalog/internal/dto"
+	"catalog/internal/model"
 	"catalog/internal/repository"
 	"catalog/internal/response"
 	"catalog/internal/service"
@@ -126,7 +127,12 @@ func (h *CarHandler) ListRelated(c *gin.Context) {
 }
 
 func (h *CarHandler) ListPublicBrands(c *gin.Context) {
-	data, err := h.service.ListPublicBrands(c.Request.Context())
+	status, hasStatus := c.GetQuery("status")
+	if hasStatus && status != model.BrandActive {
+		response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", "status must be active")
+		return
+	}
+	data, err := h.service.ListPublicBrands(c.Request.Context(), hasStatus)
 	if err != nil {
 		writeCarError(c, err)
 		return

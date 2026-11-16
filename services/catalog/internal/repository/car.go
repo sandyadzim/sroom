@@ -127,11 +127,14 @@ func (r *CarRepository) ListRelated(ctx context.Context, slug string, limit int)
 	return cars, err
 }
 
-func (r *CarRepository) ListPublicBrands(ctx context.Context) ([]model.Brand, error) {
+func (r *CarRepository) ListPublicBrands(ctx context.Context, activeOnly bool) ([]model.Brand, error) {
 	var brands []model.Brand
-	err := r.db.WithContext(ctx).Select("id", "name").
-		Where("EXISTS (SELECT 1 FROM cars WHERE cars.brand_id = brands.id AND cars.status = ?)", model.CarActive).
-		Order("LOWER(name), id").Find(&brands).Error
+	query := r.db.WithContext(ctx).Select("id", "name", "image_object_key").
+		Where("EXISTS (SELECT 1 FROM cars WHERE cars.brand_id = brands.id AND cars.status = ?)", model.CarActive)
+	if activeOnly {
+		query = query.Where("status = ?", model.BrandActive)
+	}
+	err := query.Order("LOWER(name), id").Find(&brands).Error
 	return brands, err
 }
 

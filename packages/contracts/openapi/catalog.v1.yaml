@@ -575,7 +575,13 @@ paths:
   /api/v1/catalog/brands:
     get:
       operationId: listPublicCarBrands
-      summary: List brand filter options for active cars
+      summary: List brands and public logos for active cars
+      security: []
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [active] }
+          description: Restrict results to active brands. Omit to include inactive brands that still have an active car.
       responses:
         '200':
           description: Brands in name order, including any inactive brand still used by an active car.
@@ -589,10 +595,15 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, name]
+                      required: [id, name, image_url]
                       properties:
                         id: { type: string, format: uuid }
                         name: { type: string }
+                        image_url:
+                          type: string
+                          format: uri
+                          nullable: true
+                          description: Public logo URL. Null without an image or configured public image base URL.
         default:
           $ref: '#/components/responses/Error'
 components:

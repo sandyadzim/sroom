@@ -136,10 +136,37 @@ func TestCarPublicationPostgres(t *testing.T) {
 	catalogRequest(t, router, "PATCH", adminPath, "ADMIN", `{"brand_id":"`+honda.ID+`"}`, 400)
 	catalogRequest(t, router, "GET", publicPath, "", "", 200)
 	var options struct{ Data []dto.CarBrandOption }
-	decodeCarJSON(t, catalogRequest(t, router, "GET", "/api/v1/catalog/brands", "", "", 200), &options)
-	if len(options.Data) != 1 || options.Data[0].ID != toyota.ID {
-		t.Fatalf("expected filter to include brand with active cars: %+v", options)
+	const publicBrandsPath = "/api/v1/catalog/brands"
+	body = catalogRequest(t, router, "GET", publicBrandsPath, "", "", 200)
+	decodeCarJSON(t, body, &options)
+	if len(options.Data) != 1 || options.Data[0].ID != toyota.ID ||
+		options.Data[0].ImageURL != nil || !strings.Contains(string(body), `"image_url":null`) {
+		t.Fatalf("expected the brand with active cars and a null logo: %s", body)
 	}
+	logoKey := uploadedKey
+	if _, err := brands.Update(context.Background(), toyota.ID, model.BrandChanges{SetImage: true, ImageObjectKey: &logoKey}); err != nil {
+		t.Fatal(err)
+	}
+	body = catalogRequest(t, router, "GET", publicBrandsPath, "", "", 200)
+	decodeCarJSON(t, body, &options)
+	if len(options.Data) != 1 || options.Data[0].ImageURL == nil ||
+		*options.Data[0].ImageURL != "https://assets.example.test/"+logoKey ||
+		strings.Contains(string(body), `"image_object_key"`) || strings.Contains(string(body), `"image_filename"`) {
+		t.Fatalf("expected the public logo URL without storage metadata fields: %s", body)
+	}
+	decodeCarJSON(t, catalogRequest(t, router, "GET", publicBrandsPath+"?status=active", "", "", 200), &options)
+	if len(options.Data) != 0 {
+		t.Fatalf("active brand filter included an inactive brand: %+v", options)
+	}
+	active := model.BrandActive
+	if _, err := brands.Update(context.Background(), toyota.ID, model.BrandChanges{Status: &active}); err != nil {
+		t.Fatal(err)
+	}
+	decodeCarJSON(t, catalogRequest(t, router, "GET", publicBrandsPath+"?status=active", "", "", 200), &options)
+	if len(options.Data) != 1 || options.Data[0].ID != toyota.ID {
+		t.Fatalf("active brand filter omitted an active brand with an active car: %+v", options)
+	}
+	catalogRequest(t, router, "GET", publicBrandsPath+"?status=inactive", "", "", 400)
 
 	catalogRequest(t, router, "PATCH", adminPath, "ADMIN", `{"status":"inactive"}`, 200)
 	catalogRequest(t, router, "GET", publicPath, "", "", 404)
