@@ -1,3 +1,5 @@
+import type { CatalogCarDetail } from '#lib/types/catalog.ts';
+
 // Public card view model, not a backend API or physical-unit contract.
 export type CarPreview = {
 	id: string;
@@ -21,6 +23,8 @@ export type CarGalleryImage = {
 
 // Frontend detail view model, not a catalogue API or quote contract.
 export type CarDetail = CarPreview & {
+	slug: string;
+	status: CatalogCarDetail['status'];
 	bodyType: string;
 	fuel: string;
 	description: string;

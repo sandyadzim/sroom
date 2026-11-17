@@ -65,7 +65,7 @@
 		{#if image}
 			<Dialog
 				title={name}
-				description="Enlarged vehicle illustration."
+				description="Enlarged vehicle image."
 				closeLabel="Close image viewer"
 				onkeydown={navigateDialog}
 			>
@@ -113,7 +113,7 @@
 	</div>
 	{#if images.length > 0}
 		<div class="mt-3 flex flex-wrap gap-3" role="group" aria-label="Choose a vehicle image">
-			{#each images as item, index (item.src)}
+			{#each images as item, index (`${index}-${item.src}`)}
 				<Button
 					id={`${id}-${index}`}
 					variant="ghost"
@@ -134,6 +134,7 @@
 							width="96"
 							height="64"
 							loading="lazy"
+							onerror={() => (failedImages = [...failedImages, item.src])}
 							class="h-full w-full object-contain"
 						/>
 					{/if}

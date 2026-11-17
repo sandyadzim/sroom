@@ -4,7 +4,7 @@
 	import SiteHeader from '#lib/components/layout/SiteHeader.svelte';
 	import SiteFooter from '#lib/components/layout/SiteFooter.svelte';
 	import AuthHeader from '#lib/components/auth/AuthHeader.svelte';
-	import { page } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import Link from '#lib/components/ui/Link.svelte';
 	import Toaster from '#lib/components/ui/Toaster.svelte';
 	import { setToastContext, type ToastFeedback, type ToastItem } from '#lib/ui/toast.ts';
@@ -52,7 +52,20 @@
 	{:else}
 		{#if authPage}<AuthHeader />{:else if !adminPage}<SiteHeader />{/if}
 
-		<main id="main-content" tabindex="-1" class="min-w-0 flex-1">
+		{#if navigating.to?.route.id === '/cars/[slug]'}
+			<p
+				role="status"
+				class="fixed right-4 bottom-4 z-40 rounded-full bg-panel-muted px-4 py-2 text-sm text-ink"
+			>
+				Loading car details…
+			</p>
+		{/if}
+		<main
+			id="main-content"
+			tabindex="-1"
+			class="min-w-0 flex-1"
+			aria-busy={navigating.to?.route.id === '/cars/[slug]' || undefined}
+		>
 			{@render children()}
 		</main>
 

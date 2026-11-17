@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { getPagination } from './pagination.ts';
-import { demoCatalogCars } from '../data/demo-fleet.ts';
 
 describe('catalogue pagination', () => {
 	it('covers all eight distinct variants over pages of six without duplicates or omissions', () => {
-		const first = getPagination(demoCatalogCars.length, 1, 6);
-		const last = getPagination(demoCatalogCars.length, 2, 6);
+		const variantIds = Array.from({ length: 8 }, (_, index) => index + 1);
+		const first = getPagination(variantIds.length, 1, 6);
+		const last = getPagination(variantIds.length, 2, 6);
 		const ids = [
-			...demoCatalogCars.slice(first.offset, first.end),
-			...demoCatalogCars.slice(last.offset, last.end)
-		].map((car) => car.id);
+			...variantIds.slice(first.offset, first.end),
+			...variantIds.slice(last.offset, last.end)
+		];
 		expect(first).toMatchObject({ start: 1, end: 6, totalPages: 2 });
 		expect(last).toMatchObject({ start: 7, end: 8, totalPages: 2 });
 		expect(ids).toHaveLength(8);

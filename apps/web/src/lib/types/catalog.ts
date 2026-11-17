@@ -100,6 +100,14 @@ export type CatalogCarCard = {
 	cover: CatalogCarImage | null;
 };
 
+export type CatalogCarDetail = CatalogCarCard & {
+	status: 'active' | 'inactive';
+	body_type: string;
+	fuel_type: string;
+	description: string;
+	gallery: CatalogCarImage[];
+};
+
 export type AdminFeaturedCar = CatalogCarCard & { status: 'active' | 'inactive' };
 export type PublicCatalogPage = {
 	data: CatalogCarCard[];

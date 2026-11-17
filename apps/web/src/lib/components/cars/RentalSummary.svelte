@@ -10,10 +10,10 @@
 		car,
 		bookingHref,
 		compact = false
-	}: { car: CarPreview; bookingHref: string; compact?: boolean } = $props();
+	}: { car: CarPreview; bookingHref?: string; compact?: boolean } = $props();
 </script>
 
-{#if compact}
+{#if compact && bookingHref}
 	<div
 		class="sticky bottom-0 z-30 bg-panel pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden"
 		aria-label="Quick booking"
@@ -32,7 +32,7 @@
 			>
 		</div>
 	</div>
-{:else}
+{:else if !compact}
 	<div class="rounded-panel bg-panel-muted p-6 sm:p-8 lg:p-6">
 		<h2 class="text-lg/7 font-medium">Your rental</h2>
 		<p class="mt-3 text-3xl/10 font-semibold tracking-tight tabular-nums">
@@ -40,16 +40,21 @@
 				class="ml-1 text-sm/6 font-normal tracking-normal text-ink-muted">/ day</span
 			>
 		</p>
-		<p class="mt-3 text-sm/6 text-ink-muted">
-			Your final total and availability are confirmed for the dates you choose at checkout.
-		</p>
-		<Button
-			href={bookingHref}
-			class="mt-6 w-full"
-			aria-label={`Book Now — ${car.brand} ${car.model} ${car.trim}`}
-			>Book Now <ArrowUpRight size={18} strokeWidth={1.5} aria-hidden="true" /></Button
-		>
-		<p class="mt-3 text-center text-sm/6 text-ink-muted">Sign in to continue your booking.</p>
+		{#if bookingHref}
+			<p class="mt-3 text-sm/6 text-ink-muted">
+				Your final total and availability are confirmed for the dates you choose at checkout.
+			</p>
+			<Button
+				href={bookingHref}
+				class="mt-6 w-full"
+				aria-label={`Book Now — ${car.brand} ${car.model} ${car.trim}`}
+				>Book Now <ArrowUpRight size={18} strokeWidth={1.5} aria-hidden="true" /></Button
+			>
+			<p class="mt-3 text-center text-sm/6 text-ink-muted">Sign in to continue your booking.</p>
+		{:else}
+			<p class="mt-3 text-sm/6 text-ink-muted">This car is currently unavailable for booking.</p>
+			<Button href={resolve('/cars')} variant="secondary" class="mt-6 w-full">Explore Cars</Button>
+		{/if}
 		<Link href={resolve('/rental-terms')} class="mt-3 w-full text-sm text-ink-muted" arrow
 			>Rental terms</Link
 		>

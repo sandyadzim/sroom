@@ -5,13 +5,15 @@
 	import CarCard from '#lib/components/cars/CarCard.svelte';
 	import RentalSummary from '#lib/components/cars/RentalSummary.svelte';
 	import Link from '#lib/components/ui/Link.svelte';
-	import type { PageProps } from './$types';
+	import type { load } from './+page.server.ts';
 
-	let { data }: PageProps = $props();
+	let { data }: { data: Awaited<ReturnType<typeof load>> } = $props();
 	const car = $derived(data.car);
 	const name = $derived(`${car.brand} ${car.model}`);
 	const bookingHref = $derived(
-		`${resolve('/(auth)/login')}?next=${encodeURIComponent(`/checkout/${car.id}`)}`
+		car.status === 'active'
+			? `${resolve('/(auth)/login')}?next=${encodeURIComponent(`/checkout/${car.slug}`)}`
+			: undefined
 	);
 	const specs = $derived([
 		{ label: 'Seats', value: `${car.seats} people`, icon: UsersRound },
@@ -43,7 +45,9 @@
 		<h1 class="text-3xl/tight font-semibold tracking-tight sm:text-4xl/tight lg:text-[44px]/tight">
 			{name}
 		</h1>
-		<p class="mt-2 text-base/7 text-ink-muted">{car.trim} · Self-drive in Samarinda</p>
+		<p class="mt-2 text-base/7 text-ink-muted">
+			{[car.trim, 'Self-drive in Samarinda'].filter(Boolean).join(' · ')}
+		</p>
 	</header>
 
 	<div class="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10">
@@ -53,7 +57,9 @@
 				<h2 id="about-car" class="text-2xl/8 font-semibold tracking-tight sm:text-3xl/tight">
 					{name}
 				</h2>
-				<p class="mt-4 max-w-2xl text-base/7 text-ink-muted">{car.description}</p>
+				{#if car.description}
+					<p class="mt-4 max-w-2xl text-base/7 text-ink-muted">{car.description}</p>
+				{/if}
 				<dl class="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 rounded-card bg-panel-muted p-5 sm:p-6">
 					{#each specs as spec (spec.label)}
 						<div class="min-w-0">
@@ -93,11 +99,19 @@
 			</h2>
 			<Link href={resolve('/cars')} arrow class="shrink-0 font-medium">Explore all cars</Link>
 		</div>
-		<ul aria-label="Related cars" class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-			{#each data.relatedCars as related (related.id)}
-				<li class="min-w-0"><CarCard car={related} /></li>
-			{/each}
-		</ul>
+		{#if data.relatedCars.length > 0}
+			<ul aria-label="Related cars" class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+				{#each data.relatedCars as related (related.id)}
+					<li class="min-w-0"><CarCard car={related} /></li>
+				{/each}
+			</ul>
+		{:else}
+			<p class="mt-4 text-base/7 text-ink-muted">
+				{data.relatedUnavailable
+					? 'We couldn’t load other cars right now.'
+					: 'There are no other cars to show right now.'}
+			</p>
+		{/if}
 	</section>
 </div>
 
