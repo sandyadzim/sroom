@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { asset, resolve } from '$app/paths';
 	import { onMount, tick } from 'svelte';
 	import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, MapPin } from '@lucide/svelte';
@@ -6,6 +7,7 @@
 	import Link from '#lib/components/ui/Link.svelte';
 	import TextField from '#lib/components/ui/TextField.svelte';
 	import { formatIDR } from '#lib/utils/currency.ts';
+	import { checkoutPreviewImage, saveBookingPreview } from '#lib/utils/booking-preview.ts';
 	import { inclusiveRentalDays, validateSchedule, type Schedule } from './schedule.ts';
 	import type { PageProps } from './$types';
 
@@ -26,7 +28,7 @@
 	let checking = $state(false);
 	let reserving = $state(false);
 	let days = $state<number | null>(null);
-	let feedback = $state<{ tone: 'success' | 'error' | 'info'; message: string }>();
+	let feedback = $state<{ tone: 'success' | 'error'; message: string }>();
 	let availabilityStatus: HTMLDivElement;
 	let version = 0;
 	const errors = $derived(validateSchedule(schedule, data.earliestPickup));
@@ -75,10 +77,9 @@
 
 	async function reserve(event: SubmitEvent) {
 		event.preventDefault();
-		if (!canReserve) return;
+		if (!canReserve || days === null || total === null) return;
 		reserving = true;
 		await new Promise((done) => setTimeout(done, 360));
-		reserving = false;
 
 		if (data.scenario === 'conflict') {
 			days = null;
@@ -88,8 +89,26 @@
 					'The car is no longer available for this schedule. Check availability again or choose another schedule.'
 			};
 		} else {
-			feedback = { tone: 'info', message: 'Your schedule is ready for the payment step.' };
+			try {
+				const bookingId = saveBookingPreview(
+					{
+						carName: data.car.name,
+						carTrim: data.car.trim,
+						pickupAt: `${schedule.pickupDate}T${schedule.pickupTime}:00+08:00`,
+						returnAt: `${schedule.returnDate}T${schedule.returnTime}:00+08:00`,
+						days,
+						dailyRate: data.car.dailyRate,
+						total
+					},
+					data.nextOutcome
+				);
+				await goto(resolve('/payment/[bookingId]', { bookingId }));
+				return;
+			} catch {
+				feedback = { tone: 'error', message: 'Could not open payment. Please try again.' };
+			}
 		}
+		reserving = false;
 		await tick();
 		availabilityStatus?.focus();
 	}
@@ -216,8 +235,7 @@
 								class={[
 									'mt-3 flex items-start gap-2 text-sm leading-6',
 									feedback.tone === 'success' && 'text-positive',
-									feedback.tone === 'error' && 'text-negative',
-									feedback.tone === 'info' && 'text-ink-muted'
+									feedback.tone === 'error' && 'text-negative'
 								]}
 							>
 								{#if feedback.tone === 'success'}<CheckCircle2
@@ -255,7 +273,7 @@
 			class="min-w-0 overflow-hidden rounded-card border border-line bg-panel lg:sticky lg:top-28"
 		>
 			<img
-				src={asset(data.car.image)}
+				src={asset(checkoutPreviewImage)}
 				alt={data.car.name}
 				class="h-40 w-full bg-panel-muted object-contain p-2 lg:h-44"
 			/>
