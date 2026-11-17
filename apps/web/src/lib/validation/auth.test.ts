@@ -2,13 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { loginSchema, registerSchema, validateAuthField, validateAuthForm } from './auth.ts';
 
 const empty = { fullName: '', email: '', password: '', confirmPassword: '' };
-const valid = { email: 'driver@example.com', password: 'a', confirmPassword: 'a' };
+const valid = { email: 'driver@example.com', password: 'password', confirmPassword: 'password' };
 
 describe('authentication schemas', () => {
 	it('accepts a login without registration fields or additional password rules', () => {
-		expect(loginSchema.safeParse({ email: valid.email, password: valid.password }).success).toBe(
-			true
-		);
+		expect(loginSchema.safeParse({ email: valid.email, password: 'a' }).success).toBe(true);
 	});
 
 	it.each([undefined, '', 'A name with no additional restrictions'])(
@@ -22,10 +20,14 @@ describe('authentication schemas', () => {
 		const result = registerSchema.parse({
 			...valid,
 			email: ` ${valid.email} `,
-			password: ' a ',
-			confirmPassword: ' a '
+			password: ' abcdef ',
+			confirmPassword: ' abcdef '
 		});
-		expect(result).toMatchObject({ email: valid.email, password: ' a ', confirmPassword: ' a ' });
+		expect(result).toMatchObject({
+			email: valid.email,
+			password: ' abcdef ',
+			confirmPassword: ' abcdef '
+		});
 	});
 
 	it('checks every required field on empty submit with required messages taking precedence', () => {
@@ -43,6 +45,14 @@ describe('authentication schemas', () => {
 			email: 'Enter a valid email address.',
 			confirmPassword: 'Passwords do not match.'
 		});
+	});
+
+	it('shows the eight-character minimum on registration without changing login rules', () => {
+		const values = { ...valid, password: 'short', confirmPassword: 'short' };
+		expect(validateAuthField('password', values, 'blur', 'register')).toBe(
+			'Use at least 8 characters.'
+		);
+		expect(validateAuthForm('login', values)).toEqual({});
 	});
 
 	it('does not require password confirmation for login', () => {

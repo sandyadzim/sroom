@@ -9,8 +9,14 @@
 	let {
 		car,
 		bookingHref,
+		bookingComingLater = false,
 		compact = false
-	}: { car: CarPreview; bookingHref?: string; compact?: boolean } = $props();
+	}: {
+		car: CarPreview;
+		bookingHref?: string;
+		bookingComingLater?: boolean;
+		compact?: boolean;
+	} = $props();
 </script>
 
 {#if compact && bookingHref}
@@ -51,6 +57,8 @@
 				>Book Now <ArrowUpRight size={18} strokeWidth={1.5} aria-hidden="true" /></Button
 			>
 			<p class="mt-3 text-center text-sm/6 text-ink-muted">Sign in to continue your booking.</p>
+		{:else if bookingComingLater}
+			<p class="mt-3 text-sm/6 text-ink-muted">Booking is currently unavailable.</p>
 		{:else}
 			<p class="mt-3 text-sm/6 text-ink-muted">This car is currently unavailable for booking.</p>
 			<Button href={resolve('/cars')} variant="secondary" class="mt-6 w-full">Explore Cars</Button>

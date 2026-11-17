@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { createQuery } from '@tanstack/svelte-query';
+	import { customerProfileQuery } from '#lib/queries/customer-auth.ts';
 	import { ChevronRight, MapPin, UsersRound, Gauge, Fuel, CarFront } from '@lucide/svelte';
 	import CarGallery from '#lib/components/cars/CarGallery.svelte';
 	import CarCard from '#lib/components/cars/CarCard.svelte';
@@ -10,8 +12,9 @@
 	let { data }: { data: Awaited<ReturnType<typeof load>> } = $props();
 	const car = $derived(data.car);
 	const name = $derived(`${car.brand} ${car.model}`);
+	const profile = createQuery(() => customerProfileQuery);
 	const bookingHref = $derived(
-		car.status === 'active'
+		car.status === 'active' && !profile.data
 			? `${resolve('/(auth)/login')}?next=${encodeURIComponent(`/checkout/${car.slug}`)}`
 			: undefined
 	);
@@ -85,7 +88,11 @@
 			</section>
 		</div>
 		<aside aria-label="Rental summary" class="lg:sticky lg:top-32">
-			<RentalSummary {car} {bookingHref} />
+			<RentalSummary
+				{car}
+				{bookingHref}
+				bookingComingLater={car.status === 'active' && Boolean(profile.data)}
+			/>
 		</aside>
 	</div>
 

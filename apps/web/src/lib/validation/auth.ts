@@ -12,6 +12,10 @@ export const loginSchema = z.object({
 export const registerSchema = loginSchema
 	.extend({
 		fullName: z.string().optional(),
+		password: loginSchema.shape.password.refine(
+			(password) => !password || Array.from(password).length >= 8,
+			'Use at least 8 characters.'
+		),
 		confirmPassword: z.string().min(1, 'Please confirm your password.')
 	})
 	.refine((values) => !values.confirmPassword || values.password === values.confirmPassword, {
@@ -21,7 +25,7 @@ export const registerSchema = loginSchema
 
 export type AuthMode = 'login' | 'register';
 export type AuthValues = z.input<typeof registerSchema>;
-export type AuthField = 'email' | 'password' | 'confirmPassword';
+export type AuthField = 'fullName' | 'email' | 'password' | 'confirmPassword';
 export type AuthErrors = Partial<Record<AuthField, string>>;
 
 export function validateAuthForm(mode: AuthMode, values: AuthValues): AuthErrors {
@@ -39,10 +43,11 @@ export function validateAuthForm(mode: AuthMode, values: AuthValues): AuthErrors
 export function validateAuthField(
 	field: AuthField,
 	values: AuthValues,
-	event: 'input' | 'blur'
+	event: 'input' | 'blur',
+	mode: AuthMode = 'login'
 ): string | undefined {
 	// Required errors wait for blur; format and matching errors update while typing.
-	const empty = field === 'email' ? !values[field].trim() : !values[field];
+	const empty = field === 'email' ? !values.email.trim() : !values[field];
 	if (event === 'input' && (field === 'password' || empty)) return;
-	return validateAuthForm('register', values)[field];
+	return validateAuthForm(field === 'confirmPassword' ? 'register' : mode, values)[field];
 }

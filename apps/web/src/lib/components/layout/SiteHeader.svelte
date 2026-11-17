@@ -8,6 +8,24 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
+	import { logoutCustomer } from '#lib/api/identity/customer-auth.ts';
+	import { customerProfileQuery } from '#lib/queries/customer-auth.ts';
+	import { useToast } from '#lib/ui/toast.ts';
+
+	const profile = createQuery(() => customerProfileQuery);
+	const queryClient = useQueryClient();
+	const toast = useToast();
+	const signOut = createMutation(() => ({
+		mutationFn: logoutCustomer,
+		retry: false,
+		onSuccess: async () => {
+			await queryClient.cancelQueries({ queryKey: customerProfileQuery.queryKey });
+			queryClient.setQueryData(customerProfileQuery.queryKey, null);
+			closeMenu();
+		},
+		onError: () => toast({ kind: 'error', message: 'Could not sign out. Please try again.' })
+	}));
 
 	const links = [
 		{ label: 'Explore Cars', href: resolve('/cars') },
@@ -90,15 +108,28 @@
 			? 'flex flex-col items-stretch gap-4 text-sm'
 			: 'flex items-center gap-4 text-sm xl:gap-6'}
 	>
-		<Link href={resolve('/(auth)/login')} onclick={closeMenu}>Sign In</Link>
-		<Button
-			href={resolve('/(auth)/register')}
-			onclick={closeMenu}
-			variant={expanded ? 'inverse' : 'primary'}
-			class="whitespace-nowrap"
-		>
-			Create Account <ArrowUpRight size={18} strokeWidth={1.5} aria-hidden="true" />
-		</Button>
+		{#if profile.data}
+			<span class="max-w-44 truncate font-medium">
+				{profile.data.full_name || profile.data.email}
+			</span>
+			<Button
+				variant={expanded ? 'inverse' : 'secondary'}
+				disabled={signOut.isPending}
+				onclick={() => signOut.mutate()}
+			>
+				{signOut.isPending ? 'Signing out…' : 'Sign Out'}
+			</Button>
+		{:else}
+			<Link href={resolve('/(auth)/login')} onclick={closeMenu}>Sign In</Link>
+			<Button
+				href={resolve('/(auth)/register')}
+				onclick={closeMenu}
+				variant={expanded ? 'inverse' : 'primary'}
+				class="whitespace-nowrap"
+			>
+				Create Account <ArrowUpRight size={18} strokeWidth={1.5} aria-hidden="true" />
+			</Button>
+		{/if}
 	</div>
 {/snippet}
 

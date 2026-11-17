@@ -1,7 +1,7 @@
 import { PUBLIC_GATEWAY_BASE_URL } from '$app/env/public';
 import { resolve } from '$app/paths';
 import axios, { isAxiosError } from 'axios';
-import type { ApiError } from '#lib/types/identity.ts';
+export { getApiError } from './error.ts';
 
 export const staffApiPath = '/api/v1/staff';
 export const catalogAdminPath = `${staffApiPath}/catalog/admin`;
@@ -20,7 +20,3 @@ staffApi.interceptors.response.use(undefined, (cause: unknown) => {
 	}
 	throw cause;
 });
-
-export function getApiError(cause: unknown) {
-	return isAxiosError<ApiError>(cause) ? cause.response?.data?.error : undefined;
-}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import './layout.css';
+	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
 	import favicon from '#lib/assets/favicon.svg';
 	import SiteHeader from '#lib/components/layout/SiteHeader.svelte';
 	import SiteFooter from '#lib/components/layout/SiteFooter.svelte';
@@ -16,6 +17,8 @@
 	const authPage = $derived(page.route.id?.startsWith('/(auth)/') ?? false);
 	const adminPage = $derived(page.route.id === '/admin' || page.route.id?.startsWith('/admin/'));
 	const staffPage = $derived(page.route.id?.startsWith('/admin/(staff)'));
+
+	const customerQueryClient = new QueryClient();
 
 	let nextToastId = 0;
 	let toasts = $state.raw<ToastItem[]>([]);
@@ -49,27 +52,31 @@
 
 	{#if staffPage}
 		{@render children()}
+	{:else if adminPage}
+		<main id="main-content" tabindex="-1" class="min-w-0 flex-1">{@render children()}</main>
 	{:else}
-		{#if authPage}<AuthHeader />{:else if !adminPage}<SiteHeader />{/if}
+		<QueryClientProvider client={customerQueryClient}>
+			{#if authPage}<AuthHeader />{:else}<SiteHeader />{/if}
 
-		{#if navigating.to?.route.id === '/cars/[slug]'}
-			<p
-				role="status"
-				class="fixed right-4 bottom-4 z-40 rounded-full bg-panel-muted px-4 py-2 text-sm text-ink"
+			{#if navigating.to?.route.id === '/cars/[slug]'}
+				<p
+					role="status"
+					class="fixed right-4 bottom-4 z-40 rounded-full bg-panel-muted px-4 py-2 text-sm text-ink"
+				>
+					Loading car details…
+				</p>
+			{/if}
+			<main
+				id="main-content"
+				tabindex="-1"
+				class="min-w-0 flex-1"
+				aria-busy={navigating.to?.route.id === '/cars/[slug]' || undefined}
 			>
-				Loading car details…
-			</p>
-		{/if}
-		<main
-			id="main-content"
-			tabindex="-1"
-			class="min-w-0 flex-1"
-			aria-busy={navigating.to?.route.id === '/cars/[slug]' || undefined}
-		>
-			{@render children()}
-		</main>
+				{@render children()}
+			</main>
 
-		{#if !authPage && !adminPage}<SiteFooter />{/if}
+			{#if !authPage}<SiteFooter />{/if}
+		</QueryClientProvider>
 	{/if}
 </div>
 

@@ -55,3 +55,7 @@ export type CustomerAccount = {
 	created_at: string;
 	updated_at: string;
 };
+
+export type RegisterCustomerInput = LoginCredentials & { full_name?: string };
+export type RegisteredCustomer = Pick<UserProfile, 'id' | 'email' | 'full_name'>;
+export type CustomerSessionProfile = UserProfile & { role: 'CUSTOMER' };
