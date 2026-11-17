@@ -7,7 +7,7 @@
 	type Props = Omit<HTMLInputAttributes, 'value' | 'type'> & {
 		label: string;
 		value?: string;
-		type?: 'text' | 'email' | 'password' | 'tel' | 'url' | 'search';
+		type?: 'text' | 'email' | 'password' | 'tel' | 'url' | 'search' | 'date' | 'time';
 		help?: string;
 		error?: string;
 		revealPassword?: boolean;
