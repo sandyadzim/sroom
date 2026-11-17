@@ -37,10 +37,11 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="page-container py-10 sm:py-14 lg:py-18">
+<div data-account-shell class="page-container py-10 sm:py-14 lg:py-18">
 	<div class="mx-auto max-w-5xl">
 		{#if previewBookings || profile.data}
 			<div
+				data-account-grid
 				class="grid gap-8 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-12 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-16"
 			>
 				<nav

@@ -1,5 +1,9 @@
 import { error } from '@sveltejs/kit';
-import { bookingOutcomeFixture, checkoutPreviewSlug } from '#lib/utils/booking-preview.ts';
+import {
+	bookingOutcomeFixture,
+	checkoutPreviewCustomer,
+	checkoutPreviewSlug
+} from '#lib/utils/booking-preview.ts';
 import { earliestPickupDate } from './schedule.ts';
 import type { PageServerLoad } from './$types';
 
@@ -21,7 +25,7 @@ export const load = (({ params, url }) => {
 			category: 'SUV',
 			dailyRate: 850_000
 		},
-		customer: { name: 'Alex Morgan', email: 'alex@example.invalid' },
+		customer: checkoutPreviewCustomer,
 		earliestPickup: earliestPickupDate(),
 		nextOutcome: bookingOutcomeFixture(url.searchParams.get('outcome')),
 		scenario

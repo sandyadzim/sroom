@@ -113,13 +113,13 @@
 							<Button href={detailHref}
 								>View Booking <ArrowRight size={17} aria-hidden="true" /></Button
 							>
-							<Button variant="secondary" disabled aria-describedby="invoice-note"
-								>View Invoice</Button
+							<Button
+								href={resolve('/account/bookings/[bookingId]/invoice', {
+									bookingId: data.bookingId
+								})}
+								variant="secondary">View Invoice</Button
 							>
 						</div>
-						<p id="invoice-note" class="mt-2 text-sm text-ink-muted">
-							Invoice access is coming soon.
-						</p>
 					{:else if booking.outcome === 'expired'}
 						<p class="max-w-lg text-sm leading-6 text-ink-muted">
 							Choose a new schedule to check availability again. Do not pay using the previous

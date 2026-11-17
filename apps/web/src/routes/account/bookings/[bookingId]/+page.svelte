@@ -26,6 +26,14 @@
 	const backHref = $derived(
 		resolve(`/account/bookings${bookingHistorySearch(selection.status, selection.page)}`)
 	);
+	const invoiceHref = $derived(
+		resolve(
+			`/account/bookings/[bookingId]/invoice${bookingHistorySearch(selection.status, selection.page)}`,
+			{
+				bookingId: data.bookingId
+			}
+		)
+	);
 	const paymentHref = $derived(resolve('/payment/[bookingId]', { bookingId: data.bookingId }));
 	const status = $derived(booking?.outcome ?? 'pending');
 	const paymentStatus = $derived(
@@ -114,12 +122,7 @@
 							<ArrowRight size={16} aria-hidden="true" /></Button
 						>
 					{:else if status === 'confirmed'}
-						<Button variant="secondary" disabled aria-describedby="invoice-note"
-							>View Invoice</Button
-						>
-						<p id="invoice-note" class="mt-2 text-sm text-ink-muted">
-							Invoice access is coming soon.
-						</p>
+						<Button href={invoiceHref} variant="secondary">View Invoice</Button>
 					{:else if status === 'expired'}
 						<p class="mb-3 text-sm leading-6 text-ink-muted">
 							This reservation has ended. Choose a new schedule to check availability again.

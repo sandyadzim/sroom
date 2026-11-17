@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const checkoutPreviewSlug = 'toyota-fortuner';
 export const checkoutPreviewImage = 'images/hero/fortuner-studio.webp';
+export const checkoutPreviewCustomer = { name: 'Alex Morgan', email: 'alex@example.invalid' };
 
 const outcomeSchema = z.enum(['confirmed', 'expired', 'review']);
 export type BookingOutcome = z.infer<typeof outcomeSchema>;
