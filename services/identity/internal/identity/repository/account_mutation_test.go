@@ -63,17 +63,17 @@ func TestAccountMutationSQL(t *testing.T) {
 		t.Fatal("wrong mutation target filter")
 	}
 
-	err = repo.UpdatePassword(context.Background(), id, "synthetic-new-hash")
+	err = repo.UpdatePassword(context.Background(), id, model.RoleCustomer, "synthetic-new-hash")
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatal("expected zero-row DryRun result")
 	}
-	if !strings.Contains(query, `"password_hash"=`) || !strings.Contains(query, "role IN") || !strings.Contains(query, "WHERE id = $") {
+	if !strings.Contains(query, `"password_hash"=`) || !strings.Contains(query, "AND role = $") || !strings.Contains(query, "WHERE id = $") {
 		t.Fatal("password update must filter internal role and user ID")
 	}
 	if strings.Contains(query, "synthetic-new-hash") {
 		t.Fatal("hash must stay bound as a SQL parameter")
 	}
-	if args[len(args)-3] != id || args[len(args)-2] != model.RoleOwner || args[len(args)-1] != model.RoleAdmin {
+	if args[len(args)-2] != id || args[len(args)-1] != model.RoleCustomer {
 		t.Fatal("wrong own-password target filter")
 	}
 

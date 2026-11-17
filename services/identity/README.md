@@ -46,6 +46,7 @@ Local base URL: `http://localhost:8081/api/v1/identity`. Request bodies use JSON
 | POST | `/admins` | OWNER |
 | PATCH | `/admins/{id}` | OWNER |
 | POST | `/change-password` | OWNER/ADMIN |
+| POST | `/customer/change-password` | CUSTOMER |
 | GET | `/customers` | OWNER/ADMIN |
 | GET | `/customers/{id}` | OWNER/ADMIN |
 | PATCH | `/customers/{id}/status` | OWNER/ADMIN |

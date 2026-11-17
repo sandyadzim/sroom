@@ -43,6 +43,24 @@ func TestCustomerSession(t *testing.T) {
 				return
 			}
 			_ = json.NewEncoder(w).Encode(gin.H{"data": gin.H{"id": "fixture", "role": role, "token": "must-not-leak"}})
+		case identityPath + "/customer/change-password":
+			if r.Method != http.MethodPost || token != "customer-fixture" {
+				t.Error("password change must forward the customer cookie token and POST method")
+			}
+			var input struct {
+				CurrentPassword string `json:"current_password"`
+				NewPassword     string `json:"new_password"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&input); err != nil ||
+				input.CurrentPassword != "fixture-current" || input.NewPassword != "fixture-new" {
+				t.Error("password change must forward the Identity request body")
+			}
+			_, wasRevoked := revoked.Load(token)
+			if wasRevoked {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
 		case identityPath + "/logout":
 			revoked.Store(token, true)
 			w.WriteHeader(http.StatusNoContent)
@@ -90,6 +108,8 @@ func TestCustomerSession(t *testing.T) {
 	loginPath := customerPath + "/login"
 	mePath := customerPath + "/me"
 	logoutPath := customerPath + "/logout"
+	changePath := customerPath + "/change-password"
+	const changeBody = `{"current_password":"fixture-current","new_password":"fixture-new"}`
 	staff := &http.Cookie{Name: staffCookieName, Value: "staff-fixture"}
 
 	preflight := call(http.MethodOptions, loginPath, origin, "")
@@ -101,8 +121,10 @@ func TestCustomerSession(t *testing.T) {
 	for _, bad := range []string{"", "null", origin + ".invalid"} {
 		assertError(t, call(http.MethodPost, loginPath, bad, ""), http.StatusForbidden, "FORBIDDEN_ORIGIN")
 		assertError(t, call(http.MethodPost, logoutPath, bad, ""), http.StatusForbidden, "FORBIDDEN_ORIGIN")
+		assertError(t, call(http.MethodPost, changePath, bad, changeBody), http.StatusForbidden, "FORBIDDEN_ORIGIN")
 	}
 	requireStatus(call(http.MethodGet, mePath, origin, "", staff), http.StatusUnauthorized)
+	requireStatus(call(http.MethodPost, changePath, origin, changeBody, staff), http.StatusUnauthorized)
 	for _, role := range []string{"admin-fixture", "owner-fixture"} {
 		res := call(http.MethodPost, loginPath, origin, `{"fixture":"`+role+`"}`)
 		assertError(t, res, http.StatusForbidden, "CUSTOMER_REQUIRED")
@@ -127,12 +149,18 @@ func TestCustomerSession(t *testing.T) {
 	if !strings.Contains(res.Body.String(), `"role":"CUSTOMER"`) || strings.Contains(res.Body.String(), "token") {
 		t.Fatal("me must return only the customer profile")
 	}
+	res = call(http.MethodPost, changePath, origin, changeBody, staff, customer)
+	requireStatus(res, http.StatusNoContent)
+	if len(res.Result().Cookies()) != 0 || res.Body.Len() != 0 {
+		t.Fatal("password change must preserve the session and return an empty response")
+	}
 	res = call(http.MethodPost, logoutPath, origin, "", staff, customer)
 	requireStatus(res, http.StatusNoContent)
 	if cookieOf(res).MaxAge >= 0 {
 		t.Fatal("logout must delete the customer cookie")
 	}
 	requireStatus(call(http.MethodGet, mePath, origin, "", customer), http.StatusUnauthorized)
+	requireStatus(call(http.MethodPost, changePath, origin, changeBody, customer), http.StatusUnauthorized)
 	requireStatus(call(http.MethodGet, staffPath+"/me", origin, "", staff), http.StatusOK)
 	res = call(http.MethodPost, logoutPath, origin, "", customer)
 	requireStatus(res, http.StatusNoContent)

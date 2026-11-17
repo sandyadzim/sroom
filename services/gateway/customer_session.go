@@ -38,16 +38,9 @@ func registerCustomerSession(group *gin.RouterGroup, client *http.Client, identi
 			setSessionCookie(c, customerCookieName, customerPath, token, expires, secure)
 			c.JSON(http.StatusOK, profile)
 		})
-	group.POST("/login", func(c *gin.Context) {
-		request := c.Request.Clone(c.Request.Context())
-		request.Header.Del("Authorization")
-		request.URL.Path = identityPath + "/login"
-		request.URL.RawPath = ""
-		original := c.Request
-		c.Request = request
-		defer func() { c.Request = original }()
-		login(c)
-	})
+	group.POST("/login", customerProxy(identityPath+"/login", false, login))
+	changePassword := forwardTo(client, identityURL, "identity", 16*1024, 8*time.Second, logger)
+	group.POST("/change-password", customerProxy(identityPath+"/customer/change-password", true, changePassword))
 
 	group.GET("/me", func(c *gin.Context) {
 		customerSession(c, client, identityURL, secure, false)
@@ -55,6 +48,28 @@ func registerCustomerSession(group *gin.RouterGroup, client *http.Client, identi
 	group.POST("/logout", func(c *gin.Context) {
 		customerSession(c, client, identityURL, secure, true)
 	})
+}
+
+func customerProxy(path string, authenticated bool, handler gin.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		request := c.Request.Clone(c.Request.Context())
+		request.Header.Del("Authorization")
+		if authenticated {
+			token, _ := c.Cookie(customerCookieName)
+			if token == "" {
+				writeError(c, http.StatusUnauthorized, "UNAUTHENTICATED", "authentication required")
+				return
+			}
+			request.Header.Set("Authorization", "Bearer "+token)
+		}
+
+		request.URL.Path = path
+		request.URL.RawPath = ""
+		original := c.Request
+		c.Request = request
+		defer func() { c.Request = original }()
+		handler(c)
+	}
 }
 
 func customerSession(c *gin.Context, client *http.Client, identityURL *url.URL, secure, logout bool) {

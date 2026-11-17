@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.6.0
+  version: 1.7.0
   description: |
     Local entry point for the documented Identity and Catalog routes.
     Request and response schemas are owned by those services. The gateway forwards
@@ -141,6 +141,28 @@ paths:
             Set-Cookie:
               description: Expires sroom_customer_session.
               schema: { type: string }
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/customer/change-password:
+    post:
+      operationId: customerChangePassword
+      summary: Change the signed-in CUSTOMER password
+      description: Requires an allowed Origin and the customer session cookie. Identity verifies the role and current password. Existing sessions remain valid.
+      security:
+        - customerCookie: []
+      requestBody:
+        $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customer~1change-password/post/requestBody'
+      responses:
+        '204':
+          $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customer~1change-password/post/responses/204'
+        '400':
+          $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customer~1change-password/post/responses/400'
+        '401':
+          $ref: './identity.v1.yaml#/components/responses/Unauthenticated'
+        '403':
+          description: FORBIDDEN or FORBIDDEN_ORIGIN.
+        '415':
+          $ref: './identity.v1.yaml#/components/responses/UnsupportedMediaType'
         default:
           $ref: './identity.v1.yaml#/components/responses/OtherError'
   /api/v1/staff/login:

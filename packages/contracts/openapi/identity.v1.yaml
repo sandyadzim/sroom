@@ -1,16 +1,16 @@
 openapi: 3.0.3
 info:
   title: SROOM Identity API
-  version: 1.5.0
+  version: 1.6.0
   description: |
     Local backend for the SROOM portfolio demo. No real rental operations.
     Requests use JSON. Registration creates CUSTOMER only and does not log in.
     Authentication uses an opaque Bearer token with a fixed seven-day expiry.
     OWNER-only ADMIN list/detail support search and active/inactive status filtering.
     OWNER can create/update ADMIN accounts. Role is always ADMIN. No delete route.
-    The local gateway forwards the same Bearer API. Browser cookies are planned. Sessions remain valid
-    after status/password updates; inactive blocks subsequent ADMIN and CUSTOMER logins.
-    OWNER/ADMIN can change their own password using the current password.
+    The Gateway forwards Bearer requests and uses scoped cookies for browser sessions.
+    Sessions remain valid after status or password updates. Inactive accounts cannot sign in.
+    OWNER/ADMIN and CUSTOMER use separate routes to change their own password.
     This file documents the IDN-002 response format; older direct DTO responses
     are replaced by the data envelope. IDN-003 fills request_id from the validated
     X-Request-ID response header. An incoming ID with 1-64 ASCII letters, digits,
@@ -188,6 +188,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        default:
+          $ref: '#/components/responses/OtherError'
+  /api/v1/identity/customer/change-password:
+    parameters:
+      - $ref: '#/components/parameters/RequestID'
+    post:
+      operationId: changeOwnCustomerPassword
+      summary: Change own password (CUSTOMER)
+      description: Requires the customer session and correct current password. Existing sessions remain valid.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          $ref: '#/paths/~1api~1v1~1identity~1change-password/post/responses/204'
+        '400':
+          $ref: '#/paths/~1api~1v1~1identity~1change-password/post/responses/400'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: FORBIDDEN; user is not CUSTOMER.
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
         default:

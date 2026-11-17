@@ -18,9 +18,13 @@ import (
 )
 
 func TestChangeOwnPasswordLifecycle(t *testing.T) {
-	for _, role := range []model.Role{model.RoleOwner, model.RoleAdmin} {
+	for _, role := range []model.Role{model.RoleOwner, model.RoleAdmin, model.RoleCustomer} {
 		t.Run(string(role), func(t *testing.T) {
 			app, users, sessions := accountTestApp()
+			path := "/api/v1/identity/change-password"
+			if role == model.RoleCustomer {
+				path = "/api/v1/identity/customer/change-password"
+			}
 			email := strings.ToLower(string(role)) + "@example.invalid"
 			user, _ := users.FindByEmail(context.Background(), email)
 			hash, err := password.Hash("synthetic-old-password")
@@ -33,7 +37,7 @@ func TestChangeOwnPasswordLifecycle(t *testing.T) {
 			bearer := strings.ToLower(string(role)) + "-token"
 			sessions.sessions[token.Hash("second-session")] = &model.Session{ID: uuid.New(), UserID: user.ID, TokenHash: token.Hash("second-session"), ExpiresAt: time.Now().Add(time.Hour)}
 			beforeSessions := len(sessions.sessions)
-			wrong := request(t, app, "POST", "/api/v1/identity/change-password", `{"current_password":"wrong-password","new_password":"synthetic-new-password"}`, "application/json", bearer, 400)
+			wrong := request(t, app, "POST", path, `{"current_password":"wrong-password","new_password":"synthetic-new-password"}`, "application/json", bearer, 400)
 			assertError(t, wrong, "INVALID_CURRENT_PASSWORD")
 			if users.writes != 0 {
 				t.Fatal("wrong current password must not mutate account")
@@ -43,7 +47,7 @@ func TestChangeOwnPasswordLifecycle(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			body := request(t, app, "POST", "/api/v1/identity/change-password", string(payload), "application/json", bearer, 204)
+			body := request(t, app, "POST", path, string(payload), "application/json", bearer, 204)
 			if len(body) != 0 {
 				t.Fatal("204 must have an empty body")
 			}
@@ -80,6 +84,11 @@ func TestChangePasswordDenialsAndValidation(t *testing.T) {
 	} {
 		request(t, app, "POST", "/api/v1/identity/change-password", validBody, "application/json", tt.bearer, tt.status)
 	}
+	for _, bearer := range []string{"owner-token", "admin-token"} {
+		body := request(t, app, "POST", "/api/v1/identity/customer/change-password", validBody, "application/json", bearer, 403)
+		assertError(t, body, "FORBIDDEN")
+	}
+	request(t, app, "POST", "/api/v1/identity/customer/change-password", validBody, "application/json", "", 401)
 	for _, body := range []string{
 		`{}`, `null`, `[]`, `{"current_password":null,"new_password":"synthetic-password"}`,
 		`{"current_password":"x","new_password":null}`,

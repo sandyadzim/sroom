@@ -8,6 +8,7 @@ import (
 
 	"identity/internal/identity/dto"
 	"identity/internal/identity/middleware"
+	"identity/internal/identity/model"
 	"identity/internal/identity/response"
 	"identity/internal/identity/service"
 )
@@ -21,6 +22,14 @@ func NewChangePasswordHandler(passwordService *service.ChangePasswordService) *C
 }
 
 func (h *ChangePasswordHandler) Change(c fiber.Ctx) error {
+	return h.change(c, model.RoleOwner, model.RoleAdmin)
+}
+
+func (h *ChangePasswordHandler) ChangeCustomer(c fiber.Ctx) error {
+	return h.change(c, model.RoleCustomer)
+}
+
+func (h *ChangePasswordHandler) change(c fiber.Ctx, allowedRoles ...model.Role) error {
 	session, ok := middleware.GetSession(c)
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHENTICATED", "authentication required", nil)
@@ -29,7 +38,7 @@ func (h *ChangePasswordHandler) Change(c fiber.Ctx) error {
 	if err := strictJSON(c, &req); err != nil {
 		return err
 	}
-	err := h.passwordService.Change(c.Context(), session.UserID, req)
+	err := h.passwordService.Change(c.Context(), session.UserID, req, allowedRoles...)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUserNotFound):

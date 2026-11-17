@@ -94,14 +94,14 @@ func (r *accountUsers) UpdateAdmin(ctx context.Context, id uuid.UUID, changes ma
 	return &user, nil
 }
 
-func (r *accountUsers) UpdatePassword(ctx context.Context, id uuid.UUID, hash string) error {
+func (r *accountUsers) UpdatePassword(ctx context.Context, id uuid.UUID, role model.Role, hash string) error {
 	r.writes++
 	r.ctx = ctx
 	if r.writeErr != nil {
 		return r.writeErr
 	}
 	user, ok := r.users[id]
-	if !ok || (user.Role != model.RoleOwner && user.Role != model.RoleAdmin) {
+	if !ok || user.Role != role {
 		return gorm.ErrRecordNotFound
 	}
 	user.PasswordHash = hash
@@ -155,7 +155,9 @@ func accountTestApp() (*fiber.App, *accountUsers, *accountSessions) {
 	customers.Patch("/:id/status", customer.UpdateStatus)
 	group.Get("/me", auth.RequireAuth, NewMeHandler(service.NewMeService(users)).Me)
 	group.Post("/logout", auth.RequireAuth, NewLogoutHandler(service.NewLogoutService(sessions)).Logout)
-	group.Post("/change-password", auth.RequireAuth, NewChangePasswordHandler(service.NewChangePasswordService(users)).Change)
+	changePassword := NewChangePasswordHandler(service.NewChangePasswordService(users))
+	group.Post("/change-password", auth.RequireAuth, changePassword.Change)
+	group.Post("/customer/change-password", auth.RequireAuth, changePassword.ChangeCustomer)
 	app.Post("/api/v1/identity/login", NewLoginHandler(service.NewLoginService(users, sessions)).Login)
 	return app, users, sessions
 }

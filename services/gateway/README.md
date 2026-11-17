@@ -42,3 +42,5 @@ Run `go test -race ./...` from `services/gateway`. See the [OpenAPI contract](..
 ## Customer browser authentication
 
 The public `/api/v1/identity/register` route creates a customer account without a session. The customer frontend uses `POST /api/v1/customer/login`, `GET /api/v1/customer/me`, and `POST /api/v1/customer/logout`. These session routes use a dedicated HttpOnly `sroom_customer_session` cookie scoped to `/api/v1/customer` and check the CUSTOMER role through Identity. The cookie expires with the Identity session. Use the same site for web and Gateway and configure the exact web origin in `WEB_ORIGINS`. `APP_ENV=production` requires HTTPS for cookies.
+
+Customer Profile reads `GET /api/v1/customer/me`. The customer changes their own password with `POST /api/v1/customer/change-password` using their customer cookie and an allowed origin. The Gateway forwards the request to Identity's CUSTOMER-only password route. A successful update returns 204 and preserves existing sessions.

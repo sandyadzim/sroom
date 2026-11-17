@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -14,11 +15,11 @@ import (
 )
 
 var ErrIncorrectPassword = errors.New("current password is incorrect")
-var ErrPasswordChangeForbidden = errors.New("password change is only available to OWNER and ADMIN")
+var ErrPasswordChangeForbidden = errors.New("role cannot change password through this route")
 
 type ChangePasswordRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*model.User, error)
-	UpdatePassword(ctx context.Context, id uuid.UUID, hash string) error
+	UpdatePassword(ctx context.Context, id uuid.UUID, role model.Role, hash string) error
 }
 
 type ChangePasswordService struct {
@@ -29,7 +30,7 @@ func NewChangePasswordService(userRepo ChangePasswordRepository) *ChangePassword
 	return &ChangePasswordService{userRepo: userRepo}
 }
 
-func (s *ChangePasswordService) Change(ctx context.Context, userID uuid.UUID, req dto.ChangePasswordRequest) error {
+func (s *ChangePasswordService) Change(ctx context.Context, userID uuid.UUID, req dto.ChangePasswordRequest, allowedRoles ...model.Role) error {
 	if err := dto.ValidateChangePassword(req); err != nil {
 		return err
 	}
@@ -40,7 +41,7 @@ func (s *ChangePasswordService) Change(ctx context.Context, userID uuid.UUID, re
 		}
 		return fmt.Errorf("find password owner: %w", err)
 	}
-	if user.Role != model.RoleOwner && user.Role != model.RoleAdmin {
+	if !slices.Contains(allowedRoles, user.Role) {
 		return ErrPasswordChangeForbidden
 	}
 	valid, err := password.Verify(req.CurrentPassword, user.PasswordHash)
@@ -54,7 +55,7 @@ func (s *ChangePasswordService) Change(ctx context.Context, userID uuid.UUID, re
 	if err != nil {
 		return fmt.Errorf("hash new password: %w", err)
 	}
-	if err := s.userRepo.UpdatePassword(ctx, userID, hash); err != nil {
+	if err := s.userRepo.UpdatePassword(ctx, userID, user.Role, hash); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrUserNotFound
 		}

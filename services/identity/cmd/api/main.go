@@ -88,6 +88,7 @@ func main() {
 	identityGroup.Get("/me", authMiddleware.RequireAuth, meHandler.Me)
 	identityGroup.Post("/logout", authMiddleware.RequireAuth, logoutHandler.Logout)
 	identityGroup.Post("/change-password", authMiddleware.RequireAuth, changePasswordHandler.Change)
+	identityGroup.Post("/customer/change-password", authMiddleware.RequireAuth, changePasswordHandler.ChangeCustomer)
 
 	// OWNER-only admin management
 	admins := identityGroup.Group("/admins", authMiddleware.RequireAuth, middleware.RequireOwner(userRepo))

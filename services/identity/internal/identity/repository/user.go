@@ -61,9 +61,9 @@ func (r *UserRepository) FindByID(
 	return &user, nil
 }
 
-func (r *UserRepository) UpdatePassword(ctx context.Context, id uuid.UUID, hash string) error {
+func (r *UserRepository) UpdatePassword(ctx context.Context, id uuid.UUID, role model.Role, hash string) error {
 	result := r.db.WithContext(ctx).Model(&model.User{}).
-		Where("id = ? AND role IN ?", id, []model.Role{model.RoleOwner, model.RoleAdmin}).
+		Where("id = ? AND role = ?", id, role).
 		Update("password_hash", hash)
 	if result.Error != nil {
 		return result.Error
