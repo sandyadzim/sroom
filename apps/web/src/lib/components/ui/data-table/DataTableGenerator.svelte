@@ -12,12 +12,12 @@
 	const searchFilters = $derived(
 		config.filters?.filter((filter) => filter.type === 'search') ?? []
 	);
-	const selectFilters = $derived(
-		config.filters?.filter((filter) => filter.type === 'select') ?? []
+	const controlFilters = $derived(
+		config.filters?.filter((filter) => filter.type !== 'search') ?? []
 	);
 	const filterRows = $derived(
-		Array.from({ length: Math.ceil(selectFilters.length / 3) }, (_, index) =>
-			selectFilters.slice(index * 3, index * 3 + 3)
+		Array.from({ length: Math.ceil(controlFilters.length / 3) }, (_, index) =>
+			controlFilters.slice(index * 3, index * 3 + 3)
 		)
 	);
 	const gridColumns = ['sm:grid-cols-1', 'sm:grid-cols-2', 'sm:grid-cols-3'];
@@ -51,15 +51,26 @@
 		{#each filterRows as row (row[0].name)}
 			<div class={['grid gap-4', gridColumns[row.length - 1]]}>
 				{#each row as filter (filter.name)}
-					<SelectField
-						label={filter.label}
-						name={filter.name}
-						placeholder={filter.placeholder}
-						options={filter.options}
-						value={table.filters[filter.name] ?? ''}
-						onchange={(value) => table.setFilter(filter.name, value)}
-						clearable
-					/>
+					{#if filter.type === 'date'}
+						<TextField
+							type="date"
+							label={filter.label}
+							name={filter.name}
+							value={table.filters[filter.name] ?? ''}
+							onchange={(event) => table.setFilter(filter.name, event.currentTarget.value)}
+							onclear={() => table.setFilter(filter.name, '')}
+						/>
+					{:else}
+						<SelectField
+							label={filter.label}
+							name={filter.name}
+							placeholder={filter.placeholder}
+							options={filter.options}
+							value={table.filters[filter.name] ?? ''}
+							onchange={(value) => table.setFilter(filter.name, value)}
+							clearable
+						/>
+					{/if}
 				{/each}
 			</div>
 		{/each}

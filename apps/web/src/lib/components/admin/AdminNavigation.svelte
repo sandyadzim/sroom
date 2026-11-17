@@ -38,17 +38,21 @@
 		signingOut: boolean;
 	} = $props();
 
-	const operations = [
-		{ label: 'Bookings', icon: CalendarDays },
-		{ label: 'Payments', icon: CreditCard },
+	const transactionLinks = [
+		{ label: 'Bookings', icon: CalendarDays, route: '/admin/(staff)/bookings' },
+		{ label: 'Payments', icon: CreditCard, route: '/admin/(staff)/payments' }
+	] as const;
+	const planned = [
+		...(import.meta.env.DEV ? [] : transactionLinks),
 		{ label: 'Reports', icon: ChartColumn }
 	];
-	const catalogLinks = [
+	const operations = [
 		{ label: 'Brands', icon: Tag, route: '/admin/(staff)/brands' },
 		{ label: 'Cars', icon: CarFront, route: '/admin/(staff)/cars' },
 		{ label: 'Physical units', icon: Warehouse, route: '/admin/(staff)/units' },
 		{ label: 'Banners', icon: PanelsTopLeft, route: '/admin/(staff)/banners' },
-		{ label: 'Featured Cars', icon: Star, route: '/admin/(staff)/featured-cars' }
+		{ label: 'Featured Cars', icon: Star, route: '/admin/(staff)/featured-cars' },
+		...(import.meta.env.DEV ? transactionLinks : [])
 	] as const;
 	const customersHref = $derived(resolve('/admin/(staff)/customers'));
 	const inCustomers = $derived(page.route.id?.startsWith('/admin/(staff)/customers'));
@@ -74,7 +78,7 @@
 				Operations
 			</p>
 			<ul class="space-y-1">
-				{#each catalogLinks as { label, icon: Icon, route } (route)}
+				{#each operations as { label, icon: Icon, route } (route)}
 					{@const onPage = page.route.id === route}
 					{@const inModule = onPage || page.route.id?.startsWith(`${route}/`)}
 					<li>
@@ -96,7 +100,7 @@
 						</Link>
 					</li>
 				{/each}
-				{#each operations as { label, icon: Icon } (label)}
+				{#each planned as { label, icon: Icon } (label)}
 					<li>
 						<span
 							class={[row, 'text-ink-muted']}

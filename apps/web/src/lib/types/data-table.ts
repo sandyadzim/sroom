@@ -12,6 +12,7 @@ export type TableFilter = {
 	label: string;
 } & (
 	| { type: 'search'; placeholder?: string }
+	| { type: 'date' }
 	| { type: 'select'; placeholder?: string; options: readonly { value: string; label: string }[] }
 );
 
@@ -21,8 +22,14 @@ export type TableColumn<Row> = {
 	sticky?: 'right';
 } & ({ field: Extract<keyof Row, string>; cell?: never } | { field?: never; cell: Snippet<[Row]> });
 
-export type DataTableConfig<Row> = {
-	endpoint: string;
+export type DataTableConfig<Row> = (
+	| { endpoint: string; queryKey?: never; loadPage?: never }
+	| {
+			endpoint?: never;
+			queryKey: string;
+			loadPage: (params: TableParams) => TablePage<Row> | Promise<TablePage<Row>>;
+	  }
+) & {
 	label: string;
 	rowKey: (row: Row) => string;
 	columns: readonly TableColumn<Row>[];

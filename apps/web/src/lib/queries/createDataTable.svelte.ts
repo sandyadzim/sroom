@@ -20,6 +20,15 @@ function allowedFilters(
 		if (filter.type === 'search') {
 			const term = value.trim();
 			if (term) allowed.set(filter.name, term);
+		} else if (filter.type === 'date') {
+			const date = new Date(`${value}T00:00:00Z`);
+			if (
+				/^\d{4}-\d{2}-\d{2}$/.test(value) &&
+				!Number.isNaN(date.getTime()) &&
+				date.toISOString().slice(0, 10) === value
+			) {
+				allowed.set(filter.name, value);
+			}
 		} else if (value && filter.options.some((option) => option.value === value)) {
 			allowed.set(filter.name, value);
 		}
@@ -60,11 +69,12 @@ export function createDataTable<Row>(getConfig: () => DataTableConfig<Row>) {
 	});
 
 	const query = createQuery(() => {
-		const endpoint = config.endpoint;
+		const { endpoint, loadPage, queryKey } = config;
 		const requestParams = params;
 		return {
-			queryKey: [endpoint, requestParams],
-			queryFn: ({ signal }) => fetchTablePage<Row>(endpoint, requestParams, signal),
+			queryKey: [endpoint ?? queryKey, requestParams],
+			queryFn: ({ signal }) =>
+				loadPage ? loadPage(requestParams) : fetchTablePage<Row>(endpoint, requestParams, signal),
 			refetchOnWindowFocus: false
 		};
 	});
