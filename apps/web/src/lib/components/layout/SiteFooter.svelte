@@ -7,7 +7,7 @@
 	const navigation = [
 		{ label: 'Explore Cars', href: resolve('/cars') },
 		{ label: 'Rental Terms', href: resolve('/rental-terms') },
-		{ label: 'My Bookings', href: '#' }
+		{ label: 'My Bookings', href: import.meta.env.DEV ? resolve('/account/bookings') : '#' }
 	];
 </script>
 

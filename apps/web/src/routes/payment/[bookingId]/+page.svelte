@@ -19,6 +19,9 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+	const detailHref = $derived(
+		resolve('/account/bookings/[bookingId]', { bookingId: data.bookingId })
+	);
 	const checkoutHref = $derived(resolve('/checkout/[slug]', { slug: checkoutPreviewSlug }));
 	const vaNumber = '0000000000000000';
 	const displayVaNumber = vaNumber.match(/.{4}/g)?.join(' ');
@@ -142,12 +145,12 @@
 
 <div class="page-container py-8 sm:py-10 lg:py-14">
 	<Link
-		href={checkoutHref}
+		href={booking ? detailHref : checkoutHref}
 		variant="plain"
 		class="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-ink-muted hover:text-ink"
 	>
 		<ArrowLeft size={17} aria-hidden="true" />
-		Back to checkout
+		{booking ? 'View Booking' : 'Back to checkout'}
 	</Link>
 
 	<header class="mt-3 mb-8 sm:mb-10">

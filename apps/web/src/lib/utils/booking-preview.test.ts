@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+	addBookingHistorySamples,
 	bookingOutcomeFixture,
 	bookingOutcomeRoute,
 	checkBookingPreview,
 	isBookingPreviewId,
+	listBookingPreviews,
 	readBookingPreview,
 	remainingPaymentSeconds,
 	saveBookingPreview
@@ -28,6 +30,10 @@ function usePreviewStorage() {
 	const storage = new Map<string, string>();
 	vi.stubGlobal('sessionStorage', {
 		getItem: (key: string) => storage.get(key),
+		get length() {
+			return storage.size;
+		},
+		key: (index: number) => [...storage.keys()][index] ?? null,
 		setItem: (key: string, value: string) => storage.set(key, value)
 	});
 }
@@ -41,7 +47,11 @@ describe('checkout handoff to payment', () => {
 		const id = saveBookingPreview(quote);
 		expect(isBookingPreviewId(id)).toBe(true);
 		vi.setSystemTime(start + 60_000);
-		expect(readBookingPreview(id)).toEqual({ ...quote, expiresAt: start + 900_000 });
+		expect(readBookingPreview(id)).toEqual({
+			...quote,
+			createdAt: start,
+			expiresAt: start + 900_000
+		});
 		expect(readBookingPreview('missing')).toBeNull();
 	});
 
@@ -73,5 +83,29 @@ describe('checkout handoff to payment', () => {
 		expect(remainingPaymentSeconds(2000, 1999)).toBe(1);
 		expect(remainingPaymentSeconds(2000, 2000)).toBe(0);
 		expect(remainingPaymentSeconds(2000, 2001)).toBe(0);
+	});
+});
+
+describe('booking history preview', () => {
+	it('preserves local reservations and adds each sample only once', () => {
+		usePreviewStorage();
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-11-17T12:00:00+08:00'));
+		addBookingHistorySamples();
+		vi.advanceTimersByTime(60_000);
+		const id = saveBookingPreview(quote, 'confirmed');
+		checkBookingPreview(id);
+		addBookingHistorySamples();
+
+		const bookings = listBookingPreviews();
+		expect(bookings).toHaveLength(5);
+		expect(bookings[0]).toMatchObject({ id, outcome: 'confirmed', total: quote.total });
+		expect(bookings.map((booking) => booking.outcome)).toEqual([
+			'confirmed',
+			undefined,
+			'confirmed',
+			'expired',
+			'review'
+		]);
 	});
 });

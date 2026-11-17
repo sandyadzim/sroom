@@ -6,6 +6,7 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import {
 		bookingOutcomeRoute,
+		bookingPreviewPaymentReference,
 		checkoutPreviewSlug,
 		readBookingPreview
 	} from '#lib/utils/booking-preview.ts';
@@ -41,7 +42,10 @@
 	const view = $derived(
 		booking?.outcome ? content[bookingOutcomeRoute(booking.outcome)] : undefined
 	);
-	const paymentReference = $derived(`VA-${data.bookingId.slice(-12).toUpperCase()}`);
+	const paymentReference = $derived(bookingPreviewPaymentReference(data.bookingId));
+	const detailHref = $derived(
+		resolve('/account/bookings/[bookingId]', { bookingId: data.bookingId })
+	);
 
 	$effect(() => {
 		const saved = readBookingPreview(data.bookingId);
@@ -106,7 +110,7 @@
 							A confirmation email will be sent separately.
 						</p>
 						<div class="mt-4 flex flex-wrap items-center gap-2">
-							<Button href="#booking-summary"
+							<Button href={detailHref}
 								>View Booking <ArrowRight size={17} aria-hidden="true" /></Button
 							>
 							<Button variant="secondary" disabled aria-describedby="invoice-note"
@@ -133,7 +137,7 @@
 							<Button onclick={checkReview}
 								><RefreshCw size={16} aria-hidden="true" /> Check Payment Status</Button
 							>
-							<Button href="#booking-summary" variant="secondary">View Booking</Button>
+							<Button href={detailHref} variant="secondary">View Booking</Button>
 						</div>
 						<p role="status" class="mt-2 text-sm text-ink-muted">{reviewMessage}</p>
 					{/if}

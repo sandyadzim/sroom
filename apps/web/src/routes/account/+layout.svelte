@@ -11,16 +11,22 @@
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
+	const previewBookings = $derived(
+		import.meta.env.DEV && page.route.id?.startsWith('/account/bookings')
+	);
 	const profile = createQuery(() => ({ ...customerProfileQuery, refetchOnMount: 'always' }));
 	const profilePath = $derived(resolve('/account/profile'));
 	const securityPath = $derived(resolve('/account/profile/change-password'));
 	const links = $derived([
 		{ label: 'Profile', href: profilePath, icon: UserRound },
-		{ label: 'Security', href: securityPath, icon: LockKeyhole }
+		{ label: 'Security', href: securityPath, icon: LockKeyhole },
+		...(import.meta.env.DEV
+			? [{ label: 'My Bookings', href: resolve('/account/bookings'), icon: CalendarDays }]
+			: [])
 	]);
 
 	$effect(() => {
-		if (profile.data === null && !profile.isFetching) {
+		if (!previewBookings && profile.data === null && !profile.isFetching) {
 			const next = customerAccountPath(page.route.id) ?? '/account/profile';
 			void goto(resolve(`/(auth)/login?next=${encodeURIComponent(next)}`), { replace: true });
 		}
@@ -33,7 +39,7 @@
 
 <div class="page-container py-10 sm:py-14 lg:py-18">
 	<div class="mx-auto max-w-5xl">
-		{#if profile.data}
+		{#if previewBookings || profile.data}
 			<div
 				class="grid gap-8 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-12 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-16"
 			>
@@ -47,7 +53,10 @@
 								<Link
 									{href}
 									variant="plain"
-									aria-current={page.url.pathname === href ? 'page' : undefined}
+									aria-current={page.url.pathname === href ||
+									(label === 'My Bookings' && previewBookings)
+										? 'page'
+										: undefined}
 									class="flex min-h-11 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-panel-muted hover:text-ink aria-[current=page]:bg-panel-muted aria-[current=page]:text-primary motion-reduce:transition-none sm:px-3 md:gap-3"
 								>
 									<Icon size={17} aria-hidden="true" />
@@ -55,16 +64,18 @@
 								</Link>
 							</li>
 						{/each}
-						<li>
-							<span
-								aria-disabled="true"
-								class="flex min-h-11 flex-wrap items-center gap-x-2 rounded-lg px-2.5 text-sm text-ink-muted sm:px-3 md:gap-x-3"
-							>
-								<CalendarDays size={17} aria-hidden="true" />
-								My Bookings
-								<span class="text-xs md:ml-[29px] md:basis-full">Coming soon</span>
-							</span>
-						</li>
+						{#if !import.meta.env.DEV}
+							<li>
+								<span
+									aria-disabled="true"
+									class="flex min-h-11 flex-wrap items-center gap-x-2 rounded-lg px-2.5 text-sm text-ink-muted sm:px-3 md:gap-x-3"
+								>
+									<CalendarDays size={17} aria-hidden="true" />
+									My Bookings
+									<span class="text-xs md:ml-[29px] md:basis-full">Coming soon</span>
+								</span>
+							</li>
+						{/if}
 					</ul>
 				</nav>
 				<div class="min-w-0">{@render children()}</div>
