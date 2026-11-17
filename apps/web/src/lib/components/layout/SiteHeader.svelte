@@ -1,5 +1,14 @@
 <script lang="ts">
-	import { Menu, X, ArrowUpRight } from '@lucide/svelte';
+	import {
+		ArrowUpRight,
+		CalendarDays,
+		ChevronDown,
+		LogOut,
+		Menu,
+		UserRound,
+		X
+	} from '@lucide/svelte';
+	import { Popover } from 'bits-ui';
 	import Wordmark from './Wordmark.svelte';
 	import HeaderRow from './HeaderRow.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
@@ -13,6 +22,7 @@
 	import { customerProfileQuery } from '#lib/queries/customer-auth.ts';
 	import { useToast } from '#lib/ui/toast.ts';
 
+	const signOutError = 'Could not sign out. Please try again.';
 	const profile = createQuery(() => customerProfileQuery);
 	const queryClient = useQueryClient();
 	const toast = useToast();
@@ -22,9 +32,11 @@
 		onSuccess: async () => {
 			await queryClient.cancelQueries({ queryKey: customerProfileQuery.queryKey });
 			queryClient.setQueryData(customerProfileQuery.queryKey, null);
-			closeMenu();
+			closeMenus();
 		},
-		onError: () => toast({ kind: 'error', message: 'Could not sign out. Please try again.' })
+		onError: () => {
+			if (!menuOpen || closing) toast({ kind: 'error', message: signOutError });
+		}
 	}));
 
 	const links = [
@@ -34,11 +46,14 @@
 	];
 	let menu: HTMLDialogElement;
 	let menuOpen = $state(false);
+	let accountOpen = $state(false);
+	const profileHref = $derived(resolve('/account/profile'));
 	let closing = $state(false);
 	const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 	function openMenu() {
 		if (menu.open) return;
+		if (signOut.isError) signOut.reset();
 		closing = false;
 		menu.showModal();
 		menuOpen = true;
@@ -59,7 +74,12 @@
 		if (event.type === 'transitionend' || reducedMotion()) menu.close();
 	}
 
-	afterNavigate(closeMenu);
+	function closeMenus() {
+		accountOpen = false;
+		closeMenu();
+	}
+
+	afterNavigate(closeMenus);
 
 	$effect(() => {
 		if (!menuOpen) return;
@@ -102,6 +122,56 @@
 	</nav>
 {/snippet}
 
+{#snippet signedInActions(expanded = false)}
+	<nav aria-label="Customer account" class={expanded ? 'border-t border-on-primary/20 pt-3' : ''}>
+		<Link
+			href={profileHref}
+			variant="plain"
+			aria-current={page.url.pathname === profileHref ? 'page' : undefined}
+			onclick={closeMenus}
+			class={[
+				'flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors motion-reduce:transition-none',
+				expanded
+					? 'hover:bg-on-primary/10 aria-[current=page]:bg-on-primary/10'
+					: 'hover:bg-panel-muted aria-[current=page]:bg-panel-muted'
+			]}
+		>
+			<UserRound size={17} aria-hidden="true" />
+			Profile
+		</Link>
+		<span
+			aria-disabled="true"
+			class={[
+				'flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm',
+				expanded ? 'text-on-primary/75' : 'text-ink-muted'
+			]}
+		>
+			<CalendarDays size={17} aria-hidden="true" />
+			My Bookings
+			<span class="ml-auto text-xs">Coming soon</span>
+		</span>
+		<div
+			class={expanded
+				? 'mt-2 border-t border-on-primary/20 pt-2'
+				: 'mt-1 border-t border-line pt-1'}
+		>
+			<Button
+				variant={expanded ? 'ghost-inverse' : 'ghost'}
+				size="custom"
+				class={['w-full justify-start rounded-lg px-3', !expanded && 'text-negative']}
+				disabled={signOut.isPending}
+				onclick={() => signOut.mutate()}
+			>
+				<LogOut size={17} aria-hidden="true" />
+				{signOut.isPending ? 'Signing out…' : 'Sign Out'}
+			</Button>
+			{#if expanded && signOut.isError}
+				<p role="alert" class="px-3 pt-1 text-sm text-on-primary">{signOutError}</p>
+			{/if}
+		</div>
+	</nav>
+{/snippet}
+
 {#snippet accountActions(expanded = false)}
 	<div
 		class={expanded
@@ -109,16 +179,34 @@
 			: 'flex items-center gap-4 text-sm xl:gap-6'}
 	>
 		{#if profile.data}
-			<span class="max-w-44 truncate font-medium">
-				{profile.data.full_name || profile.data.email}
-			</span>
-			<Button
-				variant={expanded ? 'inverse' : 'secondary'}
-				disabled={signOut.isPending}
-				onclick={() => signOut.mutate()}
-			>
-				{signOut.isPending ? 'Signing out…' : 'Sign Out'}
-			</Button>
+			{@const name = profile.data.full_name.trim() || profile.data.email}
+			{#if expanded}
+				<p class="truncate px-3 font-medium">{name}</p>
+				{@render signedInActions(true)}
+			{:else}
+				<Popover.Root bind:open={accountOpen}>
+					<Popover.Trigger
+						class="group inline-flex min-h-11 items-center gap-2.5 rounded-full bg-panel-muted px-4 text-sm font-semibold text-primary transition-colors hover:bg-line motion-reduce:transition-none"
+					>
+						<span class="max-w-36 truncate xl:max-w-44">{name}</span>
+						<ChevronDown
+							size={16}
+							aria-hidden="true"
+							class="shrink-0 transition-transform group-data-[state=open]:rotate-180 motion-reduce:transition-none"
+						/>
+					</Popover.Trigger>
+					<Popover.Portal>
+						<Popover.Content
+							aria-label="Account menu"
+							align="end"
+							sideOffset={8}
+							class="z-50 w-64 rounded-2xl bg-panel p-1.5 shadow-lg"
+						>
+							{@render signedInActions()}
+						</Popover.Content>
+					</Popover.Portal>
+				</Popover.Root>
+			{/if}
 		{:else}
 			<Link href={resolve('/(auth)/login')} onclick={closeMenu}>Sign In</Link>
 			<Button
@@ -158,7 +246,7 @@
 		bind:this={menu}
 		id="mobile-navigation"
 		data-closing={closing || undefined}
-		class="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-y-auto overscroll-contain border-0 bg-primary p-0 text-on-primary backdrop:bg-transparent"
+		class="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-y-auto overscroll-contain border-0 bg-primary p-0 text-on-primary backdrop:bg-transparent [&_:focus-visible]:outline-on-primary"
 		aria-label="Site navigation"
 		ontransitionend={finishClose}
 		ontransitioncancel={finishClose}

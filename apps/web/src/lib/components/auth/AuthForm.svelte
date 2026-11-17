@@ -8,7 +8,7 @@
 	import { getApiError } from '#lib/api/error.ts';
 	import { customerProfileQuery } from '#lib/queries/customer-auth.ts';
 	import { useToast } from '#lib/ui/toast.ts';
-	import { customerCheckoutSlug } from '#lib/utils/customer-auth.ts';
+	import { customerAccountPath, customerCheckoutSlug } from '#lib/utils/customer-auth.ts';
 	import { useRegistrationEmail } from './registration-email.ts';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Link from '#lib/components/ui/Link.svelte';
@@ -30,11 +30,14 @@
 	const queryClient = useQueryClient();
 	const signIn = createMutation(() => ({ mutationFn: loginCustomer, retry: false, gcTime: 0 }));
 	const signUp = createMutation(() => ({ mutationFn: registerCustomer, retry: false, gcTime: 0 }));
-	const slug = $derived(customerCheckoutSlug(page.url.searchParams.get('next')));
-	const destination = $derived(slug ? resolve('/cars/[slug]', { slug }) : resolve('/cars'));
-	const nextQuery = $derived(
-		slug ? (`?next=${encodeURIComponent(`/checkout/${slug}`)}` as const) : ''
+	const next = $derived(page.url.searchParams.get('next'));
+	const slug = $derived(customerCheckoutSlug(next));
+	const accountPath = $derived(customerAccountPath(next));
+	const destination = $derived(
+		accountPath ? resolve(accountPath) : slug ? resolve('/cars/[slug]', { slug }) : resolve('/cars')
 	);
+	const nextPath = $derived(accountPath ?? (slug ? `/checkout/${slug}` : null));
+	const nextQuery = $derived(nextPath ? (`?next=${encodeURIComponent(nextPath)}` as const) : '');
 	const loginHref = $derived(`${resolve('/(auth)/login')}${nextQuery}`);
 	const registerHref = $derived(`${resolve('/(auth)/register')}${nextQuery}`);
 	let values: AuthValues = $state({

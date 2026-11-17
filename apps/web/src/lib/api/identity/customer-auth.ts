@@ -2,6 +2,7 @@ import { PUBLIC_GATEWAY_BASE_URL } from '$app/env/public';
 import axios, { isAxiosError } from 'axios';
 import type {
 	ApiData,
+	ChangePasswordInput,
 	CustomerSessionProfile,
 	LoginCredentials,
 	RegisteredCustomer,
@@ -42,4 +43,8 @@ export async function fetchCustomerProfile(signal?: AbortSignal) {
 
 export async function logoutCustomer() {
 	await api.post(`${customerPath}/logout`, undefined, { withCredentials: true });
+}
+
+export async function changeCustomerPassword(input: ChangePasswordInput) {
+	await api.post(`${customerPath}/change-password`, input, { withCredentials: true });
 }
