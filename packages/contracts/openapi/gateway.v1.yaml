@@ -1,13 +1,13 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.5.0
+  version: 1.6.0
   description: |
     Local entry point for the documented Identity and Catalog routes.
     Request and response schemas are owned by those services. The gateway forwards
     Bearer tokens and propagates a validated or generated X-Request-ID.
-    The staff routes use an HttpOnly session cookie. POST, PATCH, PUT, and DELETE
-    on staff routes require an Origin in the gateway's WEB_ORIGINS allowlist.
+    The staff and customer session routes use separate HttpOnly cookies. Mutating
+    requests to those routes require an Origin in the gateway's WEB_ORIGINS allowlist.
     Gateway failures use the same error envelope, with 413 PAYLOAD_TOO_LARGE,
     503 DEPENDENCY_UNAVAILABLE for connection failures, or 504 DEPENDENCY_UNAVAILABLE
     for timeouts. Request bodies are capped at 16 KiB, or 6 MiB for image uploads.
@@ -81,6 +81,68 @@ paths:
     $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1cars~1{slug}~1related'
   /api/v1/catalog/brands:
     $ref: './catalog.v1.yaml#/paths/~1api~1v1~1catalog~1brands'
+  /api/v1/customer/login:
+    post:
+      operationId: customerLogin
+      summary: Start a CUSTOMER browser session
+      requestBody:
+        $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1login/post/requestBody'
+      responses:
+        '200':
+          description: Customer profile and session cookie. The response body contains the profile only.
+          headers:
+            Set-Cookie:
+              description: Host-only sroom_customer_session with HttpOnly, SameSite=Lax, Path=/api/v1/customer, and expiration from Identity. Secure outside development.
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: './identity.v1.yaml#/components/schemas/UserProfile'
+        '401':
+          $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1login/post/responses/401'
+        '403':
+          description: CUSTOMER_REQUIRED for another role or FORBIDDEN_ORIGIN for an untrusted origin.
+          content:
+            application/json:
+              schema:
+                $ref: './identity.v1.yaml#/components/schemas/ErrorResponse'
+        '429':
+          $ref: './identity.v1.yaml#/components/responses/RateLimited'
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/customer/me:
+    get:
+      operationId: getCustomerProfile
+      summary: Read the current CUSTOMER profile
+      security:
+        - customerCookie: []
+      responses:
+        '200':
+          $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1me/get/responses/200'
+        '401':
+          $ref: './identity.v1.yaml#/components/responses/Unauthenticated'
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/customer/logout:
+    post:
+      operationId: customerLogout
+      summary: End the CUSTOMER browser session
+      security:
+        - customerCookie: []
+        - {}
+      responses:
+        '204':
+          description: Session revoked if valid. The customer cookie is expired even when the session was missing or expired.
+          headers:
+            Set-Cookie:
+              description: Expires sroom_customer_session.
+              schema: { type: string }
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
   /api/v1/staff/login:
     post:
       operationId: staffLogin
@@ -513,3 +575,7 @@ components:
       type: apiKey
       in: cookie
       name: sroom_staff_session
+    customerCookie:
+      type: apiKey
+      in: cookie
+      name: sroom_customer_session

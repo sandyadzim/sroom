@@ -38,3 +38,7 @@ Set `base_url` to `http://localhost:8080` in your existing requests.
 Set `X-Request-ID` to `bruno-check-1` to match the response with a service error log. If an upstream is stopped, gateway requests to it return `503`. Requests that exceed the upstream deadline return `504`. The other service and gateway health remain available.
 
 Run `go test -race ./...` from `services/gateway`. See the [OpenAPI contract](../../packages/contracts/openapi/gateway.v1.yaml).
+
+## Customer browser authentication
+
+The public `/api/v1/identity/register` route creates a customer account without a session. The customer frontend uses `POST /api/v1/customer/login`, `GET /api/v1/customer/me`, and `POST /api/v1/customer/logout`. These session routes use a dedicated HttpOnly `sroom_customer_session` cookie scoped to `/api/v1/customer` and check the CUSTOMER role through Identity. The cookie expires with the Identity session. Use the same site for web and Gateway and configure the exact web origin in `WEB_ORIGINS`. `APP_ENV=production` requires HTTPS for cookies.

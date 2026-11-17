@@ -72,23 +72,17 @@ func staffProxy(path string, authenticated bool, handler gin.HandlerFunc) gin.Ha
 
 func finishStaffLogin(client *http.Client, identityURL *url.URL, secureCookie bool) func(*gin.Context, []byte) {
 	return func(c *gin.Context, payload []byte) {
-		var login struct {
-			Data struct {
-				Token     string    `json:"token"`
-				ExpiresAt time.Time `json:"expires_at"`
-			} `json:"data"`
-		}
-		if err := json.Unmarshal(payload, &login); err != nil || login.Data.Token == "" || !login.Data.ExpiresAt.After(time.Now()) {
+		token, expires, ok := readSession(payload)
+		if !ok {
 			writeError(c, http.StatusBadGateway, "INVALID_UPSTREAM_RESPONSE", "could not establish staff session")
 			return
 		}
 
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 		defer cancel()
-		token := login.Data.Token
 		requestID := c.Writer.Header().Get("X-Request-ID")
-		profile, ok := readLoginProfile(ctx, client, identityURL, token, requestID)
-		if !ok {
+		profile, status := readSessionProfile(ctx, client, identityURL, token, requestID)
+		if status != http.StatusOK {
 			writeError(c, http.StatusServiceUnavailable, "DEPENDENCY_UNAVAILABLE", "could not verify staff account")
 			return
 		}
@@ -99,9 +93,22 @@ func finishStaffLogin(client *http.Client, identityURL *url.URL, secureCookie bo
 			return
 		}
 
-		setStaffCookie(c, token, login.Data.ExpiresAt, secureCookie)
+		setStaffCookie(c, token, expires, secureCookie)
 		c.JSON(http.StatusOK, profile)
 	}
+}
+
+func readSession(payload []byte) (string, time.Time, bool) {
+	var login struct {
+		Data struct {
+			Token     string    `json:"token"`
+			ExpiresAt time.Time `json:"expires_at"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(payload, &login); err != nil {
+		return "", time.Time{}, false
+	}
+	return login.Data.Token, login.Data.ExpiresAt, login.Data.Token != "" && login.Data.ExpiresAt.After(time.Now())
 }
 
 type loginProfile struct {
@@ -114,28 +121,32 @@ type loginProfile struct {
 	} `json:"data"`
 }
 
-func readLoginProfile(ctx context.Context, client *http.Client, base *url.URL, token, requestID string) (loginProfile, bool) {
+func readSessionProfile(ctx context.Context, client *http.Client, base *url.URL, token, requestID string) (loginProfile, int) {
 	var profile loginProfile
-	response, err := staffIdentityRequest(ctx, client, base, http.MethodGet, "/me", token, requestID)
+	response, err := identitySessionRequest(ctx, client, base, http.MethodGet, "/me", token, requestID)
 	if err != nil {
-		return profile, false
+		return profile, http.StatusServiceUnavailable
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(response.Body, 16*1024)).Decode(&profile) != nil {
-		return profile, false
+	if response.StatusCode == http.StatusUnauthorized {
+		return profile, http.StatusUnauthorized
 	}
-	return profile, profile.Data.ID != "" && profile.Data.Role != ""
+	if response.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(response.Body, 16*1024)).Decode(&profile) != nil ||
+		profile.Data.ID == "" || profile.Data.Role == "" {
+		return profile, http.StatusServiceUnavailable
+	}
+	return profile, http.StatusOK
 }
 
 func revokeLoginSession(ctx context.Context, client *http.Client, base *url.URL, token, requestID string) {
-	response, err := staffIdentityRequest(ctx, client, base, http.MethodPost, "/logout", token, requestID)
+	response, err := identitySessionRequest(ctx, client, base, http.MethodPost, "/logout", token, requestID)
 	if err == nil {
 		response.Body.Close()
 	}
 }
 
-func staffIdentityRequest(ctx context.Context, client *http.Client, base *url.URL, method, path, token, requestID string) (*http.Response, error) {
+func identitySessionRequest(ctx context.Context, client *http.Client, base *url.URL, method, path, token, requestID string) (*http.Response, error) {
 	target := *base
 	target.Path = identityPath + path
 	request, err := http.NewRequestWithContext(ctx, method, target.String(), nil)
@@ -148,8 +159,12 @@ func staffIdentityRequest(ctx context.Context, client *http.Client, base *url.UR
 }
 
 func setStaffCookie(c *gin.Context, token string, expires time.Time, secure bool) {
+	setSessionCookie(c, staffCookieName, staffPath, token, expires, secure)
+}
+
+func setSessionCookie(c *gin.Context, name, path, token string, expires time.Time, secure bool) {
 	cookie := &http.Cookie{
-		Name: staffCookieName, Value: token, Path: staffPath,
+		Name: name, Value: token, Path: path,
 		HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode, Expires: expires,
 	}
 	if token == "" {

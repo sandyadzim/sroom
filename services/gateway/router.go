@@ -65,6 +65,7 @@ func newRouter(identityURL, catalogURL *url.URL, logger *slog.Logger) *gin.Engin
 
 	registerCatalogAdmin(catalogRoutes.Group("/admin"), catalog, upload)
 	registerStaff(v1.Group("/staff"), client, identityURL, identity, catalog, upload, logger)
+	registerCustomerSession(v1.Group("/customer"), client, identityURL, logger)
 	return app
 }
 

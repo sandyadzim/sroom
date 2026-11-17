@@ -13,7 +13,11 @@ func browserCORS(origins string) gin.HandlerFunc {
 		if !strings.HasPrefix(c.Request.URL.Path, "/api/v1/") {
 			return
 		}
-		staff := strings.HasPrefix(c.Request.URL.Path, staffPath+"/")
+		customerRoute := strings.HasPrefix(c.Request.URL.Path, customerPath+"/")
+		cookieRoute := strings.HasPrefix(c.Request.URL.Path, staffPath+"/") || customerRoute
+		if customerRoute {
+			c.Header("Cache-Control", "no-store")
+		}
 
 		c.Writer.Header().Add("Vary", "Origin")
 		origin := c.GetHeader("Origin")
@@ -23,7 +27,7 @@ func browserCORS(origins string) gin.HandlerFunc {
 				continue
 			}
 			c.Header("Access-Control-Allow-Origin", origin)
-			if staff {
+			if cookieRoute {
 				c.Header("Access-Control-Allow-Credentials", "true")
 			}
 			if c.Request.Method == http.MethodOptions && c.GetHeader("Access-Control-Request-Method") != "" {
@@ -35,7 +39,7 @@ func browserCORS(origins string) gin.HandlerFunc {
 		}
 
 		// A form can send a request even when the browser blocks reading its response.
-		if staff {
+		if cookieRoute {
 			switch c.Request.Method {
 			case http.MethodGet, http.MethodHead, http.MethodOptions:
 			default:

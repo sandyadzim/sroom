@@ -98,6 +98,9 @@ func forward(client *http.Client, base *url.URL, service string, bodyLimit int64
 			"Content-Type", "Cache-Control", "Content-Security-Policy", "X-Frame-Options", "WWW-Authenticate",
 			"Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "Allow",
 		} {
+			if header == "Cache-Control" && c.Writer.Header().Get(header) == "no-store" {
+				continue
+			}
 			if value := response.Header.Get(header); value != "" {
 				c.Header(header, value)
 			}
