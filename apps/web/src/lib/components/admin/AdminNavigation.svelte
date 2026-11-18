@@ -4,6 +4,7 @@
 	import {
 		ArrowUpRight,
 		ChartColumn,
+		LayoutDashboard,
 		CalendarDays,
 		CarFront,
 		CreditCard,
@@ -40,13 +41,14 @@
 
 	const transactionLinks = [
 		{ label: 'Bookings', icon: CalendarDays, route: '/admin/(staff)/bookings' },
-		{ label: 'Payments', icon: CreditCard, route: '/admin/(staff)/payments' }
+		{ label: 'Payments', icon: CreditCard, route: '/admin/(staff)/payments' },
+		{ label: 'Reports', icon: ChartColumn, route: '/admin/(staff)/reports' }
 	] as const;
-	const planned = [
-		...(import.meta.env.DEV ? [] : transactionLinks),
-		{ label: 'Reports', icon: ChartColumn }
-	];
+	const planned = import.meta.env.DEV ? [] : transactionLinks;
 	const operations = [
+		...(import.meta.env.DEV
+			? [{ label: 'Overview', icon: LayoutDashboard, route: '/admin/(staff)/overview' } as const]
+			: []),
 		{ label: 'Brands', icon: Tag, route: '/admin/(staff)/brands' },
 		{ label: 'Cars', icon: CarFront, route: '/admin/(staff)/cars' },
 		{ label: 'Physical units', icon: Warehouse, route: '/admin/(staff)/units' },

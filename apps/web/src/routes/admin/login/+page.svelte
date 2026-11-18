@@ -43,7 +43,7 @@
 			password = '';
 			queryClient.removeQueries();
 			queryClient.setQueryData(staffProfileQuery.queryKey, staff);
-			await goto(resolve('/admin/(staff)/profile'), { replaceState: true });
+			await goto(resolve('/admin'), { replace: true });
 		} catch (cause) {
 			const apiError = getApiError(cause);
 			fields = { email: apiError?.details?.email, password: apiError?.details?.password };
