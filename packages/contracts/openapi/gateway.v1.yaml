@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.8.0
+  version: 1.9.0
   description: |
     Local entry point for the documented Identity, Catalog, and Booking routes.
     Request and response schemas are owned by those services. The gateway forwards
@@ -114,6 +114,50 @@ paths:
           $ref: './identity.v1.yaml#/components/responses/RateLimited'
         default:
           $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/customer/bookings:
+    post:
+      operationId: createCustomerDemoHold
+      summary: Create a customer demo reservation
+      description: Use an allowed Origin and the customer session cookie. Booking verifies the customer role.
+      security:
+        - customerCookie: []
+      parameters:
+        - name: Origin
+          in: header
+          required: true
+          schema: { type: string }
+        - $ref: './booking.v1.yaml#/components/parameters/IdempotencyKey'
+      requestBody:
+        $ref: './booking.v1.yaml#/components/requestBodies/HoldRequest'
+      responses:
+        '201':
+          $ref: './booking.v1.yaml#/components/responses/Hold'
+        '400':
+          $ref: './booking.v1.yaml#/components/responses/InvalidRequest'
+        '401':
+          $ref: './booking.v1.yaml#/components/responses/Unauthenticated'
+        '403':
+          description: CUSTOMER_REQUIRED for another role or FORBIDDEN_ORIGIN for an untrusted origin.
+          content:
+            application/json:
+              schema:
+                $ref: './booking.v1.yaml#/components/schemas/Error'
+        '404':
+          $ref: './booking.v1.yaml#/components/responses/VariantNotFound'
+        '409':
+          $ref: './booking.v1.yaml#/components/responses/HoldConflict'
+        '413':
+          $ref: './booking.v1.yaml#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: './booking.v1.yaml#/components/responses/InvalidHold'
+        '503':
+          $ref: './booking.v1.yaml#/components/responses/HoldUnavailable'
+        '504':
+          description: DEPENDENCY_UNAVAILABLE when Gateway times out waiting for Booking.
+          content:
+            application/json:
+              schema:
+                $ref: './booking.v1.yaml#/components/schemas/Error'
   /api/v1/customer/checkout/quotes:
     post:
       operationId: createCustomerCheckoutQuote

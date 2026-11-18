@@ -3,6 +3,7 @@ package checkout
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"booking/internal/catalog"
@@ -27,6 +28,7 @@ type Service struct {
 	catalog     *catalog.Client
 	allocations *Repository
 	wita        *time.Location
+	inProgress  sync.Map
 }
 
 func NewService(client *catalog.Client, allocations *Repository) (*Service, error) {
@@ -50,6 +52,10 @@ func (s *Service) Quote(ctx context.Context, variantID string, pickup, returnAt,
 	if err != nil {
 		return Quote{}, err
 	}
+	return s.quoteForSnapshot(ctx, snapshot, pickup, returnAt, now, days)
+}
+
+func (s *Service) quoteForSnapshot(ctx context.Context, snapshot catalog.BookingSnapshot, pickup, returnAt, now time.Time, days int) (Quote, error) {
 	total, err := quoteTotal(snapshot.DailyRateIDR, days)
 	if err != nil {
 		return Quote{}, err

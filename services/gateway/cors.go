@@ -32,7 +32,7 @@ func browserCORS(origins string) gin.HandlerFunc {
 			}
 			if c.Request.Method == http.MethodOptions && c.GetHeader("Access-Control-Request-Method") != "" {
 				c.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE")
-				c.Header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+				c.Header("Access-Control-Allow-Headers", "Authorization, Content-Type, Idempotency-Key")
 				c.AbortWithStatus(http.StatusNoContent)
 			}
 			return

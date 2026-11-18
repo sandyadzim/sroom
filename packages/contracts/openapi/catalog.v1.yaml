@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Catalog API
-  version: 1.8.0
+  version: 1.9.0
   description: |
     The local gateway forwards the same Catalog API. An incoming X-Request-ID
     with 1-64 ASCII letters, digits, underscores, or hyphens is preserved.
@@ -376,6 +376,7 @@ paths:
         A submitted gallery replaces the gallery, follows request order, and must contain at least one photo.
         Car fields and image references are saved together.
         Use an empty trim to clear it. An active car requires a cover.
+        Deactivating an active car during demo holds returns 409 DEMO_HOLDS_ACTIVE.
       security:
         - bearerAuth: []
       requestBody:
@@ -475,7 +476,7 @@ paths:
     patch:
       operationId: updateCarUnit
       summary: Update a physical unit's code or status (OWNER or ADMIN)
-      description: Send at least one field. The parent car stays fixed. A duplicate internal code returns CAR_UNIT_CODE_TAKEN.
+      description: Send at least one field. The parent car stays fixed. A duplicate internal code returns CAR_UNIT_CODE_TAKEN. Deactivating an active unit during demo holds returns DEMO_HOLDS_ACTIVE.
       security:
         - bearerAuth: []
       requestBody:

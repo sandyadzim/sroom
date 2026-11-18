@@ -42,38 +42,40 @@ func NewClient(baseURL string) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) Role(ctx context.Context, token, requestID string) (string, error) {
+type Profile struct {
+	ID   string `json:"id"`
+	Role string `json:"role"`
+}
+
+func (c *Client) Profile(ctx context.Context, token, requestID string) (Profile, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.meURL, nil)
 	if err != nil {
-		return "", ErrUnavailable
+		return Profile{}, ErrUnavailable
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("X-Request-ID", requestID)
 	res, err := c.http.Do(req)
 	if err != nil {
-		return "", ErrUnavailable
+		return Profile{}, ErrUnavailable
 	}
 	defer res.Body.Close()
 	if res.StatusCode == http.StatusUnauthorized {
-		return "", ErrUnauthenticated
+		return Profile{}, ErrUnauthenticated
 	}
 	if res.StatusCode != http.StatusOK {
-		return "", ErrUnavailable
+		return Profile{}, ErrUnavailable
 	}
 
 	const maxResponseBytes = 16 * 1024
 	body, err := io.ReadAll(io.LimitReader(res.Body, maxResponseBytes+1))
 	if err != nil || len(body) > maxResponseBytes {
-		return "", ErrUnavailable
+		return Profile{}, ErrUnavailable
 	}
 	var profile struct {
-		Data struct {
-			ID   string `json:"id"`
-			Role string `json:"role"`
-		} `json:"data"`
+		Data Profile `json:"data"`
 	}
 	if json.Unmarshal(body, &profile) != nil || strings.TrimSpace(profile.Data.ID) == "" || strings.TrimSpace(profile.Data.Role) == "" {
-		return "", ErrUnavailable
+		return Profile{}, ErrUnavailable
 	}
-	return profile.Data.Role, nil
+	return profile.Data, nil
 }

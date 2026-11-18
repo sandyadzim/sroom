@@ -45,7 +45,7 @@ func TestQuoteHTTP(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var client *catalog.Client
 			if test.catalogStatus != 0 {
-				client = quoteTestCatalog(t, test.catalogStatus, "inactive", []string{})
+				client = quoteTestCatalog(t, test.catalogStatus, "inactive", []string{}, false)
 			}
 			router := quoteTestRouter(t, client, nil)
 			res := sendTestQuote(router, test.token, test.pickupAt, test.returnAt)
@@ -88,7 +88,7 @@ func TestQuoteAvailabilityPostgres(t *testing.T) {
 	}
 	assertQuote := func(unitIDs []string, pickupAt, returnAt string, available bool, rentalDays int) {
 		t.Helper()
-		router := quoteTestRouter(t, quoteTestCatalog(t, 200, "active", unitIDs), db)
+		router := quoteTestRouter(t, quoteTestCatalog(t, 200, "active", unitIDs, false), db)
 		res := sendTestQuote(router, "CUSTOMER", pickupAt, returnAt)
 		var response struct{ Data checkout.Quote }
 		if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil || res.Code != 200 {
@@ -131,7 +131,7 @@ func quoteTestRouter(t *testing.T, client *catalog.Client, pool *sql.DB) *gin.En
 		}
 		switch token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "); token {
 		case "CUSTOMER", "ADMIN":
-			_ = json.NewEncoder(w).Encode(gin.H{"data": gin.H{"id": "fixture", "role": token}})
+			_ = json.NewEncoder(w).Encode(gin.H{"data": gin.H{"id": testCustomerID, "role": token}})
 		case "identity-down":
 			http.Error(w, "synthetic private detail", 500)
 		default:
@@ -165,7 +165,7 @@ func quoteTestRouter(t *testing.T, client *catalog.Client, pool *sql.DB) *gin.En
 	return router
 }
 
-func quoteTestCatalog(t *testing.T, responseStatus int, status string, unitIDs []string) *catalog.Client {
+func quoteTestCatalog(t *testing.T, responseStatus int, status string, unitIDs []string, demoHolds bool) *catalog.Client {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/internal/v1/variants/"+quoteVariantID+"/booking-snapshot" ||
@@ -179,7 +179,7 @@ func quoteTestCatalog(t *testing.T, responseStatus int, status string, unitIDs [
 		}
 		_ = json.NewEncoder(w).Encode(gin.H{"data": catalog.BookingSnapshot{
 			VariantID: quoteVariantID, VehicleLabel: "Toyota Innova V", DailyRateIDR: 450000,
-			Status: status, EligibleUnitIDs: unitIDs,
+			Status: status, EligibleUnitIDs: unitIDs, DemoHoldsEnabled: demoHolds,
 		}})
 	}))
 	t.Cleanup(server.Close)

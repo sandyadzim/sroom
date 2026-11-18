@@ -75,7 +75,7 @@ func TestCarPublicationPostgres(t *testing.T) {
 	brands := repository.NewBrandRepository(db)
 	toyota := createCarTestBrand(t, brands, "Toyota")
 	honda := createCarTestBrand(t, brands, "Honda")
-	router := newCarTestRouter(t, repository.NewCarRepository(db))
+	router := newCarTestRouter(t, repository.NewCarRepository(db, false))
 
 	req := carTestRequest(toyota.ID, "Fortuner", 600000)
 	first := createTestCar(t, router, req)
@@ -181,7 +181,7 @@ func TestCarPublicationPostgres(t *testing.T) {
 func TestCarFormSubmissionPostgres(t *testing.T) {
 	db := catalogTestDatabase(t)
 	brand := createCarTestBrand(t, repository.NewBrandRepository(db), "Toyota")
-	router := newCarTestRouter(t, repository.NewCarRepository(db))
+	router := newCarTestRouter(t, repository.NewCarRepository(db, false))
 	active := model.CarActive
 
 	req := carTestRequest(brand.ID, "Fortuner", 650000)
@@ -243,7 +243,7 @@ func TestCarFormSubmissionPostgres(t *testing.T) {
 func TestCarGalleryOrderPostgres(t *testing.T) {
 	db := catalogTestDatabase(t)
 	brand := createCarTestBrand(t, repository.NewBrandRepository(db), "Toyota")
-	router := newCarTestRouter(t, repository.NewCarRepository(db))
+	router := newCarTestRouter(t, repository.NewCarRepository(db, false))
 	active := model.CarActive
 	req := carTestRequest(brand.ID, "Fortuner", 650000)
 	req.Status = &active
@@ -297,7 +297,7 @@ func TestCarFiltersPostgres(t *testing.T) {
 	brands := repository.NewBrandRepository(db)
 	toyota := createCarTestBrand(t, brands, "Toyota")
 	honda := createCarTestBrand(t, brands, "Honda")
-	router := newCarTestRouter(t, repository.NewCarRepository(db))
+	router := newCarTestRouter(t, repository.NewCarRepository(db, false))
 
 	var cars []dto.AdminCarDetail
 	for index, rate := range []int64{400000, 400001, 700000, 700001} {
@@ -366,7 +366,7 @@ func TestCarFiltersPostgres(t *testing.T) {
 func TestCarCoverReplacementAndActivationPostgres(t *testing.T) {
 	db := catalogTestDatabase(t)
 	brand := createCarTestBrand(t, repository.NewBrandRepository(db), "Toyota")
-	router := newCarTestRouter(t, repository.NewCarRepository(db))
+	router := newCarTestRouter(t, repository.NewCarRepository(db, false))
 	car := createTestCar(t, router, carTestRequest(brand.ID, "Fortuner", 600000))
 	path := adminCarsPath + "/" + car.ID
 	activate := httptest.NewRequest("PATCH", path, strings.NewReader(`{"status":"active"}`))

@@ -70,7 +70,7 @@ func forward(client *http.Client, base *url.URL, service string, bodyLimit int64
 			writeError(c, http.StatusBadRequest, "INVALID_REQUEST", "invalid request URL")
 			return
 		}
-		for _, header := range []string{"Authorization", "Content-Type"} {
+		for _, header := range []string{"Authorization", "Content-Type", "Idempotency-Key"} {
 			if value := incoming.Header.Get(header); value != "" {
 				request.Header.Set(header, value)
 			}

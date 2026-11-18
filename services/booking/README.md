@@ -33,6 +33,8 @@ Start Identity, Catalog, and Gateway. Booking uses `IDENTITY_BASE_URL` (default 
 
 Sign in through Gateway and send `POST /api/v1/customer/checkout/quotes` with the customer cookie and an allowed origin. See the [Booking request and response schemas](../../packages/contracts/openapi/booking.v1.yaml) and the [Gateway contract](../../packages/contracts/openapi/gateway.v1.yaml).
 
+To create a demo hold, set `CATALOG_DEMO_HOLDS=true` in Catalog and restart it. Send `POST /api/v1/customer/bookings` with an `Idempotency-Key` UUID. Keep demo mode active while demo holds exist. Holds remain blocking until an expiry workflow can safely release them.
+
 ## Checks
 
 Run `go test ./...` from this directory.

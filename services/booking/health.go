@@ -55,11 +55,15 @@ func newRouter(pingDatabase func(context.Context) error) (*gin.Engine, error) {
 }
 
 func writeError(c *gin.Context, status int, code, message string) {
+	writeErrorDetails(c, status, code, message, gin.H{})
+}
+
+func writeErrorDetails(c *gin.Context, status int, code, message string, details gin.H) {
 	c.AbortWithStatusJSON(status, gin.H{
 		"error": gin.H{
 			"code":    code,
 			"message": message,
-			"details": gin.H{},
+			"details": details,
 		},
 		"request_id": c.Writer.Header().Get("X-Request-ID"),
 	})

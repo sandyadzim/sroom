@@ -47,3 +47,5 @@ The public `/api/v1/identity/register` route creates a customer account without 
 Customer Profile reads `GET /api/v1/customer/me`. The customer changes their own password with `POST /api/v1/customer/change-password` using their customer cookie and an allowed origin. The Gateway forwards the request to Identity's CUSTOMER-only password route. A successful update returns 204 and preserves existing sessions.
 
 Checkout sends `POST /api/v1/customer/checkout/quotes` with the same customer cookie and an allowed origin. Gateway forwards the session as a Bearer token to [Booking](../booking/README.md).
+
+`POST /api/v1/customer/bookings` uses the same cookie and origin. Gateway also forwards the required `Idempotency-Key` header.

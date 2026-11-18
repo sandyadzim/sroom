@@ -22,6 +22,7 @@ Use the Go version specified in [go.mod](go.mod), a Catalog PostgreSQL database,
 | `APP_PORT` | HTTP port, defaults to `8082` |
 | `IDENTITY_BASE_URL` | Identity service URL, defaults to `http://localhost:8081` |
 | `BOOKING_CATALOG_TOKEN` | Optional shared secret for Booking access to the private snapshot route |
+| `CATALOG_DEMO_HOLDS` | Defaults to `false`. Use `true` with demo data to allow holds and pause deactivation of active cars and units. |
 | `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | R2 bucket settings, required to upload and verify images |
 | `R2_PUBLIC_BASE_URL` | Public HTTPS base URL for serving images. Image URLs are `null` when unset |
 

@@ -107,6 +107,8 @@ func writeCarUnitError(c *gin.Context, err error) {
 		response.Error(c, http.StatusNotFound, "CAR_NOT_FOUND", err.Error())
 	case repository.ErrCarUnitNotFound:
 		response.Error(c, http.StatusNotFound, "CAR_UNIT_NOT_FOUND", err.Error())
+	case repository.ErrDemoHoldsActive:
+		response.Error(c, http.StatusConflict, "DEMO_HOLDS_ACTIVE", err.Error())
 	case repository.ErrCarUnitCodeTaken:
 		response.Error(c, http.StatusConflict, "CAR_UNIT_CODE_TAKEN", err.Error())
 	default:

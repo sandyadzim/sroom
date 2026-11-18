@@ -39,7 +39,7 @@ func TestFeaturedCarsAuthorizationAndInput(t *testing.T) {
 func TestFeaturedCarsPostgres(t *testing.T) {
 	db := catalogTestDatabase(t)
 	brand := createCarTestBrand(t, repository.NewBrandRepository(db), "Toyota")
-	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db), carTestImages{}, ""))
+	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db, false), carTestImages{}, ""))
 	featured := handler.NewFeaturedCarHandler(service.NewFeaturedCarService(repository.NewFeaturedCarRepository(db), "https://assets.example.test/"))
 	router := newCatalogTestRouter(t, nil, nil, cars, featured, nil)
 

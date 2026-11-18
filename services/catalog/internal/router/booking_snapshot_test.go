@@ -32,8 +32,8 @@ func TestBookingSnapshotAccess(t *testing.T) {
 func TestBookingSnapshotPostgres(t *testing.T) {
 	db := catalogTestDatabase(t)
 	brand := createCarTestBrand(t, repository.NewBrandRepository(db), "Toyota")
-	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db), carTestImages{}, ""))
-	units := handler.NewCarUnitHandler(service.NewCarUnitService(repository.NewCarUnitRepository(db)))
+	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db, false), carTestImages{}, ""))
+	units := handler.NewCarUnitHandler(service.NewCarUnitService(repository.NewCarUnitRepository(db, false)))
 	router := newCatalogTestRouterWithBookingToken(t, nil, nil, cars, nil, units, testBookingToken)
 	active := model.CarActive
 	input := carTestRequest(brand.ID, "Innova", 600000)
@@ -71,4 +71,29 @@ func TestBookingSnapshotPostgres(t *testing.T) {
 		t.Fatalf("unexpected inactive snapshot: %+v", snapshot)
 	}
 	catalogRequest(t, router, http.MethodGet, snapshotPath(missingBrandID), testBookingToken, "", 404)
+}
+
+func TestDemoHoldsPauseDeactivation(t *testing.T) {
+	db := catalogTestDatabase(t)
+	brand := createCarTestBrand(t, repository.NewBrandRepository(db), "Demo Brand")
+	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db, true), carTestImages{}, ""))
+	units := handler.NewCarUnitHandler(service.NewCarUnitService(repository.NewCarUnitRepository(db, true)))
+	router := newCatalogTestRouterWithBookingToken(t, nil, nil, cars, nil, units, testBookingToken)
+	active := model.CarActive
+	input := carTestRequest(brand.ID, "Demo", 450000)
+	input.Status = &active
+	variant := createTestCar(t, router, input)
+	carPath := adminCarsPath + "/" + variant.ID
+	var unit struct{ Data dto.CarUnitResponse }
+	decodeCarJSON(t, catalogRequest(t, router, "POST", carPath+"/units", "ADMIN", `{"internal_code":"DEMO-001","status":"active"}`, 201), &unit)
+	unitPath := adminUnitsPath + "/" + unit.Data.ID
+	catalogRequest(t, router, "PATCH", unitPath, "ADMIN", `{"internal_code":"DEMO-EDIT"}`, 200)
+	catalogRequest(t, router, "PATCH", unitPath, "ADMIN", `{"status":"inactive"}`, 409)
+	catalogRequest(t, router, "PATCH", carPath, "OWNER", `{"status":"inactive"}`, 409)
+	var snapshot struct{ Data dto.BookingSnapshot }
+	decodeCarJSON(t, catalogRequest(t, router, "GET", snapshotPath(variant.ID), testBookingToken, "", 200), &snapshot)
+	if !snapshot.Data.DemoHoldsEnabled || snapshot.Data.Status != model.CarActive ||
+		!slices.Equal(snapshot.Data.EligibleUnitIDs, []string{unit.Data.ID}) {
+		t.Fatalf("unexpected snapshot during demo holds: %+v", snapshot)
+	}
 }

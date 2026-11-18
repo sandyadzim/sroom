@@ -67,3 +67,34 @@ func TestCustomerQuoteProxy(t *testing.T) {
 	}
 	assertError(t, request(router, httptest.NewRequest(http.MethodPost, "/api/v1/booking/checkout/quotes", nil)), 404, "NOT_FOUND")
 }
+
+func TestCustomerHoldProxy(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	t.Setenv("WEB_ORIGINS", "http://localhost:5173")
+	const path = "/api/v1/customer/bookings"
+	const key = "27ac7b53-7a4f-42ab-9ec8-02fefacef82c"
+	booking := testUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/booking/bookings" || r.Method != http.MethodPost ||
+			r.Header.Get("Authorization") != "Bearer fixture-session" ||
+			r.Header.Get("Idempotency-Key") != key || r.Header.Get("X-Request-ID") != "hold-test" {
+			t.Error("unexpected hold request at Booking")
+		}
+		w.WriteHeader(http.StatusCreated)
+	})
+	app := newRouter(booking, booking, booking, testLogger())
+	preflight := httptest.NewRequest(http.MethodOptions, path, nil)
+	preflight.Header.Set("Origin", "http://localhost:5173")
+	preflight.Header.Set("Access-Control-Request-Method", http.MethodPost)
+	res := request(app, preflight)
+	if res.Code != 204 || !strings.Contains(res.Header().Get("Access-Control-Allow-Headers"), "Idempotency-Key") {
+		t.Fatal("hold preflight did not allow Idempotency-Key")
+	}
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader("{}"))
+	req.AddCookie(&http.Cookie{Name: customerCookieName, Value: "fixture-session"})
+	req.Header.Set("Origin", "http://localhost:5173")
+	req.Header.Set("Idempotency-Key", key)
+	req.Header.Set("X-Request-ID", "hold-test")
+	if res := request(app, req); res.Code != 201 {
+		t.Fatalf("status = %d, want 201", res.Code)
+	}
+}

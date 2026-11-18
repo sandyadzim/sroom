@@ -69,6 +69,7 @@ func newRouter(identityURL, catalogURL, bookingURL *url.URL, logger *slog.Logger
 	registerCustomerSession(customer, client, identityURL, logger)
 	booking := forwardTo(client, bookingURL, "booking", 16*1024, 8*time.Second, logger)
 	customer.POST("/checkout/quotes", customerProxy("/api/v1/booking/checkout/quotes", true, booking))
+	customer.POST("/bookings", customerProxy("/api/v1/booking/bookings", true, booking))
 	return app
 }
 

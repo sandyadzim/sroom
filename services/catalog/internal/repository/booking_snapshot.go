@@ -9,6 +9,10 @@ import (
 	"gorm.io/gorm"
 )
 
+func (r *CarRepository) DemoHoldsEnabled() bool {
+	return r.demoHolds
+}
+
 func (r *CarRepository) BookingSnapshot(ctx context.Context, id string) (model.Car, []string, error) {
 	var car model.Car
 	unitIDs := []string{}
