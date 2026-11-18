@@ -27,7 +27,13 @@ curl -i http://localhost:8083/health/ready
 
 `/health/live` checks the HTTP process. `/health/ready` checks PostgreSQL and returns `503` while the database is unavailable.
 
-The [private Catalog API](../../packages/contracts/openapi/catalog.internal.v1.yaml) provides variant and unit data for checkout. The Booking client defaults to `http://localhost:8082`. When checkout is enabled, set `CATALOG_BASE_URL` if needed and use the same `BOOKING_CATALOG_TOKEN` in both services.
+## Checkout quote
+
+Start Identity, Catalog, and Gateway. Booking uses `IDENTITY_BASE_URL` (default `http://localhost:8081`) to verify customer sessions. Use the same `BOOKING_CATALOG_TOKEN` in Booking and Catalog, and set `CATALOG_BASE_URL` if Catalog runs away from `http://localhost:8082`. Restart both services after changing the token.
+
+Sign in through Gateway and send `POST /api/v1/customer/checkout/quotes` with the customer cookie and an allowed origin. See the [Booking request and response schemas](../../packages/contracts/openapi/booking.v1.yaml) and the [Gateway contract](../../packages/contracts/openapi/gateway.v1.yaml).
+
+## Checks
 
 Run `go test ./...` from this directory.
 

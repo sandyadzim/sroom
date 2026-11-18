@@ -12,6 +12,10 @@ import (
 	"syscall"
 	"time"
 
+	"booking/internal/catalog"
+	"booking/internal/checkout"
+	"booking/internal/identity"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -52,6 +56,22 @@ func run(log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	identityClient, err := identity.NewClient(cfg.identityURL)
+	if err != nil {
+		return err
+	}
+	var catalogClient *catalog.Client
+	if cfg.catalogToken != "" {
+		catalogClient, err = catalog.NewClient(cfg.catalogURL, cfg.catalogToken)
+		if err != nil {
+			return err
+		}
+	}
+	checkoutService, err := checkout.NewService(catalogClient, checkout.NewRepository(db))
+	if err != nil {
+		return err
+	}
+	registerCheckout(router, quoteHandler{identity: identityClient, checkout: checkoutService, now: time.Now})
 	server := &http.Server{
 		Addr:              ":" + strconv.Itoa(cfg.appPort),
 		Handler:           router,

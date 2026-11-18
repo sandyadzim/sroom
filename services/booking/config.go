@@ -10,8 +10,11 @@ import (
 )
 
 type config struct {
-	databaseURL string
-	appPort     int
+	databaseURL  string
+	appPort      int
+	identityURL  string
+	catalogURL   string
+	catalogToken string
 }
 
 func loadConfig() (config, error) {
@@ -33,5 +36,11 @@ func loadConfig() (config, error) {
 		return config{}, errors.New("APP_PORT must be between 1 and 65535")
 	}
 
-	return config{databaseURL: databaseURL, appPort: appPort}, nil
+	return config{
+		databaseURL:  databaseURL,
+		appPort:      appPort,
+		identityURL:  os.Getenv("IDENTITY_BASE_URL"),
+		catalogURL:   os.Getenv("CATALOG_BASE_URL"),
+		catalogToken: strings.TrimSpace(os.Getenv("BOOKING_CATALOG_TOKEN")),
+	}, nil
 }
