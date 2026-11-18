@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func New(identityClient *identity.Client, brands *handler.BrandHandler, banners *handler.BannerHandler, cars *handler.CarHandler, featuredCars *handler.FeaturedCarHandler, units *handler.CarUnitHandler, imageStore handler.ImageStore) (*gin.Engine, error) {
+func New(identityClient *identity.Client, brands *handler.BrandHandler, banners *handler.BannerHandler, cars *handler.CarHandler, featuredCars *handler.FeaturedCarHandler, units *handler.CarUnitHandler, imageStore handler.ImageStore, bookingToken string) (*gin.Engine, error) {
 	engine := gin.New()
 	if err := engine.SetTrustedProxies(nil); err != nil {
 		return nil, err
@@ -25,6 +25,12 @@ func New(identityClient *identity.Client, brands *handler.BrandHandler, banners 
 	engine.NoRoute(defaultBodyLimit, func(c *gin.Context) {
 		response.Error(c, http.StatusNotFound, "NOT_FOUND", "route not found")
 	})
+
+	if bookingToken != "" {
+		internal := engine.Group("/internal")
+		internalV1 := internal.Group("/v1", defaultBodyLimit, middleware.RequireBookingToken(bookingToken))
+		internalV1.GET("/variants/:id/booking-snapshot", cars.BookingSnapshot)
+	}
 
 	api := engine.Group("/api")
 	v1 := api.Group("/v1")

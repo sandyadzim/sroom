@@ -82,7 +82,7 @@ func main() {
 	featuredCarHandler := handler.NewFeaturedCarHandler(featuredCarService)
 
 	// Initialize Gin
-	engine, err := router.New(identityClient, brandHandler, bannerHandler, carHandler, featuredCarHandler, unitHandler, imageStore)
+	engine, err := router.New(identityClient, brandHandler, bannerHandler, carHandler, featuredCarHandler, unitHandler, imageStore, cfg.BookingToken)
 	if err != nil {
 		slog.Error("HTTP setup failed", "reason", err.Error())
 		os.Exit(1)

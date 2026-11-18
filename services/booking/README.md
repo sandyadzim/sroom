@@ -27,6 +27,8 @@ curl -i http://localhost:8083/health/ready
 
 `/health/live` checks the HTTP process. `/health/ready` checks PostgreSQL and returns `503` while the database is unavailable.
 
+The [private Catalog API](../../packages/contracts/openapi/catalog.internal.v1.yaml) provides variant and unit data for checkout. The Booking client defaults to `http://localhost:8082`. When checkout is enabled, set `CATALOG_BASE_URL` if needed and use the same `BOOKING_CATALOG_TOKEN` in both services.
+
 Run `go test ./...` from this directory.
 
 To also test the allocation schema, export `BOOKING_TEST_DATABASE_URL` for a dedicated PostgreSQL test database:

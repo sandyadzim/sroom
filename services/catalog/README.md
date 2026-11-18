@@ -21,6 +21,7 @@ Use the Go version specified in [go.mod](go.mod), a Catalog PostgreSQL database,
 | `DATABASE_URL` | Catalog PostgreSQL connection string, required |
 | `APP_PORT` | HTTP port, defaults to `8082` |
 | `IDENTITY_BASE_URL` | Identity service URL, defaults to `http://localhost:8081` |
+| `BOOKING_CATALOG_TOKEN` | Optional shared secret for Booking access to the private snapshot route |
 | `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | R2 bucket settings, required to upload and verify images |
 | `R2_PUBLIC_BASE_URL` | Public HTTPS base URL for serving images. Image URLs are `null` when unset |
 
@@ -53,6 +54,8 @@ Local base URL is `http://localhost:8082/api/v1/catalog`. Admin routes require a
 - Physical units have a unique case-insensitive internal code and default to inactive. Unit records appear only in admin APIs.
 
 See [OpenAPI](../../packages/contracts/openapi/catalog.v1.yaml) for the contract and [DEVELOPMENT.md](DEVELOPMENT.md) for Bruno examples.
+
+Booking calls the [private snapshot API](../../packages/contracts/openapi/catalog.internal.v1.yaml) directly. Use a private network and HTTPS when the connection goes beyond localhost.
 
 ## Checks
 

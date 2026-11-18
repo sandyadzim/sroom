@@ -48,6 +48,11 @@ func newBrandTestRouter(t *testing.T, repo *repository.BrandRepository) *gin.Eng
 
 func newCatalogTestRouter(t *testing.T, brands *handler.BrandHandler, banners *handler.BannerHandler, cars *handler.CarHandler, featuredCars *handler.FeaturedCarHandler, units *handler.CarUnitHandler) *gin.Engine {
 	t.Helper()
+	return newCatalogTestRouterWithBookingToken(t, brands, banners, cars, featuredCars, units, "")
+}
+
+func newCatalogTestRouterWithBookingToken(t *testing.T, brands *handler.BrandHandler, banners *handler.BannerHandler, cars *handler.CarHandler, featuredCars *handler.FeaturedCarHandler, units *handler.CarUnitHandler, bookingToken string) *gin.Engine {
+	t.Helper()
 	gin.SetMode(gin.TestMode)
 	identityServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		role := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
@@ -62,7 +67,7 @@ func newCatalogTestRouter(t *testing.T, brands *handler.BrandHandler, banners *h
 	if err != nil {
 		t.Fatal(err)
 	}
-	router, err := New(client, brands, banners, cars, featuredCars, units, nil)
+	router, err := New(client, brands, banners, cars, featuredCars, units, nil, bookingToken)
 	if err != nil {
 		t.Fatal(err)
 	}

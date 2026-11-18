@@ -79,6 +79,7 @@ func TestRoutes(t *testing.T) {
 	}
 	assertError(t, request(app, httptest.NewRequest("DELETE", "/api/v1/identity/admins/test-id", nil)), 405, "METHOD_NOT_ALLOWED")
 	assertError(t, request(app, httptest.NewRequest("GET", "/api/v1/catalog/health", nil)), 404, "NOT_FOUND")
+	assertError(t, request(app, httptest.NewRequest("GET", "/internal/v1/variants/test-id/booking-snapshot", nil)), 404, "NOT_FOUND")
 }
 
 func TestForwardsJSONAndAPIResponses(t *testing.T) {
