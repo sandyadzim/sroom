@@ -1,6 +1,6 @@
 # SROOM Gateway
 
-Local Go + Gin gateway for all current Identity and Catalog API routes. Use `http://localhost:8080` as the base URL. Keep the existing paths, payloads, and Bearer token.
+Local Go + Gin gateway for Identity, Catalog, and Booking. Use `http://localhost:8080` as the base URL.
 
 ## Run locally
 
@@ -14,6 +14,7 @@ Local Go + Gin gateway for all current Identity and Catalog API routes. Use `htt
 | `APP_PORT` | `8080` |
 | `IDENTITY_URL` | `http://localhost:8081` |
 | `CATALOG_URL` | `http://localhost:8082` |
+| `BOOKING_URL` | `http://localhost:8083` |
 | `WEB_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` |
 
 Export variables before starting the gateway to override the defaults. It listens on IPv4 loopback. Identity still applies its login and registration rate limits, and requests through the gateway share its IP quota.
@@ -44,3 +45,5 @@ Run `go test -race ./...` from `services/gateway`. See the [OpenAPI contract](..
 The public `/api/v1/identity/register` route creates a customer account without a session. The customer frontend uses `POST /api/v1/customer/login`, `GET /api/v1/customer/me`, and `POST /api/v1/customer/logout`. These session routes use a dedicated HttpOnly `sroom_customer_session` cookie scoped to `/api/v1/customer` and check the CUSTOMER role through Identity. The cookie expires with the Identity session. Use the same site for web and Gateway and configure the exact web origin in `WEB_ORIGINS`. `APP_ENV=production` requires HTTPS for cookies.
 
 Customer Profile reads `GET /api/v1/customer/me`. The customer changes their own password with `POST /api/v1/customer/change-password` using their customer cookie and an allowed origin. The Gateway forwards the request to Identity's CUSTOMER-only password route. A successful update returns 204 and preserves existing sessions.
+
+Checkout sends `POST /api/v1/customer/checkout/quotes` with the same customer cookie and an allowed origin. Gateway forwards the session as a Bearer token to [Booking](../booking/README.md).

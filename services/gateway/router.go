@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func newRouter(identityURL, catalogURL *url.URL, logger *slog.Logger) *gin.Engine {
+func newRouter(identityURL, catalogURL, bookingURL *url.URL, logger *slog.Logger) *gin.Engine {
 	app := gin.New()
 	app.RedirectTrailingSlash = false
 	app.HandleMethodNotAllowed = true
@@ -65,7 +65,10 @@ func newRouter(identityURL, catalogURL *url.URL, logger *slog.Logger) *gin.Engin
 
 	registerCatalogAdmin(catalogRoutes.Group("/admin"), catalog, upload)
 	registerStaff(v1.Group("/staff"), client, identityURL, identity, catalog, upload, logger)
-	registerCustomerSession(v1.Group("/customer"), client, identityURL, logger)
+	customer := v1.Group("/customer")
+	registerCustomerSession(customer, client, identityURL, logger)
+	booking := forwardTo(client, bookingURL, "booking", 16*1024, 8*time.Second, logger)
+	customer.POST("/checkout/quotes", customerProxy("/api/v1/booking/checkout/quotes", true, booking))
 	return app
 }
 

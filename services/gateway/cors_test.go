@@ -18,7 +18,7 @@ func TestStaffBrowserCORS(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusForbidden)
 	})
-	app := newRouter(upstream, upstream, testLogger())
+	app := newRouter(upstream, upstream, upstream, testLogger())
 	path := "/api/v1/identity/admins"
 	origin := "https://staff.example.test"
 

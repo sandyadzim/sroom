@@ -39,11 +39,15 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	bookingURL, err := upstreamURL("BOOKING_URL", "http://localhost:8083")
+	if err != nil {
+		return err
+	}
 
 	gin.SetMode(gin.ReleaseMode)
 	server := &http.Server{
 		Addr:              net.JoinHostPort("127.0.0.1", strconv.Itoa(portNumber)),
-		Handler:           newRouter(identityURL, catalogURL, logger),
+		Handler:           newRouter(identityURL, catalogURL, bookingURL, logger),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      40 * time.Second,
