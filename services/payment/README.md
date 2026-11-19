@@ -1,6 +1,6 @@
 # Payment Service
 
-Go + Gin service for BNI Virtual Account initiation, with HTTP liveness and PostgreSQL readiness checks. Settlement and Booking confirmation are not implemented yet.
+Go + Gin service for BNI Virtual Account initiation and verified Midtrans sandbox payment outcomes. Booking confirmation follows separately.
 
 ## Run locally
 
@@ -19,7 +19,7 @@ curl -i http://localhost:8084/health/ready
 
 Liveness returns `200` while HTTP is running. Readiness pings PostgreSQL with a two-second timeout, returning `200` when ready or `503 DATABASE_UNAVAILABLE` when unavailable. It recovers without restarting Payment. Invalid configuration stops startup with a safe error message.
 
-The [HTTP contract](../../packages/contracts/openapi/payment.v1.yaml) documents health and VA initiation. RabbitMQ is not required yet.
+The [HTTP contract](../../packages/contracts/openapi/payment.v1.yaml) documents health, VA initiation, and webhooks. RabbitMQ is not required yet.
 
 ## Create a BNI VA
 
@@ -30,6 +30,14 @@ Start Gateway and send `POST /api/v1/customer/bookings/{id}/payments/va` with th
 The first ready VA returns `201`; existing attempts return `200`; uncertain initialization or review returns `202` without usable instructions. Retry the same booking/key. An uncertain attempt never creates a replacement charge; recovery follows later reconciliation work. Disable Booking's `BOOKING_DEMO_PAYMENTS` mode before trying Midtrans-backed holds.
 
 See the [account setup guide](../../../docs/payment-sandbox-setup.md) and [Bruno flow](../../../docs/payment-create-va-bruno.md). Direct sandbox verification remains pending; automated tests use fake providers.
+
+## Payment notifications
+
+Gateway forwards `POST /webhooks/midtrans` to Payment. This provider callback uses signature verification and an authenticated Midtrans status lookup, without customer cookies or Origin checks. The body limit is 16 KiB; unknown provider fields are allowed.
+
+Payment stores receipt hashes, sanitized observations, and verified state. Duplicate callbacks produce one `payment.paid.v1` outbox event per attempt; paid never regresses. Temporary failures return `503` for retry; committed review/unmatched receipts return `200`. No raw payload or signature is stored. Events are not published yet, and this endpoint does not confirm Booking or release inventory.
+
+See [sandbox notification setup and checks](../../../docs/payment-sandbox-setup.md#8-notification-url). Direct sandbox verification remains pending; automated tests use fake providers. No additional environment variable or migration is needed for this callback.
 
 ## Migrations
 

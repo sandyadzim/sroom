@@ -2,6 +2,8 @@ package router
 
 import (
 	"context"
+	"crypto/sha512"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -25,6 +27,11 @@ import (
 )
 
 type integrationProvider struct{ calls int }
+
+func (p *integrationProvider) GetStatus(_ context.Context, orderID, _ string) (midtrans.StatusResult, error) {
+	return midtrans.StatusResult{OrderID: orderID, TransactionID: orderID, MerchantID: "synthetic-merchant", AmountIDR: 150000,
+		Currency: "IDR", Bank: "bni", PaymentType: "bank_transfer", Status: "settlement", StatusCode: "200", FraudStatus: "accept"}, nil
+}
 
 func (p *integrationProvider) CreateVA(_ context.Context, input midtrans.ChargeInput, _ string) (midtrans.ChargeResult, error) {
 	p.calls++
@@ -54,7 +61,10 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		for _, table := range []string{"provider_observations", "idempotency_records"} {
+		if err := db.WithContext(ctx).Exec("DELETE FROM payment.outbox_events WHERE aggregate_id IN (SELECT id FROM payment.payment_attempts WHERE customer_id = ?)", customerA).Error; err != nil {
+			t.Error("could not clean HTTP test outbox")
+		}
+		for _, table := range []string{"provider_observations", "webhook_receipts", "idempotency_records"} {
 			if err := db.WithContext(ctx).Exec("DELETE FROM payment."+table+" WHERE payment_id IN (SELECT id FROM payment.payment_attempts WHERE customer_id = ?)", customerA).Error; err != nil {
 				t.Error("could not clean HTTP test rows")
 			}
@@ -134,5 +144,57 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 	}
 	if provider.calls != 1 {
 		t.Fatalf("provider calls=%d", provider.calls)
+	}
+	const serverKey = "synthetic-webhook-key"
+	RegisterWebhook(engine, handler.NewWebhookHandler(service.NewWebhookService(repository.NewPaymentRepository(db), provider, serverKey)))
+	var orderID string
+	if err := db.Raw("SELECT provider_order_id FROM payment.payment_attempts WHERE id = ?", firstID).Scan(&orderID).Error; err != nil {
+		t.Fatal(err)
+	}
+	digest := sha512.Sum512([]byte(orderID + "200" + "150000.00" + serverKey))
+	body, err := json.Marshal(map[string]any{"order_id": orderID, "status_code": "200", "gross_amount": "150000.00", "signature_key": hex.EncodeToString(digest[:]), "future_field": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		// Provider callback requires neither a customer token nor an Origin header.
+		req := httptest.NewRequest("POST", "/webhooks/midtrans", strings.NewReader(string(body)))
+		req.Header.Set("Content-Type", "application/json")
+		res := httptest.NewRecorder()
+		engine.ServeHTTP(res, req)
+		if res.Code != 200 || res.Body.String() != `{"status":"ok"}` {
+			t.Fatalf("webhook=%d %s", res.Code, res.Body.String())
+		}
+	}
+	var status string
+	if err := db.Raw("SELECT status FROM payment.payment_attempts WHERE id = ?", firstID).Scan(&status).Error; err != nil {
+		t.Fatal(err)
+	}
+	if status != "paid" {
+		t.Fatal("HTTP callback did not persist settlement")
+	}
+	// A separate closed pool exercises a database outage without disturbing cleanup.
+	unavailableDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Discard})
+	if err != nil {
+		t.Fatal("could not open failure-test pool")
+	}
+	unavailablePool, err := unavailableDB.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := unavailablePool.Close(); err != nil {
+		t.Fatal(err)
+	}
+	unavailableEngine, err := New(handler.NewHealthHandler(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	RegisterWebhook(unavailableEngine, handler.NewWebhookHandler(service.NewWebhookService(repository.NewPaymentRepository(unavailableDB), provider, serverKey)))
+	req := httptest.NewRequest("POST", "/webhooks/midtrans", strings.NewReader(string(body)))
+	req.Header.Set("Content-Type", "application/json")
+	res := httptest.NewRecorder()
+	unavailableEngine.ServeHTTP(res, req)
+	if res.Code != 503 || strings.Contains(res.Body.String(), "database is closed") {
+		t.Fatalf("unsafe database failure response=%d %s", res.Code, res.Body.String())
 	}
 }

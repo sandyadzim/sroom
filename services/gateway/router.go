@@ -32,6 +32,8 @@ func newRouter(identityURL, catalogURL, bookingURL, paymentURL *url.URL, logger 
 	})
 
 	client := newHTTPClient()
+	webhook := forwardTo(client, paymentURL, "payment", 16*1024, 10*time.Second, logger)
+	app.POST("/webhooks/midtrans", webhook)
 	identity := forwardTo(client, identityURL, "identity", 16*1024, 8*time.Second, logger)
 	catalog := forwardTo(client, catalogURL, "catalog", 16*1024, 8*time.Second, logger)
 	upload := forwardTo(client, catalogURL, "catalog", 6*1024*1024, 25*time.Second, logger)

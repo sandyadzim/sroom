@@ -1,13 +1,15 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.11.0
+  version: 1.12.0
   description: |
     Local entry point for the documented Identity, Catalog, Booking, and Payment routes.
     Request and response schemas are owned by those services. The gateway forwards
     Bearer tokens and propagates a validated or generated X-Request-ID.
     The staff and customer session routes use separate HttpOnly cookies. Mutating
     requests to those routes require an Origin in the gateway's WEB_ORIGINS allowlist.
+    POST /webhooks/midtrans is a provider callback without browser session/origin
+    checks, forwarded unchanged to Payment with a 10-second upstream deadline.
     Gateway failures use the same error envelope, with 413 PAYLOAD_TOO_LARGE,
     503 DEPENDENCY_UNAVAILABLE for connection failures, or 504 DEPENDENCY_UNAVAILABLE
     for timeouts. Request bodies are capped at 16 KiB, or 6 MiB for image uploads.
@@ -15,6 +17,8 @@ servers:
   - url: http://localhost:8080
 security: []
 paths:
+  /webhooks/midtrans:
+    $ref: './payment.v1.yaml#/paths/~1webhooks~1midtrans'
   /health:
     get:
       operationId: gatewayHealth

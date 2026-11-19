@@ -63,9 +63,13 @@ func run(log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	paymentService := service.NewPaymentService(repository.NewPaymentRepository(db), bookingClient,
-		midtrans.NewClient(cfg.MidtransServerKey), cfg.BookingToken != "" && cfg.MidtransServerKey != "")
+	paymentRepo := repository.NewPaymentRepository(db)
+	midtransClient := midtrans.NewClient(cfg.MidtransServerKey)
+	paymentService := service.NewPaymentService(paymentRepo, bookingClient,
+		midtransClient, cfg.BookingToken != "" && cfg.MidtransServerKey != "")
 	router.RegisterPayment(engine, identityClient, handler.NewPaymentHandler(paymentService))
+	webhookService := service.NewWebhookService(paymentRepo, midtransClient, cfg.MidtransServerKey)
+	router.RegisterWebhook(engine, handler.NewWebhookHandler(webhookService))
 	server := &http.Server{
 		Addr:              ":" + strconv.Itoa(cfg.AppPort),
 		Handler:           engine,

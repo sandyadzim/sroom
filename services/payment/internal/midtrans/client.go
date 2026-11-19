@@ -9,7 +9,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -114,9 +113,8 @@ func (c *Client) CreateVA(ctx context.Context, input ChargeInput, requestID stri
 		return result, ErrInvalidResponse
 	}
 	result.OrderID, result.TransactionID, result.Status, result.Currency = response.OrderID, response.TransactionID, response.Status, response.Currency
-	amount, fraction, _ := strings.Cut(response.GrossAmount, ".")
-	result.AmountIDR, err = strconv.ParseInt(amount, 10, 64)
-	if err != nil || strings.Trim(fraction, "0") != "" || result.AmountIDR <= 0 {
+	result.AmountIDR, err = ParseAmount(response.GrossAmount)
+	if err != nil {
 		return result, ErrInvalidResponse
 	}
 	result.ExpiresAt, err = time.ParseInLocation("2006-01-02 15:04:05", response.ExpiryTime, wib)

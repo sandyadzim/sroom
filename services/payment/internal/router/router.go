@@ -54,3 +54,8 @@ func RegisterPayment(engine *gin.Engine, verifier middleware.SessionVerifier, pa
 	bookings := payment.Group("/bookings")
 	bookings.POST("/:id/payments/va", paymentHandler.CreateVA)
 }
+
+func RegisterWebhook(engine *gin.Engine, webhookHandler *handler.WebhookHandler) {
+	webhooks := engine.Group("/webhooks")
+	webhooks.POST("/midtrans", webhookHandler.Midtrans)
+}

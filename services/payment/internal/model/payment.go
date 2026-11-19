@@ -17,10 +17,13 @@ type PaymentAttempt struct {
 	HoldExpiresAt         time.Time
 	ProviderExpiresAt     *time.Time
 	ReviewReason          *string
+	VerifiedAt            *time.Time
+	ProviderPaidAt        *time.Time
 }
 
 type ProviderObservation struct {
 	PaymentID             string
+	Source                string
 	ProviderTransactionID *string
 	ProviderStatus        *string
 	AmountIDR             *int64 `gorm:"column:amount_idr"`
@@ -29,4 +32,21 @@ type ProviderObservation struct {
 	PayloadDigest         *string
 	ErrorCode             *string
 	RequestID             string
+}
+
+type WebhookReceipt struct {
+	ID              string
+	PaymentID       *string
+	ProviderOrderID string
+	PayloadHash     string
+	Status          string
+}
+
+type PaymentOutcome struct {
+	Status         string
+	ProviderStatus string
+	TransactionID  string
+	ReviewReason   *string
+	Observation    ProviderObservation
+	VerifiedAt     time.Time
 }
