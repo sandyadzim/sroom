@@ -95,6 +95,8 @@ func run(log *slog.Logger) error {
 		serverResult <- server.Serve(listener)
 	}()
 	log.Info("server started", "operation", "http.listen", "port", cfg.appPort)
+	stopDemoExpiry := startDemoExpiry(stopping, checkoutService, cfg, log)
+	defer stopDemoExpiry()
 
 	select {
 	case err := <-serverResult:

@@ -41,7 +41,7 @@ func (r *Repository) paymentContext(ctx context.Context, bookingID string) (Paym
 	}
 }
 
-// DueHolds reads candidates for the future expiry worker.
+// DueHolds reads candidates for expiry evaluation; it does not release inventory.
 func (r *Repository) DueHolds(ctx context.Context, checkedAt time.Time) ([]PaymentContext, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()

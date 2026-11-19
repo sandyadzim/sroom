@@ -33,7 +33,7 @@ Start Identity, Catalog, and Gateway. Booking uses `IDENTITY_BASE_URL` (default 
 
 Sign in through Gateway and send `POST /api/v1/customer/checkout/quotes` with the customer cookie and an allowed origin. See the [Booking request and response schemas](../../packages/contracts/openapi/booking.v1.yaml) and the [Gateway contract](../../packages/contracts/openapi/gateway.v1.yaml).
 
-To create a demo hold, set `CATALOG_DEMO_HOLDS=true` in Catalog and restart it. Send `POST /api/v1/customer/bookings` with an `Idempotency-Key` UUID. Keep demo mode active while demo holds exist. Holds remain blocking until an expiry workflow can safely release them.
+To create a demo hold, set `CATALOG_DEMO_HOLDS=true` in Catalog and restart it. Send `POST /api/v1/customer/bookings` with an `Idempotency-Key` UUID. Keep Catalog demo mode active while demo data exists. Booking's demo payment mode below controls automatic expiry; otherwise overdue holds stay blocking.
 
 ## Booking history
 
@@ -43,13 +43,15 @@ Use `GET /api/v1/customer/bookings` and `GET /api/v1/customer/bookings/{id}` thr
 
 Set `PAYMENT_BOOKING_TOKEN` to enable `GET /internal/v1/bookings/{id}/payment-context` directly on Booking. The caller uses the same token as a Bearer credential. See the [private contract](../../packages/contracts/openapi/booking.internal.v1.yaml).
 
-The expiry candidate query reads up to 50 overdue pending holds. Status changes and allocation release follow the Payment integration.
+Provider reconciliation follows the future Payment integration.
 
-## Demo confirmation
+## Demo payments
 
 Set `BOOKING_DEMO_PAYMENTS=true` and `PAYMENT_BOOKING_TOKEN`, then restart Booking. Call `POST /internal/v1/bookings/{id}/demo-confirmation` directly with that Bearer token and JSON `{"amount_idr":800000,"currency":"IDR"}` using the booking's actual total. The hold must be pending, before its deadline, and still allocated. Successful retries return the original confirmation time.
 
-This simulates payment and records `booking.demo_confirmed.v1` in the outbox. Inventory stays blocked. Provider verification, RabbitMQ publication, invoices, email, and automatic expiry are pending. The endpoint is disabled by default and unavailable through Gateway. Use a dedicated local demo database; demo-confirmed records remain after disabling the endpoint.
+This simulates payment and records `booking.demo_confirmed.v1` in the outbox. Confirmed inventory stays blocked. The same mode runs expiry at startup and every 30 seconds, processing up to 50 pending holds per check. Due holds are assumed unpaid, become `expired`, release their units, and record `booking.demo_expired.v1`. Backlogs or database failures can delay release beyond the 15-minute deadline. Restart resumes from saved state.
+
+Use a dedicated local demo database. The mode is disabled by default; saved records remain when it is disabled. The confirmation endpoint is unavailable through Gateway. Provider verification, RabbitMQ publication, invoices, email, and real-payment release policies are pending.
 
 ## Checks
 
