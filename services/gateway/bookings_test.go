@@ -26,6 +26,9 @@ func TestBookingReadRoutes(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 	router := newRouter(booking, booking, booking, testLogger())
+	privateRequest := httptest.NewRequest(http.MethodGet, "/internal/v1/bookings/fixture/payment-context", nil)
+	privateRequest.Header.Set("Authorization", "Bearer payment-fixture")
+	assertError(t, request(router, privateRequest), 404, "NOT_FOUND")
 	for _, route := range []struct{ prefix, cookie, value string }{
 		{customerPath, customerCookieName, "customer-fixture"},
 		{staffPath, staffCookieName, "staff-fixture"},

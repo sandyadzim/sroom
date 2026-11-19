@@ -39,6 +39,12 @@ To create a demo hold, set `CATALOG_DEMO_HOLDS=true` in Catalog and restart it. 
 
 Use `GET /api/v1/customer/bookings` and `GET /api/v1/customer/bookings/{id}` through Gateway with a customer session. ADMIN and OWNER use `GET /api/v1/staff/bookings` and `GET /api/v1/staff/bookings/{id}`. Staff detail includes the customer ID, unit ID, and status history.
 
+## Payment preparation
+
+Set `PAYMENT_BOOKING_TOKEN` to enable `GET /internal/v1/bookings/{id}/payment-context` directly on Booking. The caller uses the same token as a Bearer credential. See the [private contract](../../packages/contracts/openapi/booking.internal.v1.yaml).
+
+The expiry candidate query reads up to 50 overdue pending holds. Status changes and allocation release follow the Payment integration.
+
 ## Checks
 
 Run `go test ./...` from this directory.

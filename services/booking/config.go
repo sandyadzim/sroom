@@ -15,6 +15,7 @@ type config struct {
 	identityURL  string
 	catalogURL   string
 	catalogToken string
+	paymentToken string
 }
 
 func loadConfig() (config, error) {
@@ -42,5 +43,6 @@ func loadConfig() (config, error) {
 		identityURL:  os.Getenv("IDENTITY_BASE_URL"),
 		catalogURL:   os.Getenv("CATALOG_BASE_URL"),
 		catalogToken: strings.TrimSpace(os.Getenv("BOOKING_CATALOG_TOKEN")),
+		paymentToken: strings.TrimSpace(os.Getenv("PAYMENT_BOOKING_TOKEN")),
 	}, nil
 }
