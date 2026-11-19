@@ -61,7 +61,13 @@ Booking reads `GET /internal/v1/bookings/{id}/payment-confirmation` with the exi
 
 New VA attempts snapshot the verified Identity name/email once. Confirmed Booking events issue one immutable JSON invoice with an `INV-<UUID>` number. Customer/staff read `GET /api/v1/customer/bookings/{id}/invoice` or `/api/v1/staff/bookings/{id}/invoice` through Gateway. An accessible booking without an invoice returns `409 INVOICE_NOT_AVAILABLE`; other-customer/missing bookings return `404`.
 
-Apply Payment migration `000003_create_invoices` and Booking migration `000004_add_outbox_delivery`. With the existing broker URL and pair token, Booking relays confirmed events and Payment consumes `payment.booking-events.v1`. Existing invoices read locally; issuance verifies Booking over HTTP before committing invoice/inbox together. Legacy attempts without billing snapshots remain unavailable and go to DLQ. No PDF generator or email delivery yet. See [setup and Bruno](../../../docs/payment-invoice-bruno.md).
+Apply Payment migration `000003_create_invoices` and Booking migration `000004_add_outbox_delivery`. With the existing broker URL and pair token, Booking relays confirmed events and Payment consumes `payment.booking-events.v1`. Existing invoices read locally; issuance verifies Booking over HTTP before committing invoice/inbox together. Legacy attempts without billing snapshots remain unavailable and go to DLQ. No PDF generator. Email delivery uses the optional Mailpit worker below. See [setup and Bruno](../../../docs/payment-invoice-bruno.md).
+
+## Email delivery
+
+Apply migration `000004_create_email_deliveries` with Payment stopped. It queues confirmation/invoice text emails for existing invoices; new jobs commit with invoice/inbox. Set `SMTP_ADDR=127.0.0.1:1025` to enable the Mailpit worker. Empty SMTP keeps jobs queued. `MAIL_FROM` defaults to `SROOM <noreply@sroom.test>`; `WEB_BASE_URL` defaults to `http://localhost:5173`.
+
+The worker checks at startup/every 10 seconds, with five attempts and persisted retry/claim recovery. Staff payment detail includes `email_deliveries` without recipient/body. `sent` means Mailpit accepted SMTP DATA; a crash before status commit can duplicate physical email. No internet delivery or PDF attachments. See [Mailpit setup, Bruno and limits](../../../docs/payment-email-bruno.md).
 
 ## Expiry assessment
 
@@ -102,3 +108,5 @@ go test -race -count=1 ./...
 Export `PAYMENT_TEST_DATABASE_URL` before running these commands. Schema tests skip when it is unset; they do not fall back to `DATABASE_URL`.
 
 Relay persistence tests additionally require `PAYMENT_OUTBOX_TEST_DATABASE_URL`, a separate migrated test database because relay queries poll all pending events. RabbitMQ transport tests are opt-in with `PAYMENT_RABBITMQ_TEST_URL` pointing to a dedicated `sroom-test` vhost. Without these variables, the corresponding tests skip. Real RabbitMQ and Compose execution remain unverified until Docker is available.
+
+Email worker tests use a separate migrated `PAYMENT_EMAIL_TEST_DATABASE_URL`. To run all PostgreSQL suites sharing the Booking fixture database, use `go test -p 1 -race -count=1 ./services/payment/... ./services/booking/... ./services/gateway/...` from project/; package serialization prevents expiry scanner fixtures from interfering. The optional local Mailpit smoke test uses `PAYMENT_MAILPIT_SMTP_ADDR` and `PAYMENT_MAILPIT_HTTP_URL`.

@@ -59,6 +59,7 @@ type StaffPaymentDetail struct {
 	VerifiedAt        *time.Time             `json:"verified_at"`
 	ProviderPaidAt    *time.Time             `json:"provider_paid_at"`
 	Timeline          []PaymentTimelineEntry `json:"timeline"`
+	EmailDeliveries   []EmailDeliveryStatus  `json:"email_deliveries"`
 }
 
 type PaymentTimelineEntry struct {

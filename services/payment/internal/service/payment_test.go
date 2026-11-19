@@ -69,6 +69,9 @@ func paymentFixture(t *testing.T) (*PaymentService, *gorm.DB, *testBookingReader
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
+		if err := db.WithContext(ctx).Exec("DELETE FROM payment.email_deliveries WHERE booking_id = ?", input.BookingID).Error; err != nil {
+			t.Error("could not clean test emails")
+		}
 		if err := db.WithContext(ctx).Exec("DELETE FROM payment.inbox_events WHERE aggregate_id = ?", input.BookingID).Error; err != nil {
 			t.Error("could not clean test inbox")
 		}

@@ -73,6 +73,9 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
+		if err := db.WithContext(ctx).Exec("DELETE FROM payment.email_deliveries WHERE booking_id = ?", bookingID).Error; err != nil {
+			t.Error("could not clean test emails")
+		}
 		if err := db.WithContext(ctx).Exec("DELETE FROM payment.inbox_events WHERE aggregate_id = ?", bookingID).Error; err != nil {
 			t.Error(err)
 		}
@@ -317,6 +320,18 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 	read(invoicePath, "customer-b", 404)
 	read("/api/v1/payment/admin/bookings/"+bookingID+"/invoice", "admin", 200)
 	read("/api/v1/payment/admin/bookings/"+bookingID+"/invoice", "owner", 200)
+	deliveryBody := read("/api/v1/payment/admin/payments/"+firstID, "admin", 200)
+	var deliveryStatus struct {
+		Data dto.StaffPaymentDetail `json:"data"`
+	}
+	if json.Unmarshal([]byte(deliveryBody), &deliveryStatus) != nil || len(deliveryStatus.Data.EmailDeliveries) != 2 || strings.Contains(deliveryBody, "customer@example.test") || strings.Contains(deliveryBody, `"recipient"`) {
+		t.Fatal("staff email status was missing or disclosed recipient")
+	}
+	for _, job := range deliveryStatus.Data.EmailDeliveries {
+		if job.Status != "queued" || job.AttemptCount != 0 {
+			t.Fatal("GET sent email without an enabled worker")
+		}
+	}
 	bookingUnavailable.Store(true)
 	read(invoicePath, "customer-a", 200)
 	bookingUnavailable.Store(false)

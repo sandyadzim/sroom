@@ -17,6 +17,7 @@ import (
 	"payment/internal/database"
 	"payment/internal/handler"
 	"payment/internal/identity"
+	"payment/internal/mailer"
 	"payment/internal/messaging"
 	"payment/internal/midtrans"
 	"payment/internal/repository"
@@ -82,6 +83,17 @@ func run(log *slog.Logger) error {
 	router.RegisterPaymentRefresh(engine, identityClient, handler.NewRefreshPaymentHandler(refreshService))
 	webhookService := service.NewWebhookService(paymentRepo, midtransClient, cfg.MidtransServerKey)
 	router.RegisterWebhook(engine, handler.NewWebhookHandler(webhookService))
+	var emailWorker *service.EmailService
+	if cfg.SMTPAddress != "" {
+		sender, err := mailer.NewSMTP(cfg.SMTPAddress, cfg.MailFrom)
+		if err != nil {
+			return errors.New("could not configure Mailpit SMTP")
+		}
+		emailWorker, err = service.NewEmailService(paymentRepo, sender, cfg.WebBaseURL, log)
+		if err != nil {
+			return err
+		}
+	}
 	server := &http.Server{
 		Addr:              ":" + strconv.Itoa(cfg.AppPort),
 		Handler:           engine,
@@ -101,6 +113,12 @@ func run(log *slog.Logger) error {
 		serverResult <- server.Serve(listener)
 	}()
 	log.Info("server started", "operation", "http.listen", "port", cfg.AppPort)
+	if emailWorker != nil {
+		emailContext, cancelEmail := context.WithCancel(stopping)
+		emailStopped := make(chan struct{})
+		go func() { defer close(emailStopped); emailWorker.Run(emailContext) }()
+		defer func() { cancelEmail(); <-emailStopped }()
+	}
 	if cfg.RabbitMQURL != "" {
 		relayContext, cancelRelay := context.WithCancel(stopping)
 		relayStopped := make(chan struct{})

@@ -80,6 +80,14 @@ func (s *PaymentService) PaymentDetail(ctx context.Context, id, requestID string
 	if err != nil {
 		return dto.StaffPaymentDetail{}, err
 	}
+	jobs, err := s.repo.EmailDeliveries(ctx, attempt.BookingID)
+	if err != nil {
+		return dto.StaffPaymentDetail{}, err
+	}
+	emails := make([]dto.EmailDeliveryStatus, 0, len(jobs))
+	for _, job := range jobs {
+		emails = append(emails, dto.EmailDeliveryStatus{Kind: job.Kind, Status: job.Status, AttemptCount: job.AttemptCount, NextAttemptAt: job.NextAttemptAt, SentAt: job.SentAt, LastErrorCode: job.LastErrorCode})
+	}
 	timeline := make([]dto.PaymentTimelineEntry, 0, len(observations)+1)
 	timeline = append(timeline, dto.PaymentTimelineEntry{ID: attempt.ID, Source: "created", OccurredAt: attempt.CreatedAt.UTC()})
 	for _, observation := range observations {
@@ -89,7 +97,7 @@ func (s *PaymentService) PaymentDetail(ctx context.Context, id, requestID string
 	}
 	return dto.StaffPaymentDetail{StaffPaymentResponse: staffPayment(attempt, s.now()), BookingStatus: snapshot.Status,
 		ProviderStatus: attempt.ProviderStatus, ProviderExpiresAt: attempt.ProviderExpiresAt,
-		VerifiedAt: attempt.VerifiedAt, ProviderPaidAt: attempt.ProviderPaidAt, Timeline: timeline}, nil
+		VerifiedAt: attempt.VerifiedAt, ProviderPaidAt: attempt.ProviderPaidAt, Timeline: timeline, EmailDeliveries: emails}, nil
 }
 
 func staffPayment(attempt model.PaymentAttempt, now time.Time) dto.StaffPaymentResponse {

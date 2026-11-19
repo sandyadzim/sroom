@@ -86,7 +86,7 @@ func (r *PaymentRepository) IssueInvoice(ctx context.Context, event model.Confir
 			if existing.PaymentID != attempt.ID || existing.CustomerID != attempt.CustomerID || existing.TotalIDR != attempt.AmountIDR || existing.Currency != attempt.Currency {
 				return ErrInvoiceConflict
 			}
-			return nil
+			return queueInvoiceEmails(tx, existing, at)
 		}
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
@@ -108,7 +108,10 @@ func (r *PaymentRepository) IssueInvoice(ctx context.Context, event model.Confir
 			VariantID: snapshot.VariantID, VehicleLabel: snapshot.VehicleLabel, PickupAt: snapshot.PickupAt.UTC(), ReturnAt: snapshot.ReturnAt.UTC(),
 			RentalDays: snapshot.RentalDays, DailyRateIDR: snapshot.DailyRateIDR, TotalIDR: attempt.AmountIDR, Currency: attempt.Currency, Bank: attempt.Bank,
 			ConfirmedAt: snapshot.ConfirmedAt.UTC(), IssuedAt: at}
-		return tx.Table("payment.invoices").Create(&invoice).Error
+		if err := tx.Table("payment.invoices").Create(&invoice).Error; err != nil {
+			return err
+		}
+		return queueInvoiceEmails(tx, invoice, at)
 	})
 	if errors.Is(err, ErrInvoiceConflict) || errors.Is(err, ErrInvoiceProfileMissing) {
 		return err

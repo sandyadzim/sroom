@@ -83,3 +83,5 @@ go test -count=1 ./...
 ```
 
 Relay integration tests require a separate migrated `BOOKING_OUTBOX_TEST_DATABASE_URL` because relay polls all pending confirmed events. Do not reuse the ordinary test database.
+
+When running all PostgreSQL suites against the same Booking test database, use `-p 1` to serialize packages: demo expiry and scanner tests otherwise see each other's fixtures. This does not change assertions or production worker concurrency.
