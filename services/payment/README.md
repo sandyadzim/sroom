@@ -1,6 +1,6 @@
 # Payment Service
 
-Go + Gin service with HTTP liveness and PostgreSQL readiness checks. Payment processing is not implemented yet.
+Go + Gin service for BNI Virtual Account initiation, with HTTP liveness and PostgreSQL readiness checks. Settlement and Booking confirmation are not implemented yet.
 
 ## Run locally
 
@@ -19,9 +19,17 @@ curl -i http://localhost:8084/health/ready
 
 Liveness returns `200` while HTTP is running. Readiness pings PostgreSQL with a two-second timeout, returning `200` when ready or `503 DATABASE_UNAVAILABLE` when unavailable. It recovers without restarting Payment. Invalid configuration stops startup with a safe error message.
 
-RabbitMQ and Gateway routes will be added with the features that need them. The [HTTP contract](../../packages/contracts/openapi/payment.v1.yaml) documents the health endpoints.
+The [HTTP contract](../../packages/contracts/openapi/payment.v1.yaml) documents health and VA initiation. RabbitMQ is not required yet.
 
-For BNI VA setup and copyable Bruno requests, follow the [Midtrans sandbox guide](../../../docs/payment-sandbox-setup.md). `MIDTRANS_SERVER_KEY` is an optional placeholder for the upcoming integration; the bootstrap does not use it. Provider tests are pending local credentials.
+## Create a BNI VA
+
+Set `MIDTRANS_SERVER_KEY` to your sandbox key and use the same `PAYMENT_BOOKING_TOKEN` in Payment and Booking. `IDENTITY_BASE_URL` defaults to `http://localhost:8081`; `BOOKING_BASE_URL` defaults to `http://localhost:8083`. Health works without integration credentials.
+
+Start Gateway and send `POST /api/v1/customer/bookings/{id}/payments/va` with the customer cookie, an allowed Origin, a UUID `Idempotency-Key`, and JSON `{}`. Payment verifies the session and ownership, then uses Booking's amount and original deadline. The provider is fixed to the Midtrans sandbox.
+
+The first ready VA returns `201`; existing attempts return `200`; uncertain initialization or review returns `202` without usable instructions. Retry the same booking/key. An uncertain attempt never creates a replacement charge; recovery follows later reconciliation work. Disable Booking's `BOOKING_DEMO_PAYMENTS` mode before trying Midtrans-backed holds.
+
+See the [account setup guide](../../../docs/payment-sandbox-setup.md) and [Bruno flow](../../../docs/payment-create-va-bruno.md). Direct sandbox verification remains pending; automated tests use fake providers.
 
 ## Migrations
 

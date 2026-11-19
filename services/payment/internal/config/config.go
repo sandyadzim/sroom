@@ -10,8 +10,12 @@ import (
 )
 
 type Config struct {
-	AppPort     int
-	DatabaseURL string
+	AppPort           int
+	DatabaseURL       string
+	IdentityBaseURL   string
+	BookingBaseURL    string
+	BookingToken      string
+	MidtransServerKey string
 }
 
 func Load() (Config, error) {
@@ -31,5 +35,16 @@ func Load() (Config, error) {
 	if err != nil || appPort < 1 || appPort > 65535 {
 		return Config{}, errors.New("APP_PORT must be between 1 and 65535")
 	}
-	return Config{AppPort: appPort, DatabaseURL: databaseURL}, nil
+	identityURL := os.Getenv("IDENTITY_BASE_URL")
+	if identityURL == "" {
+		identityURL = "http://localhost:8081"
+	}
+	bookingURL := os.Getenv("BOOKING_BASE_URL")
+	if bookingURL == "" {
+		bookingURL = "http://localhost:8083"
+	}
+	return Config{AppPort: appPort, DatabaseURL: databaseURL,
+		IdentityBaseURL: identityURL, BookingBaseURL: bookingURL,
+		BookingToken:      strings.TrimSpace(os.Getenv("PAYMENT_BOOKING_TOKEN")),
+		MidtransServerKey: strings.TrimSpace(os.Getenv("MIDTRANS_SERVER_KEY"))}, nil
 }

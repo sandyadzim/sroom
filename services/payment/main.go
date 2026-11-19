@@ -12,10 +12,15 @@ import (
 	"syscall"
 	"time"
 
+	"payment/internal/booking"
 	"payment/internal/config"
 	"payment/internal/database"
 	"payment/internal/handler"
+	"payment/internal/identity"
+	"payment/internal/midtrans"
+	"payment/internal/repository"
 	"payment/internal/router"
+	"payment/internal/service"
 )
 
 func main() {
@@ -50,12 +55,23 @@ func run(log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	identityClient, err := identity.NewClient(cfg.IdentityBaseURL)
+	if err != nil {
+		return err
+	}
+	bookingClient, err := booking.NewClient(cfg.BookingBaseURL, cfg.BookingToken)
+	if err != nil {
+		return err
+	}
+	paymentService := service.NewPaymentService(repository.NewPaymentRepository(db), bookingClient,
+		midtrans.NewClient(cfg.MidtransServerKey), cfg.BookingToken != "" && cfg.MidtransServerKey != "")
+	router.RegisterPayment(engine, identityClient, handler.NewPaymentHandler(paymentService))
 	server := &http.Server{
 		Addr:              ":" + strconv.Itoa(cfg.AppPort),
 		Handler:           engine,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      10 * time.Second,
+		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 	stopping, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

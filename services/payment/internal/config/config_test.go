@@ -34,7 +34,7 @@ func TestLoad(t *testing.T) {
 				return
 			}
 			if err != nil || cfg.AppPort != test.wantPort || cfg.DatabaseURL != test.databaseURL {
-				t.Fatalf("Load() = %+v, %v", cfg, err)
+				t.Fatalf("unexpected port/database configuration: %v", err)
 			}
 		})
 	}
@@ -52,7 +52,7 @@ func TestDotEnvPreservesEnvironment(t *testing.T) {
 	}
 	cfg, err := Load()
 	if err != nil || cfg.AppPort != 8184 || cfg.DatabaseURL != "postgres://localhost/from-environment" {
-		t.Fatalf("Load() = %+v, %v", cfg, err)
+		t.Fatalf("unexpected dotenv configuration: %v", err)
 	}
 }
 
@@ -63,5 +63,25 @@ func TestInvalidDotEnv(t *testing.T) {
 	}
 	if _, err := Load(); err == nil || err.Error() != "could not load .env" {
 		t.Fatalf("invalid .env must fail safely, got %v", err)
+	}
+}
+
+func TestIntegrationConfig(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("DATABASE_URL", "postgres://localhost/payment-test")
+	t.Setenv("APP_PORT", "")
+	t.Setenv("IDENTITY_BASE_URL", "")
+	t.Setenv("BOOKING_BASE_URL", "")
+	t.Setenv("PAYMENT_BOOKING_TOKEN", "")
+	t.Setenv("MIDTRANS_SERVER_KEY", "")
+	cfg, err := Load()
+	if err != nil || cfg.IdentityBaseURL != "http://localhost:8081" || cfg.BookingBaseURL != "http://localhost:8083" || cfg.BookingToken != "" || cfg.MidtransServerKey != "" {
+		t.Fatal("invalid integration defaults")
+	}
+	t.Setenv("PAYMENT_BOOKING_TOKEN", " test-only-pair-token ")
+	t.Setenv("MIDTRANS_SERVER_KEY", " test-only-key ")
+	cfg, err = Load()
+	if err != nil || cfg.BookingToken != "test-only-pair-token" || cfg.MidtransServerKey != "test-only-key" {
+		t.Fatal("integration config was not loaded correctly")
 	}
 }

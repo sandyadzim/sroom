@@ -8,6 +8,7 @@ import (
 
 	"payment/internal/handler"
 	"payment/internal/httpapi"
+	"payment/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -44,4 +45,12 @@ func New(healthHandler *handler.HealthHandler) (*gin.Engine, error) {
 	health.GET("/live", healthHandler.Live)
 	health.GET("/ready", healthHandler.Ready)
 	return engine, nil
+}
+
+func RegisterPayment(engine *gin.Engine, verifier middleware.SessionVerifier, paymentHandler *handler.PaymentHandler) {
+	api := engine.Group("/api")
+	v1 := api.Group("/v1")
+	payment := v1.Group("/payment", middleware.RequireCustomer(verifier))
+	bookings := payment.Group("/bookings")
+	bookings.POST("/:id/payments/va", paymentHandler.CreateVA)
 }
