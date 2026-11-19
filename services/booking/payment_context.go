@@ -17,11 +17,7 @@ func registerPaymentContext(router *gin.Engine, service *checkout.Service, token
 	internal := router.Group("/internal")
 	v1 := internal.Group("/v1")
 	v1.GET("/bookings/:id/payment-context", func(c *gin.Context) {
-		auth := strings.Fields(c.GetHeader("Authorization"))
-		if len(auth) != 2 || !strings.EqualFold(auth[0], "Bearer") ||
-			subtle.ConstantTimeCompare([]byte(auth[1]), []byte(token)) != 1 {
-			c.Header("WWW-Authenticate", "Bearer")
-			writeError(c, http.StatusUnauthorized, "UNAUTHENTICATED", "authentication required")
+		if !requirePaymentToken(c, token) {
 			return
 		}
 		id := c.Param("id")
@@ -36,4 +32,15 @@ func registerPaymentContext(router *gin.Engine, service *checkout.Service, token
 		}
 		c.JSON(http.StatusOK, gin.H{"data": result})
 	})
+}
+
+func requirePaymentToken(c *gin.Context, token string) bool {
+	auth := strings.Fields(c.GetHeader("Authorization"))
+	if token == "" || len(auth) != 2 || !strings.EqualFold(auth[0], "Bearer") ||
+		subtle.ConstantTimeCompare([]byte(auth[1]), []byte(token)) != 1 {
+		c.Header("WWW-Authenticate", "Bearer")
+		writeError(c, http.StatusUnauthorized, "UNAUTHENTICATED", "authentication required")
+		return false
+	}
+	return true
 }

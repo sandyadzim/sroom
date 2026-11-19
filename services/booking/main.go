@@ -73,6 +73,7 @@ func run(log *slog.Logger) error {
 	}
 	registerCheckout(router, quoteHandler{identity: identityClient, checkout: checkoutService, now: time.Now})
 	registerPaymentContext(router, checkoutService, cfg.paymentToken)
+	registerDemoConfirmation(router, checkoutService, cfg.paymentToken, cfg.demoPayments, time.Now)
 	server := &http.Server{
 		Addr:              ":" + strconv.Itoa(cfg.appPort),
 		Handler:           router,

@@ -108,6 +108,29 @@ func TestCreateDemoHoldPostgres(t *testing.T) {
 	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM booking.bookings WHERE customer_id = $1", testCustomerID).Scan(&bookings); err != nil || bookings != 2 {
 		t.Fatalf("found %d bookings, want two with no orphan bookings (%v)", bookings, err)
 	}
+	confirmationRouter := demoConfirmationTestRouter(t, db, paymentTestToken, true, firstHold.HoldExpiresAt.Add(-time.Minute))
+	confirmation := demoConfirmationRequestForTest(confirmationRouter, firstHold.ID, paymentTestToken, `{"amount_idr":1350000,"currency":"IDR"}`)
+	if confirmation.Code != 200 {
+		t.Fatalf("confirming the created hold: %d %s", confirmation.Code, confirmation.Body.String())
+	}
+	for _, token := range []string{"CUSTOMER", "ADMIN"} {
+		path := "/api/v1/booking/bookings/" + firstHold.ID
+		if token == "ADMIN" {
+			path = "/api/v1/booking/admin/bookings/" + firstHold.ID
+		}
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("X-Request-ID", quoteRequestID)
+		res := httptest.NewRecorder()
+		router.ServeHTTP(res, req)
+		var response struct{ Data checkout.StaffBookingDetail }
+		if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil || res.Code != 200 || response.Data.Status != "confirmed" || response.Data.TotalIDR != 1350000 {
+			t.Fatalf("reading the confirmed hold: %d %s (%v)", res.Code, res.Body.String(), err)
+		}
+		if token == "ADMIN" && (len(response.Data.StatusHistory) != 2 || response.Data.StatusHistory[1].ReasonCode == nil || *response.Data.StatusHistory[1].ReasonCode != "DEMO_PAYMENT_CONFIRMED") {
+			t.Fatalf("unexpected staff history: %+v", response.Data.StatusHistory)
+		}
+	}
 }
 
 type holdTestResponse struct {

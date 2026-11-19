@@ -58,3 +58,18 @@ func TestLoadDotEnv(t *testing.T) {
 		t.Fatalf("loadConfig() = %+v", cfg)
 	}
 }
+
+func TestDemoPaymentsConfig(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("DATABASE_URL", "postgres://localhost/booking-test")
+	t.Setenv("APP_PORT", "8083")
+	for _, value := range []string{"", "false", "true", "TRUE", "invalid"} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv("BOOKING_DEMO_PAYMENTS", value)
+			cfg, err := loadConfig()
+			if err != nil || cfg.demoPayments != (value == "true") {
+				t.Fatalf("demo payments must be enabled only by true (%v)", err)
+			}
+		})
+	}
+}

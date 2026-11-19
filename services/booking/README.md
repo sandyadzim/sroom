@@ -45,6 +45,12 @@ Set `PAYMENT_BOOKING_TOKEN` to enable `GET /internal/v1/bookings/{id}/payment-co
 
 The expiry candidate query reads up to 50 overdue pending holds. Status changes and allocation release follow the Payment integration.
 
+## Demo confirmation
+
+Set `BOOKING_DEMO_PAYMENTS=true` and `PAYMENT_BOOKING_TOKEN`, then restart Booking. Call `POST /internal/v1/bookings/{id}/demo-confirmation` directly with that Bearer token and JSON `{"amount_idr":800000,"currency":"IDR"}` using the booking's actual total. The hold must be pending, before its deadline, and still allocated. Successful retries return the original confirmation time.
+
+This simulates payment and records `booking.demo_confirmed.v1` in the outbox. Inventory stays blocked. Provider verification, RabbitMQ publication, invoices, email, and automatic expiry are pending. The endpoint is disabled by default and unavailable through Gateway. Use a dedicated local demo database; demo-confirmed records remain after disabling the endpoint.
+
 ## Checks
 
 Run `go test ./...` from this directory.
