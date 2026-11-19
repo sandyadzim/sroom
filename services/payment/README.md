@@ -39,6 +39,12 @@ Staff: `GET /api/v1/staff/payments` and `GET /api/v1/staff/payments/{id}` with t
 
 Payment independently verifies Identity sessions. Customer reads and staff detail require Booking's private API; failure returns `503`. The list reads Payment only. GET never calls Midtrans or changes state, and needs no Midtrans key. See [Bruno read examples](../../../docs/payment-read-bruno.md).
 
+## Check payment status
+
+`POST /api/v1/customer/bookings/{id}/payment/refresh` through Gateway uses the customer cookie, an allowed Origin, and JSON `{}`. No idempotency key is needed. Payment verifies ownership, checks the existing sandbox order once, and applies the same verification/transaction rules as the webhook. The response matches customer GET.
+
+No attempt returns `not_started`; already-paid attempts return stored facts without a lookup. Other attempts require the existing sandbox key. Temporary lookup failures return `503` and preserve state; committed mismatches return `200` with review required. Refresh never creates a VA, extends the deadline, or confirms Booking. Missing VA instructions are not recovered. No automatic worker or new configuration/migration is added. See [Bruno refresh examples](../../../docs/payment-refresh-bruno.md).
+
 ## Payment notifications
 
 Gateway forwards `POST /webhooks/midtrans` to Payment. This provider callback uses signature verification and an authenticated Midtrans status lookup, without customer cookies or Origin checks. The body limit is 16 KiB; unknown provider fields are allowed.

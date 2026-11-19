@@ -27,11 +27,21 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-type integrationProvider struct{ calls int }
+type integrationProvider struct {
+	calls        int
+	lookupCalls  int
+	lookupStatus string
+	lookupError  error
+}
 
 func (p *integrationProvider) GetStatus(_ context.Context, orderID, _ string) (midtrans.StatusResult, error) {
+	p.lookupCalls++
+	status := p.lookupStatus
+	if status == "" {
+		status = "settlement"
+	}
 	return midtrans.StatusResult{OrderID: orderID, TransactionID: orderID, MerchantID: "synthetic-merchant", AmountIDR: 150000,
-		Currency: "IDR", Bank: "bni", PaymentType: "bank_transfer", Status: "settlement", StatusCode: "200", FraudStatus: "accept"}, nil
+		Currency: "IDR", Bank: "bni", PaymentType: "bank_transfer", Status: status, StatusCode: "200", FraudStatus: "accept"}, p.lookupError
 }
 
 func (p *integrationProvider) CreateVA(_ context.Context, input midtrans.ChargeInput, _ string) (midtrans.ChargeResult, error) {
@@ -126,6 +136,7 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 	paymentService := service.NewPaymentService(repository.NewPaymentRepository(db), bookingClient, provider, true)
 	RegisterPayment(engine, identityClient, handler.NewPaymentHandler(paymentService))
 	RegisterPaymentReads(engine, identityClient, handler.NewReadPaymentHandler(paymentService))
+	RegisterPaymentRefresh(engine, identityClient, handler.NewRefreshPaymentHandler(service.NewRefreshPaymentService(paymentService, provider, true)))
 	read := func(path, token string, status int) string {
 		t.Helper()
 		req := httptest.NewRequest("GET", path, nil)
@@ -141,8 +152,24 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 		return res.Body.String()
 	}
 	customerPath := "/api/v1/payment/bookings/" + bookingID + "/payment"
+	refresh := func(token string, expectedStatus int) string {
+		t.Helper()
+		req := httptest.NewRequest("POST", customerPath+"/refresh", strings.NewReader("{}"))
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("X-Request-ID", "http-va-flow")
+		req.Header.Set("Content-Type", "application/json")
+		res := httptest.NewRecorder()
+		engine.ServeHTTP(res, req)
+		if res.Code != expectedStatus {
+			t.Fatalf("refresh=%d %s", res.Code, res.Body.String())
+		}
+		return res.Body.String()
+	}
 	if body := read(customerPath, "customer-a", 200); !strings.Contains(body, `"status":"not_started"`) || !strings.Contains(body, `"payment_id":null`) {
 		t.Fatal("missing not_started response")
+	}
+	if body := refresh("customer-a", 200); !strings.Contains(body, `"status":"not_started"`) || provider.lookupCalls != 0 {
+		t.Fatal("no-attempt refresh called provider")
 	}
 	var firstID string
 	for _, test := range []struct {
@@ -178,6 +205,15 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 	if provider.calls != 1 {
 		t.Fatalf("provider calls=%d", provider.calls)
 	}
+	provider.lookupStatus = "pending"
+	if body := refresh("customer-a", 200); !strings.Contains(body, `"status":"pending"`) {
+		t.Fatal("refresh lost pending state")
+	}
+	refresh("customer-b", 404)
+	provider.lookupError = midtrans.ErrUnavailable
+	refresh("customer-a", 503)
+	provider.lookupError = nil
+	provider.lookupStatus = ""
 	if body := read(customerPath, "customer-a", 200); !strings.Contains(body, `"status":"pending"`) || !strings.Contains(body, `"va_number":"`) || strings.Contains(body, "review_reason") {
 		t.Fatal("incorrect customer read")
 	}
@@ -229,6 +265,10 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 	}
 	if status != "paid" {
 		t.Fatal("HTTP callback did not persist settlement")
+	}
+	previousLookups := provider.lookupCalls
+	if body := refresh("customer-a", 200); !strings.Contains(body, `"status":"paid"`) || provider.lookupCalls != previousLookups || provider.calls != 1 {
+		t.Fatal("paid refresh called provider or created a charge")
 	}
 	if body := read(customerPath, "customer-a", 200); !strings.Contains(body, `"status":"paid"`) || !strings.Contains(body, `"booking_status":"pending_payment"`) || !strings.Contains(body, `"va_number":null`) {
 		t.Fatal("paid was not separated from Booking confirmation")

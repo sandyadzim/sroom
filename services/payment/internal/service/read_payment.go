@@ -13,30 +13,45 @@ import (
 )
 
 func (s *PaymentService) CustomerPayment(ctx context.Context, bookingID, customerID, requestID string) (dto.CustomerPaymentResponse, error) {
-	snapshot, err := s.readBooking(ctx, bookingID, requestID)
+	snapshot, attempt, err := s.ownedPayment(ctx, bookingID, customerID, requestID)
 	if err != nil {
 		return dto.CustomerPaymentResponse{}, err
 	}
+	return s.customerPaymentResponse(snapshot, attempt), nil
+}
+
+// GET and refresh use the same ownership checks before reading provider facts.
+func (s *PaymentService) ownedPayment(ctx context.Context, bookingID, customerID, requestID string) (booking.PaymentContext, model.PaymentAttempt, error) {
+	snapshot, err := s.readBooking(ctx, bookingID, requestID)
+	if err != nil {
+		return snapshot, model.PaymentAttempt{}, err
+	}
 	if snapshot.CustomerID != customerID {
-		return dto.CustomerPaymentResponse{}, booking.ErrNotFound
+		return snapshot, model.PaymentAttempt{}, booking.ErrNotFound
 	}
 	attempt, err := s.repo.FindByBooking(ctx, bookingID)
 	if errors.Is(err, repository.ErrPaymentNotFound) {
-		return dto.CustomerPaymentResponse{BookingID: bookingID, BookingStatus: snapshot.Status, Status: "not_started",
-			AmountIDR: snapshot.TotalIDR, Currency: snapshot.Currency, HoldExpiresAt: snapshot.HoldExpiresAt.UTC()}, nil
+		return snapshot, model.PaymentAttempt{}, nil
 	}
 	if err != nil {
-		return dto.CustomerPaymentResponse{}, err
+		return snapshot, attempt, err
 	}
 	if attempt.CustomerID != customerID {
-		return dto.CustomerPaymentResponse{}, booking.ErrNotFound
+		return snapshot, attempt, booking.ErrNotFound
 	}
-	// Reuse the create-VA rules for hiding expired or unsafe payment instructions.
+	return snapshot, attempt, nil
+}
+
+func (s *PaymentService) customerPaymentResponse(snapshot booking.PaymentContext, attempt model.PaymentAttempt) dto.CustomerPaymentResponse {
+	if attempt.ID == "" {
+		return dto.CustomerPaymentResponse{BookingID: snapshot.BookingID, BookingStatus: snapshot.Status, Status: "not_started",
+			AmountIDR: snapshot.TotalIDR, Currency: snapshot.Currency, HoldExpiresAt: snapshot.HoldExpiresAt.UTC()}
+	}
 	instructions := s.response(attempt)
 	return dto.CustomerPaymentResponse{PaymentID: &attempt.ID, BookingID: attempt.BookingID, BookingStatus: snapshot.Status,
 		Status: attempt.Status, AmountIDR: attempt.AmountIDR, Currency: attempt.Currency, Bank: &attempt.Bank,
 		VANumber: instructions.VANumber, HoldExpiresAt: instructions.HoldExpiresAt, ProviderExpiresAt: instructions.ProviderExpiresAt,
-		VerifiedAt: attempt.VerifiedAt, ProviderPaidAt: attempt.ProviderPaidAt, ReviewRequired: instructions.ReviewRequired}, nil
+		VerifiedAt: attempt.VerifiedAt, ProviderPaidAt: attempt.ProviderPaidAt, ReviewRequired: instructions.ReviewRequired}
 }
 
 func (s *PaymentService) ListPayments(ctx context.Context, query dto.ListPaymentsQuery) ([]dto.StaffPaymentResponse, int64, error) {

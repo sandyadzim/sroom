@@ -116,3 +116,42 @@ func TestPaymentReadProxy(t *testing.T) {
 		}
 	}
 }
+
+func TestCustomerPaymentRefreshProxy(t *testing.T) {
+	calls := 0
+	upstream := testUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		body, err := io.ReadAll(r.Body)
+		if err != nil || string(body) != "{}" || r.Method != "POST" || r.URL.Path != "/api/v1/payment/bookings/fixture/payment/refresh" || r.Header.Get("Authorization") != "Bearer customer-fixture" || r.Header.Get("Cookie") != "" || r.Header.Get("X-Request-ID") != "refresh-test" {
+			t.Error("incorrect refresh forwarding")
+		}
+		_, _ = w.Write([]byte(`{"data":{"status":"pending"}}`))
+	})
+	app := newRouter(upstream, upstream, upstream, upstream, testLogger())
+	for _, test := range []struct {
+		origin string
+		cookie bool
+		status int
+	}{
+		{"http://localhost:5173", true, 200}, {"http://localhost:5173", false, 401}, {"", true, 403}, {"https://other.invalid", true, 403},
+	} {
+		req := httptest.NewRequest("POST", "/api/v1/customer/bookings/fixture/payment/refresh", strings.NewReader("{}"))
+		req.Header.Set("Origin", test.origin)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Request-ID", "refresh-test")
+		req.Header.Set("Authorization", "Bearer forged")
+		if test.cookie {
+			req.AddCookie(&http.Cookie{Name: customerCookieName, Value: "customer-fixture"})
+		}
+		res := request(app, req)
+		if res.Code != test.status {
+			t.Fatalf("refresh=%d %s", res.Code, res.Body.String())
+		}
+	}
+	if calls != 1 {
+		t.Fatalf("upstream calls=%d", calls)
+	}
+	if res := request(app, httptest.NewRequest("POST", "/api/v1/payment/bookings/fixture/payment/refresh", strings.NewReader("{}"))); res.Code != 404 {
+		t.Fatal("direct Payment route exposed")
+	}
+}

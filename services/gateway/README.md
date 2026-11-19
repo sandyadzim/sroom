@@ -55,6 +55,8 @@ Checkout sends `POST /api/v1/customer/checkout/quotes` with the same customer co
 
 `GET /api/v1/customer/bookings/{id}/payment` uses the customer cookie. Staff use `GET /api/v1/staff/payments` and `GET /api/v1/staff/payments/{id}`. Gateway forwards these to Payment; Payment verifies roles and ownership. GET requires no Origin header, forwards list filters, and reads stored state without a Midtrans call. See [Bruno examples](../../../docs/payment-read-bruno.md).
 
+`POST /api/v1/customer/bookings/{id}/payment/refresh` requires the customer cookie and an allowed Origin. Send `{}` without an idempotency key. Gateway forwards it to Payment with the existing 15-second deadline; Payment verifies ownership and looks up the saved provider order. See [Bruno refresh examples](../../../docs/payment-refresh-bruno.md).
+
 `POST /webhooks/midtrans` forwards provider notifications unchanged to Payment, with a 16 KiB body limit and a 10-second upstream deadline. It requires no browser cookie or Origin. Payment verifies the signature and retrieves the provider status before recording any outcome.
 
 For booking history, customers use `GET /api/v1/customer/bookings` and `GET /api/v1/customer/bookings/{id}`. Staff use the same paths under `/api/v1/staff` with the staff session cookie. Booking checks the session role and customer ownership.

@@ -71,3 +71,11 @@ func RegisterPaymentReads(engine *gin.Engine, verifier middleware.SessionVerifie
 	payments.GET("", readHandler.List)
 	payments.GET("/:id", readHandler.Detail)
 }
+
+func RegisterPaymentRefresh(engine *gin.Engine, verifier middleware.SessionVerifier, refreshHandler *handler.RefreshPaymentHandler) {
+	api := engine.Group("/api")
+	v1 := api.Group("/v1")
+	payment := v1.Group("/payment", middleware.RequireCustomer(verifier))
+	bookings := payment.Group("/bookings")
+	bookings.POST("/:id/payment/refresh", refreshHandler.Refresh)
+}

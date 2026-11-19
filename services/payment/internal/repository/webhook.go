@@ -71,7 +71,7 @@ func (r *PaymentRepository) WebhookUnavailable(ctx context.Context, receiptID st
 	return nil
 }
 
-// receiptID is empty when the later reconciliation worker applies a status lookup.
+// receiptID is empty when a manual refresh applies a status lookup.
 // External HTTP verification must finish before this transaction begins.
 func (r *PaymentRepository) ApplyVerifiedObservation(ctx context.Context, paymentID, receiptID string, outcome model.PaymentOutcome) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)

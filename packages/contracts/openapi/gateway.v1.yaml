@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.13.0
+  version: 1.14.0
   description: |
     Local entry point for the documented Identity, Catalog, Booking, and Payment routes.
     Request and response schemas are owned by those services. The gateway forwards
@@ -17,6 +17,46 @@ servers:
   - url: http://localhost:8080
 security: []
 paths:
+  /api/v1/customer/bookings/{id}/payment/refresh:
+    post:
+      operationId: refreshCustomerPaymentAtGateway
+      summary: Check an owned payment with the provider
+      description: >-
+        Requires the customer cookie and an allowed Origin. Payment independently
+        verifies Identity/ownership. Forwards {} to Payment with the existing
+        15-second deadline. Does not create a new payment or extend the hold.
+      security: [{ customerCookie: [] }]
+      parameters:
+        - $ref: './payment.v1.yaml#/components/parameters/ReadID'
+        - name: Origin
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        $ref: './payment.v1.yaml#/components/requestBodies/CreateVA'
+      responses:
+        '200':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payment~1refresh/post/responses/200'
+        '400':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payment~1refresh/post/responses/400'
+        '401':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payment~1refresh/post/responses/401'
+        '403':
+          description: FORBIDDEN_ORIGIN or Payment's FORBIDDEN role check.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+        '404':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payment~1refresh/post/responses/404'
+        '413':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payment~1refresh/post/responses/413'
+        '503':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payment~1refresh/post/responses/503'
+        '504':
+          description: DEPENDENCY_UNAVAILABLE when Payment exceeds the Gateway deadline; retry is safe.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
   /api/v1/customer/bookings/{id}/payment:
     get:
       operationId: readCustomerPaymentAtGateway

@@ -27,12 +27,14 @@ type statusProvider struct {
 	result      midtrans.StatusResult
 	err         error
 	calls       int
+	orders      []string
 	afterLookup func()
 }
 
-func (p *statusProvider) GetStatus(context.Context, string, string) (midtrans.StatusResult, error) {
+func (p *statusProvider) GetStatus(_ context.Context, orderID, _ string) (midtrans.StatusResult, error) {
 	p.mu.Lock()
 	p.calls++
+	p.orders = append(p.orders, orderID)
 	p.mu.Unlock()
 	if p.afterLookup != nil {
 		p.afterLookup()
