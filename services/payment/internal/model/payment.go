@@ -4,6 +4,7 @@ import "time"
 
 type PaymentAttempt struct {
 	ID                    string
+	Provider              string
 	BookingID             string
 	CustomerID            string
 	ProviderOrderID       string
@@ -19,9 +20,13 @@ type PaymentAttempt struct {
 	ReviewReason          *string
 	VerifiedAt            *time.Time
 	ProviderPaidAt        *time.Time
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
 type ProviderObservation struct {
+	ID                    string
+	ObservedAt            time.Time
 	PaymentID             string
 	Source                string
 	ProviderTransactionID *string

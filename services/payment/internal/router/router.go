@@ -59,3 +59,15 @@ func RegisterWebhook(engine *gin.Engine, webhookHandler *handler.WebhookHandler)
 	webhooks := engine.Group("/webhooks")
 	webhooks.POST("/midtrans", webhookHandler.Midtrans)
 }
+
+func RegisterPaymentReads(engine *gin.Engine, verifier middleware.SessionVerifier, readHandler *handler.ReadPaymentHandler) {
+	api := engine.Group("/api")
+	v1 := api.Group("/v1")
+	payment := v1.Group("/payment")
+	bookings := payment.Group("/bookings", middleware.RequireCustomer(verifier))
+	bookings.GET("/:id/payment", readHandler.Customer)
+	admin := payment.Group("/admin", middleware.RequireStaff(verifier))
+	payments := admin.Group("/payments")
+	payments.GET("", readHandler.List)
+	payments.GET("/:id", readHandler.Detail)
+}

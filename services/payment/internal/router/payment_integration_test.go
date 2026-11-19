@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -81,11 +82,23 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 		if r.Header.Get("Authorization") == "Bearer customer-b" {
 			id = customerB
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]string{"id": id, "role": "CUSTOMER"}})
+		role := "CUSTOMER"
+		if r.Header.Get("Authorization") == "Bearer admin" {
+			role = "ADMIN"
+		}
+		if r.Header.Get("Authorization") == "Bearer owner" {
+			role = "OWNER"
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]string{"id": id, "role": role}})
 	}))
 	defer identityServer.Close()
 	deadline := time.Now().UTC().Add(15 * time.Minute).Truncate(time.Second)
+	var bookingUnavailable atomic.Bool
 	bookingServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if bookingUnavailable.Load() {
+			w.WriteHeader(503)
+			return
+		}
 		if r.Header.Get("Authorization") != "Bearer test-only-pair-token" || r.Header.Get("X-Request-ID") != "http-va-flow" {
 			t.Error("incorrect Booking credentials/correlation")
 		}
@@ -110,7 +123,27 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	RegisterPayment(engine, identityClient, handler.NewPaymentHandler(service.NewPaymentService(repository.NewPaymentRepository(db), bookingClient, provider, true)))
+	paymentService := service.NewPaymentService(repository.NewPaymentRepository(db), bookingClient, provider, true)
+	RegisterPayment(engine, identityClient, handler.NewPaymentHandler(paymentService))
+	RegisterPaymentReads(engine, identityClient, handler.NewReadPaymentHandler(paymentService))
+	read := func(path, token string, status int) string {
+		t.Helper()
+		req := httptest.NewRequest("GET", path, nil)
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		req.Header.Set("X-Request-ID", "http-va-flow")
+		res := httptest.NewRecorder()
+		engine.ServeHTTP(res, req)
+		if res.Code != status || res.Header().Get("Cache-Control") != "no-store" {
+			t.Fatalf("read %s=%d %s", path, res.Code, res.Body.String())
+		}
+		return res.Body.String()
+	}
+	customerPath := "/api/v1/payment/bookings/" + bookingID + "/payment"
+	if body := read(customerPath, "customer-a", 200); !strings.Contains(body, `"status":"not_started"`) || !strings.Contains(body, `"payment_id":null`) {
+		t.Fatal("missing not_started response")
+	}
 	var firstID string
 	for _, test := range []struct {
 		token, id string
@@ -145,6 +178,30 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 	if provider.calls != 1 {
 		t.Fatalf("provider calls=%d", provider.calls)
 	}
+	if body := read(customerPath, "customer-a", 200); !strings.Contains(body, `"status":"pending"`) || !strings.Contains(body, `"va_number":"`) || strings.Contains(body, "review_reason") {
+		t.Fatal("incorrect customer read")
+	}
+	read(customerPath, "customer-b", 404)
+	read("/api/v1/payment/bookings/"+uuid.NewString()+"/payment", "customer-a", 404)
+	staffPath := "/api/v1/payment/admin/payments"
+	read(staffPath, "", 401)
+	read(staffPath, "customer-a", 403)
+	for _, token := range []string{"admin", "owner"} {
+		body := read(staffPath+"?search="+firstID, token, 200)
+		if !strings.Contains(body, `"total":1`) || strings.Contains(body, "va_number") {
+			t.Fatal("incorrect staff list")
+		}
+		body = read(staffPath+"/"+firstID, token, 200)
+		if !strings.Contains(body, `"booking_status":"pending_payment"`) || !strings.Contains(body, `"source":"charge"`) || strings.Contains(body, "va_number") || strings.Contains(body, "payload_digest") {
+			t.Fatal("incorrect staff detail")
+		}
+	}
+	read(staffPath+"/"+uuid.NewString(), "admin", 404)
+	bookingUnavailable.Store(true)
+	read(customerPath, "customer-a", 503)
+	read(staffPath+"/"+firstID, "admin", 503)
+	read(staffPath+"?search="+firstID, "admin", 200)
+	bookingUnavailable.Store(false)
 	const serverKey = "synthetic-webhook-key"
 	RegisterWebhook(engine, handler.NewWebhookHandler(service.NewWebhookService(repository.NewPaymentRepository(db), provider, serverKey)))
 	var orderID string
@@ -173,6 +230,9 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 	if status != "paid" {
 		t.Fatal("HTTP callback did not persist settlement")
 	}
+	if body := read(customerPath, "customer-a", 200); !strings.Contains(body, `"status":"paid"`) || !strings.Contains(body, `"booking_status":"pending_payment"`) || !strings.Contains(body, `"va_number":null`) {
+		t.Fatal("paid was not separated from Booking confirmation")
+	}
 	// A separate closed pool exercises a database outage without disturbing cleanup.
 	unavailableDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Discard})
 	if err != nil {
@@ -190,6 +250,15 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	RegisterWebhook(unavailableEngine, handler.NewWebhookHandler(service.NewWebhookService(repository.NewPaymentRepository(unavailableDB), provider, serverKey)))
+	RegisterPaymentReads(unavailableEngine, identityClient, handler.NewReadPaymentHandler(service.NewPaymentService(repository.NewPaymentRepository(unavailableDB), bookingClient, provider, false)))
+	readRequest := httptest.NewRequest("GET", staffPath, nil)
+	readRequest.Header.Set("Authorization", "Bearer admin")
+	readRequest.Header.Set("X-Request-ID", "http-va-flow")
+	readResponse := httptest.NewRecorder()
+	unavailableEngine.ServeHTTP(readResponse, readRequest)
+	if readResponse.Code != 503 || strings.Contains(readResponse.Body.String(), "database is closed") {
+		t.Fatal("unsafe database read failure")
+	}
 	req := httptest.NewRequest("POST", "/webhooks/midtrans", strings.NewReader(string(body)))
 	req.Header.Set("Content-Type", "application/json")
 	res := httptest.NewRecorder()

@@ -57,3 +57,62 @@ func TestCustomerPaymentProxy(t *testing.T) {
 		}
 	}
 }
+
+func TestPaymentReadProxy(t *testing.T) {
+	calls := 0
+	upstream := testUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		expectedToken := "staff-fixture"
+		expectedPath := "/api/v1/payment/admin/payments"
+		switch r.URL.Path {
+		case "/api/v1/payment/bookings/fixture/payment":
+			expectedToken = "customer-fixture"
+			expectedPath = r.URL.Path
+		case "/api/v1/payment/admin/payments/fixture":
+			expectedPath = r.URL.Path
+		}
+		if r.Method != "GET" || r.URL.Path != expectedPath || r.Header.Get("Authorization") != "Bearer "+expectedToken || r.Header.Get("Cookie") != "" || r.Header.Get("X-Request-ID") != "read-payment-test" {
+			t.Error("incorrect payment read forwarding")
+		}
+		if r.URL.Path == "/api/v1/payment/admin/payments" && r.URL.RawQuery != "page=2&limit=20&status=pending&reconciliation=clear" {
+			t.Error("filters lost")
+		}
+		_, _ = w.Write([]byte(`{"data":[]}`))
+	})
+	app := newRouter(upstream, upstream, upstream, upstream, testLogger())
+	for _, test := range []struct{ path, cookie, value string }{
+		{"/api/v1/customer/bookings/fixture/payment", customerCookieName, "customer-fixture"},
+		{"/api/v1/staff/payments?page=2&limit=20&status=pending&reconciliation=clear", staffCookieName, "staff-fixture"},
+		{"/api/v1/staff/payments/fixture", staffCookieName, "staff-fixture"},
+	} {
+		req := httptest.NewRequest("GET", test.path, nil)
+		req.Header.Set("X-Request-ID", "read-payment-test")
+		req.Header.Set("Authorization", "Bearer forged")
+		req.AddCookie(&http.Cookie{Name: test.cookie, Value: test.value})
+		res := request(app, req)
+		if res.Code != 200 || res.Header().Get("Cache-Control") != "no-store" {
+			t.Fatalf("response=%d %s", res.Code, res.Body.String())
+		}
+		guest := request(app, httptest.NewRequest("GET", test.path, nil))
+		if guest.Code != 401 {
+			t.Fatalf("guest=%d", guest.Code)
+		}
+		wrongSession := httptest.NewRequest("GET", test.path, nil)
+		wrongCookie := staffCookieName
+		if test.cookie == staffCookieName {
+			wrongCookie = customerCookieName
+		}
+		wrongSession.AddCookie(&http.Cookie{Name: wrongCookie, Value: "wrong-session"})
+		if res := request(app, wrongSession); res.Code != 401 {
+			t.Fatalf("wrong cookie=%d", res.Code)
+		}
+	}
+	if calls != 3 {
+		t.Fatalf("upstream calls=%d", calls)
+	}
+	for _, path := range []string{"/api/v1/payment/admin/payments", "/api/v1/payment/bookings/fixture/payment"} {
+		if res := request(app, httptest.NewRequest("GET", path, nil)); res.Code != 404 {
+			t.Fatalf("direct service path exposed=%d", res.Code)
+		}
+	}
+}

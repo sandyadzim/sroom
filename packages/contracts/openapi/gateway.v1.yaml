@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.12.0
+  version: 1.13.0
   description: |
     Local entry point for the documented Identity, Catalog, Booking, and Payment routes.
     Request and response schemas are owned by those services. The gateway forwards
@@ -17,6 +17,107 @@ servers:
   - url: http://localhost:8080
 security: []
 paths:
+  /api/v1/customer/bookings/{id}/payment:
+    get:
+      operationId: readCustomerPaymentAtGateway
+      summary: Read payment for the signed-in customer
+      description: >-
+        Uses the corresponding HttpOnly session cookie, forwarded as Bearer to
+        Payment. No Origin header is required for GET; provided browser origins must
+        be allowed. Payment independently verifies Identity roles and ownership.
+        Reads are no-store and do not call Midtrans or change payment/Booking state.
+      security: [{ customerCookie: [] }]
+      parameters:
+        - $ref: './payment.v1.yaml#/components/parameters/ReadID'
+      responses:
+        '200':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payment/get/responses/200'
+        '400':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payment/get/responses/400'
+        '401':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payment/get/responses/401'
+        '403':
+          description: FORBIDDEN for role denial or FORBIDDEN_ORIGIN for a disallowed browser origin.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+        '404':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payment/get/responses/404'
+        '503':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payment/get/responses/503'
+        '504':
+          description: DEPENDENCY_UNAVAILABLE when Payment exceeds the Gateway deadline.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+  /api/v1/staff/payments:
+    get:
+      operationId: listStaffPaymentsAtGateway
+      summary: List payment attempts for staff
+      description: >-
+        Uses the corresponding HttpOnly session cookie, forwarded as Bearer to
+        Payment. No Origin header is required for GET; provided browser origins must
+        be allowed. Payment independently verifies Identity roles and ownership.
+        Reads are no-store and do not call Midtrans or change payment/Booking state.
+      security: [{ staffCookie: [] }]
+      parameters:
+        - $ref: './payment.v1.yaml#/components/parameters/Page'
+        - $ref: './payment.v1.yaml#/components/parameters/Limit'
+        - $ref: './payment.v1.yaml#/components/parameters/Search'
+        - $ref: './payment.v1.yaml#/components/parameters/PaymentStatus'
+        - $ref: './payment.v1.yaml#/components/parameters/Reconciliation'
+      responses:
+        '200':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1admin~1payments/get/responses/200'
+        '400':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1admin~1payments/get/responses/400'
+        '401':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1admin~1payments/get/responses/401'
+        '403':
+          description: FORBIDDEN for role denial or FORBIDDEN_ORIGIN for a disallowed browser origin.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+        '503':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1admin~1payments/get/responses/503'
+        '504':
+          description: DEPENDENCY_UNAVAILABLE when Payment exceeds the Gateway deadline.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+  /api/v1/staff/payments/{id}:
+    get:
+      operationId: readStaffPaymentAtGateway
+      summary: Read payment detail for staff
+      description: >-
+        Uses the corresponding HttpOnly session cookie, forwarded as Bearer to
+        Payment. No Origin header is required for GET; provided browser origins must
+        be allowed. Payment independently verifies Identity roles and ownership.
+        Reads are no-store and do not call Midtrans or change payment/Booking state.
+      security: [{ staffCookie: [] }]
+      parameters:
+        - $ref: './payment.v1.yaml#/components/parameters/ReadID'
+      responses:
+        '200':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1admin~1payments~1{id}/get/responses/200'
+        '400':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1admin~1payments~1{id}/get/responses/400'
+        '401':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1admin~1payments~1{id}/get/responses/401'
+        '403':
+          description: FORBIDDEN for role denial or FORBIDDEN_ORIGIN for a disallowed browser origin.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+        '404':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1admin~1payments~1{id}/get/responses/404'
+        '503':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1admin~1payments~1{id}/get/responses/503'
+        '504':
+          description: DEPENDENCY_UNAVAILABLE when Payment exceeds the Gateway deadline.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
   /webhooks/midtrans:
     $ref: './payment.v1.yaml#/paths/~1webhooks~1midtrans'
   /health:

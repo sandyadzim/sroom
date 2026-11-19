@@ -68,6 +68,7 @@ func run(log *slog.Logger) error {
 	paymentService := service.NewPaymentService(paymentRepo, bookingClient,
 		midtransClient, cfg.BookingToken != "" && cfg.MidtransServerKey != "")
 	router.RegisterPayment(engine, identityClient, handler.NewPaymentHandler(paymentService))
+	router.RegisterPaymentReads(engine, identityClient, handler.NewReadPaymentHandler(paymentService))
 	webhookService := service.NewWebhookService(paymentRepo, midtransClient, cfg.MidtransServerKey)
 	router.RegisterWebhook(engine, handler.NewWebhookHandler(webhookService))
 	server := &http.Server{

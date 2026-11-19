@@ -31,6 +31,14 @@ The first ready VA returns `201`; existing attempts return `200`; uncertain init
 
 See the [account setup guide](../../../docs/payment-sandbox-setup.md) and [Bruno flow](../../../docs/payment-create-va-bruno.md). Direct sandbox verification remains pending; automated tests use fake providers.
 
+## Read payments
+
+Customer: `GET /api/v1/customer/bookings/{id}/payment` through Gateway with the customer cookie. Returns stored payment state, or `not_started` for an owned booking without an attempt. VA instructions follow the same pending/deadline/review rules as create VA.
+
+Staff: `GET /api/v1/staff/payments` and `GET /api/v1/staff/payments/{id}` with the ADMIN/OWNER cookie. Lists support `search`, `status`, `reconciliation=required|clear`, and `page`/`limit` (default 1/20, max 100), newest first. Detail includes safe observations and current Booking status; staff responses omit VA numbers.
+
+Payment independently verifies Identity sessions. Customer reads and staff detail require Booking's private API; failure returns `503`. The list reads Payment only. GET never calls Midtrans or changes state, and needs no Midtrans key. See [Bruno read examples](../../../docs/payment-read-bruno.md).
+
 ## Payment notifications
 
 Gateway forwards `POST /webhooks/midtrans` to Payment. This provider callback uses signature verification and an authenticated Midtrans status lookup, without customer cookies or Origin checks. The body limit is 16 KiB; unknown provider fields are allowed.
