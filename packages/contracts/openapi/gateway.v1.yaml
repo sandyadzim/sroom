@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.10.0
+  version: 1.11.0
   description: |
-    Local entry point for the documented Identity, Catalog, and Booking routes.
+    Local entry point for the documented Identity, Catalog, Booking, and Payment routes.
     Request and response schemas are owned by those services. The gateway forwards
     Bearer tokens and propagates a validated or generated X-Request-ID.
     The staff and customer session routes use separate HttpOnly cookies. Mutating
@@ -178,6 +178,60 @@ paths:
             application/json:
               schema:
                 $ref: './booking.v1.yaml#/components/schemas/Error'
+  /api/v1/customer/bookings/{id}/payments/va:
+    post:
+      operationId: createCustomerBNIVA
+      summary: Create or retrieve a BNI virtual account for an owned booking
+      description: >-
+        Requires an allowed Origin and the customer session cookie. Payment verifies
+        the session and ownership. Forwarding is bounded to 15 seconds. The direct
+        Payment route and private service APIs are not exposed through Gateway.
+      security:
+        - customerCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+        - name: Origin
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        $ref: './payment.v1.yaml#/components/requestBodies/CreateVA'
+      responses:
+        '200':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payments~1va/post/responses/200'
+        '201':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payments~1va/post/responses/201'
+        '202':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payments~1va/post/responses/202'
+        '400':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payments~1va/post/responses/400'
+        '401':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payments~1va/post/responses/401'
+        '403':
+          description: FORBIDDEN_ORIGIN or Payment's FORBIDDEN role check.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+        '404':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payments~1va/post/responses/404'
+        '409':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payments~1va/post/responses/409'
+        '413':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payments~1va/post/responses/413'
+        '503':
+          $ref: './payment.v1.yaml#/paths/~1api~1v1~1payment~1bookings~1{id}~1payments~1va/post/responses/503'
+        '504':
+          description: DEPENDENCY_UNAVAILABLE when Payment exceeds the Gateway deadline. Retry the same booking and key.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
   /api/v1/customer/bookings/{id}:
     parameters:
       - $ref: './booking.v1.yaml#/components/parameters/BookingID'

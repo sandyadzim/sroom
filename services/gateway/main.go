@@ -44,10 +44,14 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
+	paymentURL, err := upstreamURL("PAYMENT_URL", "http://localhost:8084")
+	if err != nil {
+		return err
+	}
 	gin.SetMode(gin.ReleaseMode)
 	server := &http.Server{
 		Addr:              net.JoinHostPort("127.0.0.1", strconv.Itoa(portNumber)),
-		Handler:           newRouter(identityURL, catalogURL, bookingURL, logger),
+		Handler:           newRouter(identityURL, catalogURL, bookingURL, paymentURL, logger),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      40 * time.Second,

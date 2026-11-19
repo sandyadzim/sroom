@@ -1,6 +1,6 @@
 # SROOM Gateway
 
-Local Go + Gin gateway for Identity, Catalog, and Booking. Use `http://localhost:8080` as the base URL.
+Local Go + Gin gateway for Identity, Catalog, Booking, and Payment. Use `http://localhost:8080` as the base URL.
 
 ## Run locally
 
@@ -15,6 +15,7 @@ Local Go + Gin gateway for Identity, Catalog, and Booking. Use `http://localhost
 | `IDENTITY_URL` | `http://localhost:8081` |
 | `CATALOG_URL` | `http://localhost:8082` |
 | `BOOKING_URL` | `http://localhost:8083` |
+| `PAYMENT_URL` | `http://localhost:8084` |
 | `WEB_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` |
 
 Export variables before starting the gateway to override the defaults. It listens on IPv4 loopback. Identity still applies its login and registration rate limits, and requests through the gateway share its IP quota.
@@ -49,5 +50,7 @@ Customer Profile reads `GET /api/v1/customer/me`. The customer changes their own
 Checkout sends `POST /api/v1/customer/checkout/quotes` with the same customer cookie and an allowed origin. Gateway forwards the session as a Bearer token to [Booking](../booking/README.md).
 
 `POST /api/v1/customer/bookings` uses the same cookie and origin. Gateway also forwards the required `Idempotency-Key` header.
+
+`POST /api/v1/customer/bookings/{id}/payments/va` forwards the same customer session, Origin checks, and idempotency key to [Payment](../payment/README.md), with a 15-second upstream deadline. Send JSON `{}`; Payment determines BNI, amount, and deadline server-side. Direct Payment and private service routes are not exposed.
 
 For booking history, customers use `GET /api/v1/customer/bookings` and `GET /api/v1/customer/bookings/{id}`. Staff use the same paths under `/api/v1/staff` with the staff session cookie. Booking checks the session role and customer ownership.

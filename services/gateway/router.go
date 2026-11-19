@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func newRouter(identityURL, catalogURL, bookingURL *url.URL, logger *slog.Logger) *gin.Engine {
+func newRouter(identityURL, catalogURL, bookingURL, paymentURL *url.URL, logger *slog.Logger) *gin.Engine {
 	app := gin.New()
 	app.RedirectTrailingSlash = false
 	app.HandleMethodNotAllowed = true
@@ -74,6 +74,10 @@ func newRouter(identityURL, catalogURL, bookingURL *url.URL, logger *slog.Logger
 	customer.GET("/bookings", customerProxy("/api/v1/booking/bookings", true, booking))
 	customer.GET("/bookings/:id", func(c *gin.Context) {
 		customerProxy("/api/v1/booking/bookings/"+c.Param("id"), true, booking)(c)
+	})
+	payment := forwardTo(client, paymentURL, "payment", 16*1024, 15*time.Second, logger)
+	customer.POST("/bookings/:id/payments/va", func(c *gin.Context) {
+		customerProxy("/api/v1/payment/bookings/"+c.Param("id")+"/payments/va", true, payment)(c)
 	})
 	staffBookings := staffProxy("/api/v1/booking/admin", true, booking)
 	staff.GET("/bookings", staffBookings)

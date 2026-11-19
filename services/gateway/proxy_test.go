@@ -25,7 +25,7 @@ func TestRoutes(t *testing.T) {
 	catalog := testUpstream(t, func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, "catalog "+r.Method+" "+r.URL.RequestURI())
 	})
-	app := newRouter(identity, catalog, catalog, testLogger())
+	app := newRouter(identity, catalog, catalog, catalog, testLogger())
 
 	for _, test := range []struct{ service, method, path string }{
 		{"identity", "POST", "/register"},
@@ -104,7 +104,7 @@ func TestForwardsJSONAndAPIResponses(t *testing.T) {
 		w.WriteHeader(status)
 		_, _ = io.WriteString(w, `{"request_id":"test_1"}`)
 	})
-	app := newRouter(upstream, upstream, upstream, testLogger())
+	app := newRouter(upstream, upstream, upstream, upstream, testLogger())
 	for _, test := range []struct {
 		path   string
 		status int
@@ -157,7 +157,7 @@ func TestUploadAndBodyLimits(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusCreated)
 	})
-	app := newRouter(upstream, upstream, upstream, testLogger())
+	app := newRouter(upstream, upstream, upstream, upstream, testLogger())
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	part, err := writer.CreateFormFile("file", "test.png")

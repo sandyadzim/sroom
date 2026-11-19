@@ -35,7 +35,7 @@ func TestCustomerQuoteProxy(t *testing.T) {
 			t.Error("customer cookie was not forwarded as a Bearer token")
 		}
 	})
-	router := newRouter(booking, booking, booking, testLogger())
+	router := newRouter(booking, booking, booking, booking, testLogger())
 
 	for _, test := range []struct {
 		name, origin, cookie string
@@ -81,7 +81,7 @@ func TestCustomerHoldProxy(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusCreated)
 	})
-	app := newRouter(booking, booking, booking, testLogger())
+	app := newRouter(booking, booking, booking, booking, testLogger())
 	preflight := httptest.NewRequest(http.MethodOptions, path, nil)
 	preflight.Header.Set("Origin", "http://localhost:5173")
 	preflight.Header.Set("Access-Control-Request-Method", http.MethodPost)

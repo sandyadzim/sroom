@@ -68,7 +68,7 @@ func TestCustomerSession(t *testing.T) {
 			t.Errorf("unexpected Identity endpoint %s", r.URL.Path)
 		}
 	})
-	app := newRouter(upstream, upstream, upstream, testLogger())
+	app := newRouter(upstream, upstream, upstream, upstream, testLogger())
 	call := func(method, path, requestOrigin, fixture string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(method, path, strings.NewReader(fixture))
 		req.Header.Set("Authorization", "Bearer staff-fixture")

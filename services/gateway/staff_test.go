@@ -49,7 +49,7 @@ func TestStaffSession(t *testing.T) {
 			t.Errorf("unexpected upstream path %s", r.URL.Path)
 		}
 	})
-	app := newRouter(upstream, upstream, upstream, testLogger())
+	app := newRouter(upstream, upstream, upstream, upstream, testLogger())
 	const origin = "https://staff.example.test"
 	call := func(method, path string, cookie *http.Cookie) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(method, path, nil)
@@ -135,7 +135,7 @@ func TestStaffLoginRejectsCustomer(t *testing.T) {
 			t.Error("unexpected upstream request")
 		}
 	})
-	app := newRouter(upstream, upstream, upstream, testLogger())
+	app := newRouter(upstream, upstream, upstream, upstream, testLogger())
 	req := httptest.NewRequest(http.MethodPost, staffPath+"/login", nil)
 	req.Header.Set("Origin", "https://staff.example.test")
 	res := request(app, req)
@@ -161,7 +161,7 @@ func TestStaffCustomerStatus(t *testing.T) {
 		// The gateway must preserve Identity's role decision.
 		w.WriteHeader(http.StatusForbidden)
 	})
-	app := newRouter(upstream, upstream, upstream, testLogger())
+	app := newRouter(upstream, upstream, upstream, upstream, testLogger())
 
 	for _, test := range []struct {
 		name, origin string
@@ -208,7 +208,7 @@ func TestStaffFeaturedCarsRoutes(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusOK)
 	})
-	router := newRouter(upstream, upstream, upstream, testLogger())
+	router := newRouter(upstream, upstream, upstream, upstream, testLogger())
 	for _, method := range []string{http.MethodGet, http.MethodPut} {
 		req := httptest.NewRequest(method, staffPath+"/catalog/admin/featured-cars", strings.NewReader(payload))
 		req.Header.Set("Origin", origin)
@@ -230,7 +230,7 @@ func TestStaffCarUnitRoutes(t *testing.T) {
 		}
 		_, _ = io.WriteString(w, r.Method+" "+r.URL.RequestURI())
 	})
-	app := newRouter(upstream, upstream, upstream, testLogger())
+	app := newRouter(upstream, upstream, upstream, upstream, testLogger())
 	for _, route := range []struct{ method, path string }{
 		{"GET", "/catalog/admin/cars/test-id/units?status=active"},
 		{"POST", "/catalog/admin/cars/test-id/units"},
