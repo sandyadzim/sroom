@@ -80,6 +80,9 @@ func paymentFixture(t *testing.T) (*PaymentService, *gorm.DB, *testBookingReader
 		if err := db.WithContext(ctx).Exec("DELETE FROM payment.payment_attempts WHERE customer_id = ?", input.CustomerID).Error; err != nil {
 			t.Error("could not clean test attempts")
 		}
+		if err := db.WithContext(ctx).Exec("DELETE FROM payment.initiation_gates WHERE booking_id = ?", input.BookingID).Error; err != nil {
+			t.Error("could not clean test initiation gate")
+		}
 	})
 	now := time.Date(2026, 11, 20, 2, 0, 0, 0, time.UTC)
 	reader := &testBookingReader{snapshot: booking.PaymentContext{BookingID: input.BookingID, CustomerID: input.CustomerID, TotalIDR: 150000, Currency: "IDR", Status: "pending_payment", HoldExpiresAt: now.Add(15 * time.Minute)}}

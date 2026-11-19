@@ -22,10 +22,7 @@ func NewConfirmationHandler(service *service.PaymentService, token string) *Conf
 }
 
 func (h *ConfirmationHandler) Get(c *gin.Context) {
-	auth := strings.Fields(c.GetHeader("Authorization"))
-	if h.token == "" || len(auth) != 2 || !strings.EqualFold(auth[0], "Bearer") || subtle.ConstantTimeCompare([]byte(auth[1]), []byte(h.token)) != 1 {
-		c.Header("WWW-Authenticate", "Bearer")
-		httpapi.WriteError(c, 401, "UNAUTHENTICATED", "authentication required")
+	if !h.authorize(c) {
 		return
 	}
 	id, ok := readPaymentID(c)
@@ -40,4 +37,14 @@ func (h *ConfirmationHandler) Get(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{"data": result})
+}
+
+func (h *ConfirmationHandler) authorize(c *gin.Context) bool {
+	auth := strings.Fields(c.GetHeader("Authorization"))
+	if h.token == "" || len(auth) != 2 || !strings.EqualFold(auth[0], "Bearer") || subtle.ConstantTimeCompare([]byte(auth[1]), []byte(h.token)) != 1 {
+		c.Header("WWW-Authenticate", "Bearer")
+		httpapi.WriteError(c, 401, "UNAUTHENTICATED", "authentication required")
+		return false
+	}
+	return true
 }

@@ -43,13 +43,25 @@ func (r *Repository) paymentContext(ctx context.Context, bookingID string) (Paym
 
 // DueHolds reads candidates for expiry evaluation; it does not release inventory.
 func (r *Repository) DueHolds(ctx context.Context, checkedAt time.Time) ([]PaymentContext, error) {
+	return r.dueHoldsAfter(ctx, checkedAt, HoldCursor{})
+}
+
+type HoldCursor struct {
+	Deadline time.Time
+	ID       string
+}
+
+func (r *Repository) dueHoldsAfter(ctx context.Context, checkedAt time.Time, cursor HoldCursor) ([]PaymentContext, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	results := []PaymentContext{}
-	err := r.db.WithContext(ctx).Table("booking.bookings").
+	query := r.db.WithContext(ctx).Table("booking.bookings").
 		Select(paymentContextColumns).
-		Where("status = ? AND hold_expires_at <= ?", "pending_payment", checkedAt).
-		Order("hold_expires_at ASC, id ASC").Limit(50).Find(&results).Error
+		Where("status = ? AND hold_expires_at <= ?", "pending_payment", checkedAt)
+	if cursor.ID != "" {
+		query = query.Where("(hold_expires_at, id) > (?, CAST(? AS UUID))", cursor.Deadline, cursor.ID)
+	}
+	err := query.Order("hold_expires_at ASC, id ASC").Limit(50).Find(&results).Error
 	if err != nil {
 		return nil, ErrDatabaseUnavailable
 	}

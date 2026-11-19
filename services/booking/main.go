@@ -77,6 +77,7 @@ func run(log *slog.Logger) error {
 	registerPaymentContext(router, checkoutService, cfg.paymentToken)
 	registerDemoConfirmation(router, checkoutService, cfg.paymentToken, cfg.demoPayments, time.Now)
 	var paymentConsumer *messaging.Consumer
+	var paymentExpiry *checkout.ExpiryService
 	if cfg.rabbitURL != "" {
 		paymentClient, err := payment.NewClient(cfg.paymentURL, cfg.paymentToken)
 		if err != nil {
@@ -84,6 +85,7 @@ func run(log *slog.Logger) error {
 		}
 		confirmedPayments := checkout.NewPaidConfirmationService(checkout.NewRepository(db), paymentClient)
 		paymentConsumer = messaging.NewConsumer(cfg.rabbitURL, confirmedPayments, log)
+		paymentExpiry = checkout.NewExpiryService(checkout.NewRepository(db), paymentClient)
 	}
 	server := &http.Server{
 		Addr:              ":" + strconv.Itoa(cfg.appPort),
@@ -114,6 +116,8 @@ func run(log *slog.Logger) error {
 	}
 	stopDemoExpiry := startDemoExpiry(stopping, checkoutService, cfg, log)
 	defer stopDemoExpiry()
+	stopPaymentExpiry := startPaymentExpiry(stopping, paymentExpiry, cfg, log)
+	defer stopPaymentExpiry()
 
 	select {
 	case err := <-serverResult:

@@ -45,6 +45,8 @@ type StaffPaymentResponse struct {
 	Currency              string    `json:"currency"`
 	ReviewRequired        bool      `json:"review_required"`
 	ReviewReason          *string   `json:"review_reason"`
+	HoldExpiresAt         time.Time `json:"hold_expires_at"`
+	ExpiryReviewRequired  bool      `json:"expiry_review_required"`
 	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"updated_at"`
 }
@@ -53,7 +55,6 @@ type StaffPaymentDetail struct {
 	StaffPaymentResponse
 	BookingStatus     string                 `json:"booking_status"`
 	ProviderStatus    *string                `json:"provider_status"`
-	HoldExpiresAt     time.Time              `json:"hold_expires_at"`
 	ProviderExpiresAt *time.Time             `json:"provider_expires_at"`
 	VerifiedAt        *time.Time             `json:"verified_at"`
 	ProviderPaidAt    *time.Time             `json:"provider_paid_at"`

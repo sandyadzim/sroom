@@ -73,7 +73,7 @@ func writePaymentError(c *gin.Context, err error) {
 		httpapi.WriteError(c, 503, "PAYMENT_NOT_CONFIGURED", err.Error())
 	case errors.Is(err, booking.ErrNotFound):
 		httpapi.WriteError(c, 404, "BOOKING_NOT_FOUND", "booking not found")
-	case errors.Is(err, service.ErrNotPayable), errors.Is(err, repository.ErrSnapshotMismatch):
+	case errors.Is(err, service.ErrNotPayable), errors.Is(err, repository.ErrSnapshotMismatch), errors.Is(err, repository.ErrInitiationClosed):
 		httpapi.WriteError(c, 409, "BOOKING_NOT_PAYABLE", "booking is not payable")
 	case errors.Is(err, service.ErrHoldExpired):
 		httpapi.WriteError(c, 409, "HOLD_EXPIRED", err.Error())

@@ -28,7 +28,7 @@ func TestDemoExpirySchedule(t *testing.T) {
 		start := time.Now()
 		go func() {
 			defer close(done)
-			runDemoExpiry(ctx, func(context.Context) { ticks <- time.Now() })
+			runExpiryChecks(ctx, func(context.Context) { ticks <- time.Now() })
 		}()
 		if first := <-ticks; !first.Equal(start) {
 			t.Fatal("expiry must run immediately at startup")
@@ -63,7 +63,7 @@ func TestDemoExpiryWaitsForBatchShutdown(t *testing.T) {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			runDemoExpiry(ctx, func(ctx context.Context) {
+			runExpiryChecks(ctx, func(ctx context.Context) {
 				close(started)
 				<-ctx.Done()
 			})

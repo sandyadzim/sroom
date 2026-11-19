@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"time"
 
 	"payment/internal/booking"
 	"payment/internal/dto"
@@ -61,7 +62,7 @@ func (s *PaymentService) ListPayments(ctx context.Context, query dto.ListPayment
 	}
 	result := make([]dto.StaffPaymentResponse, 0, len(attempts))
 	for _, attempt := range attempts {
-		result = append(result, staffPayment(attempt))
+		result = append(result, staffPayment(attempt, s.now()))
 	}
 	return result, total, nil
 }
@@ -86,16 +87,20 @@ func (s *PaymentService) PaymentDetail(ctx context.Context, id, requestID string
 			OccurredAt: observation.ObservedAt.UTC(), ProviderStatus: observation.ProviderStatus,
 			VerificationResult: &observation.VerificationResult, ErrorCode: observation.ErrorCode})
 	}
-	return dto.StaffPaymentDetail{StaffPaymentResponse: staffPayment(attempt), BookingStatus: snapshot.Status,
-		ProviderStatus: attempt.ProviderStatus, HoldExpiresAt: attempt.HoldExpiresAt.UTC(), ProviderExpiresAt: attempt.ProviderExpiresAt,
+	return dto.StaffPaymentDetail{StaffPaymentResponse: staffPayment(attempt, s.now()), BookingStatus: snapshot.Status,
+		ProviderStatus: attempt.ProviderStatus, ProviderExpiresAt: attempt.ProviderExpiresAt,
 		VerifiedAt: attempt.VerifiedAt, ProviderPaidAt: attempt.ProviderPaidAt, Timeline: timeline}, nil
 }
 
-func staffPayment(attempt model.PaymentAttempt) dto.StaffPaymentResponse {
+func staffPayment(attempt model.PaymentAttempt, now time.Time) dto.StaffPaymentResponse {
+	// Operational overdue review is separate from canonical payment verification.
+	expiryReview := !now.Before(attempt.HoldExpiresAt) &&
+		(attempt.Status != "paid" || attempt.VerifiedAt == nil || !attempt.VerifiedAt.Before(attempt.HoldExpiresAt))
 	return dto.StaffPaymentResponse{PaymentID: attempt.ID, BookingID: attempt.BookingID, CustomerID: attempt.CustomerID,
 		Provider: attempt.Provider, ProviderOrderID: attempt.ProviderOrderID, ProviderTransactionID: attempt.ProviderTransactionID,
 		Status: attempt.Status, Bank: attempt.Bank, AmountIDR: attempt.AmountIDR, Currency: attempt.Currency,
 		ReviewRequired: attempt.ReviewReason != nil, ReviewReason: attempt.ReviewReason,
+		HoldExpiresAt: attempt.HoldExpiresAt.UTC(), ExpiryReviewRequired: expiryReview,
 		CreatedAt: attempt.CreatedAt.UTC(), UpdatedAt: attempt.UpdatedAt.UTC()}
 }
 

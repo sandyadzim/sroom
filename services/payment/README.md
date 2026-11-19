@@ -57,6 +57,12 @@ See [sandbox notification setup and checks](../../../docs/payment-sandbox-setup.
 
 Booking reads `GET /internal/v1/bookings/{id}/payment-confirmation` with the existing `PAYMENT_BOOKING_TOKEN`. The route is registered only with that token and is not exposed by Gateway. It returns canonical references, amount/status/deadline, verification time, and review indicator; no VA or provider payload. See the [internal contract](../../packages/contracts/openapi/payment.internal.v1.yaml).
 
+## Expiry assessment
+
+`POST /internal/v1/bookings/{id}/expiry-assessment` uses the same pair token, with no body. Payment durably closes unused initiation after the Booking deadline. Reservation and closure lock the same gate; existing attempts never authorize release. Booking applies the release in its own transaction. Staff payment list/detail include `hold_expires_at` and computed `expiry_review_required`, separate from verification review.
+
+Apply migration `000002_create_initiation_gates` before starting this version. Stop old Payment/Booking writers before rollout. See [setup, Bruno and review limits](../../../docs/payment-expiry-bruno.md). Release with a provider attempt remains deferred.
+
 ## Event delivery
 
 Optionally set `RABBITMQ_URL` to enable one outbox relay inside Payment. It sends up to 20 pending paid events every five seconds, one at a time, using persistent messages, mandatory routing, and publisher confirms. Failed/ambiguous delivery stays pending; retries retain the event ID. Invalid events are retained with `INVALID_EVENT` for inspection.
@@ -71,7 +77,7 @@ Export the same `DATABASE_URL` in your terminal, then run from this directory:
 migrate -path migrations -database "$DATABASE_URL" up
 ```
 
-Tables are created in the `payment` schema. Each booking has one payment attempt; related tables store idempotency, provider observations, webhook receipts, and outbox events. Migrations are not run automatically at startup.
+Tables are created in the `payment` schema. Each booking has one payment attempt; related tables store initiation gates, idempotency, provider observations, webhook receipts, and outbox events. Migrations are not run automatically at startup.
 
 ## Checks
 

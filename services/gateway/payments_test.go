@@ -163,4 +163,8 @@ func TestPrivatePaymentConfirmationNotExposed(t *testing.T) {
 	if response.Code != 404 {
 		t.Fatalf("private route exposed: %d", response.Code)
 	}
+	response = request(app, httptest.NewRequest("POST", "/internal/v1/bookings/00000000-0000-4000-8000-000000000001/expiry-assessment", nil))
+	if response.Code != 404 {
+		t.Fatalf("private expiry route exposed: %d", response.Code)
+	}
 }

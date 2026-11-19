@@ -33,7 +33,7 @@ Start Identity, Catalog, and Gateway. Booking uses `IDENTITY_BASE_URL` (default 
 
 Sign in through Gateway and send `POST /api/v1/customer/checkout/quotes` with the customer cookie and an allowed origin. See the [Booking request and response schemas](../../packages/contracts/openapi/booking.v1.yaml) and the [Gateway contract](../../packages/contracts/openapi/gateway.v1.yaml).
 
-To create a demo hold, set `CATALOG_DEMO_HOLDS=true` in Catalog and restart it. Send `POST /api/v1/customer/bookings` with an `Idempotency-Key` UUID. Keep Catalog demo mode active while demo data exists. Booking's demo payment mode below controls automatic expiry; otherwise overdue holds stay blocking.
+To create a demo hold, set `CATALOG_DEMO_HOLDS=true` in Catalog and restart it. Send `POST /api/v1/customer/bookings` with an `Idempotency-Key` UUID. Keep Catalog demo mode active while demo data exists. Use the verified payment integration below for Midtrans flows; demo payment/expiry mode remains a separate simulation.
 
 ## Verified payment confirmation
 
@@ -41,7 +41,13 @@ Apply migrations before enabling the consumer. Set `RABBITMQ_URL` to the same br
 
 Booking consumes `payment.paid.v1`, verifies canonical facts through Payment's private API, and atomically commits inbox, confirmed/history, and a `booking.confirmed.v1` outbox event. Paid verified before the original deadline can confirm a pending booking with its allocation still blocking; late/unsafe cases go to review without changing allocations. Duplicate events do not repeat business effects.
 
-Transient failures retry three times per delivery, then go to a durable DLQ before the original is acknowledged. Broker failure does not stop HTTP. Confirmed events remain in Booking outbox until invoice delivery work; no invoice or inventory release occurs here. See [setup and Bruno](../../../docs/payment-confirm-booking-bruno.md). Real RabbitMQ/sandbox verification is pending.
+Transient failures retry three times per delivery, then go to a durable DLQ before the original is acknowledged. Broker failure does not stop HTTP. Confirmed events remain in Booking outbox until invoice delivery work; no invoice is issued by this consumer. Inventory release follows the no-attempt expiry check below. See [setup and Bruno](../../../docs/payment-confirm-booking-bruno.md). Real RabbitMQ/sandbox verification is pending.
+
+## Hold expiry
+
+With `RABBITMQ_URL` configured and demo mode off, a separate startup/30-second worker asks Payment to close initiation for overdue holds. Only durable closure without any attempt allows Booking to atomically expire/release the allocation and save history/outbox. Existing attempts and dependency failures keep inventory blocked. The scanner rotates through batches of 50; release can lag the deadline. No new environment variable or Booking migration is needed.
+
+Stop old Payment/Booking processes and apply Payment's new migration before restarting. No broker connection is needed for these HTTP checks. See [setup and Bruno](../../../docs/payment-expiry-bruno.md). Provider-attempt release remains pending; demo expiry must stay disabled for Midtrans flows.
 
 ## Booking history
 
@@ -51,7 +57,7 @@ Use `GET /api/v1/customer/bookings` and `GET /api/v1/customer/bookings/{id}` thr
 
 Set `PAYMENT_BOOKING_TOKEN` to enable `GET /internal/v1/bookings/{id}/payment-context` directly on Booking. The caller uses the same token as a Bearer credential. See the [private contract](../../packages/contracts/openapi/booking.internal.v1.yaml).
 
-Provider reconciliation follows the future Payment integration.
+Provider reconciliation and release for existing attempts remain deferred.
 
 ## Demo payments
 

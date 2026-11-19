@@ -85,4 +85,5 @@ func RegisterConfirmation(engine *gin.Engine, confirmationHandler *handler.Confi
 	v1 := internal.Group("/v1")
 	bookings := v1.Group("/bookings")
 	bookings.GET("/:id/payment-confirmation", confirmationHandler.Get)
+	bookings.POST("/:id/expiry-assessment", confirmationHandler.AssessExpiry)
 }

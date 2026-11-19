@@ -18,7 +18,7 @@ func startDemoExpiry(ctx context.Context, service *checkout.Service, cfg config,
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		runDemoExpiry(ctx, func(ctx context.Context) {
+		runExpiryChecks(ctx, func(ctx context.Context) {
 			requestID := uuid.NewString()
 			result, err := service.ExpireDemoHolds(ctx, time.Now, requestID)
 			if ctx.Err() != nil {
@@ -40,7 +40,7 @@ func startDemoExpiry(ctx context.Context, service *checkout.Service, cfg config,
 }
 
 // The batch function keeps database work separate from the polling schedule.
-func runDemoExpiry(ctx context.Context, expire func(context.Context)) {
+func runExpiryChecks(ctx context.Context, expire func(context.Context)) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 	for {

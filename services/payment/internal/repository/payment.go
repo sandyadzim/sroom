@@ -26,6 +26,13 @@ func (r *PaymentRepository) Reserve(ctx context.Context, attempt model.PaymentAt
 	var saved model.PaymentAttempt
 	created := false
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		closedAt, err := lockInitiationGate(tx, attempt.BookingID)
+		if err != nil {
+			return err
+		}
+		if closedAt != nil {
+			return ErrInitiationClosed
+		}
 		insert := tx.Exec(`INSERT INTO payment.payment_attempts
 			(id, booking_id, customer_id, provider_order_id, amount_idr, currency, hold_expires_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (booking_id) DO NOTHING`,
@@ -58,7 +65,7 @@ func (r *PaymentRepository) Reserve(ctx context.Context, attempt model.PaymentAt
 		return nil
 	})
 	if err != nil {
-		if errors.Is(err, ErrIdempotencyConflict) || errors.Is(err, ErrSnapshotMismatch) {
+		if errors.Is(err, ErrIdempotencyConflict) || errors.Is(err, ErrSnapshotMismatch) || errors.Is(err, ErrInitiationClosed) {
 			return model.PaymentAttempt{}, false, err
 		}
 		return model.PaymentAttempt{}, false, ErrUnavailable
