@@ -15,6 +15,8 @@ import (
 	"booking/internal/catalog"
 	"booking/internal/checkout"
 	"booking/internal/identity"
+	"booking/internal/messaging"
+	"booking/internal/payment"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -74,6 +76,15 @@ func run(log *slog.Logger) error {
 	registerCheckout(router, quoteHandler{identity: identityClient, checkout: checkoutService, now: time.Now})
 	registerPaymentContext(router, checkoutService, cfg.paymentToken)
 	registerDemoConfirmation(router, checkoutService, cfg.paymentToken, cfg.demoPayments, time.Now)
+	var paymentConsumer *messaging.Consumer
+	if cfg.rabbitURL != "" {
+		paymentClient, err := payment.NewClient(cfg.paymentURL, cfg.paymentToken)
+		if err != nil {
+			return err
+		}
+		confirmedPayments := checkout.NewPaidConfirmationService(checkout.NewRepository(db), paymentClient)
+		paymentConsumer = messaging.NewConsumer(cfg.rabbitURL, confirmedPayments, log)
+	}
 	server := &http.Server{
 		Addr:              ":" + strconv.Itoa(cfg.appPort),
 		Handler:           router,
@@ -95,6 +106,12 @@ func run(log *slog.Logger) error {
 		serverResult <- server.Serve(listener)
 	}()
 	log.Info("server started", "operation", "http.listen", "port", cfg.appPort)
+	if paymentConsumer != nil {
+		consumerContext, cancelConsumer := context.WithCancel(stopping)
+		done := make(chan struct{})
+		go func() { defer close(done); paymentConsumer.Run(consumerContext) }()
+		defer func() { cancelConsumer(); <-done }()
+	}
 	stopDemoExpiry := startDemoExpiry(stopping, checkoutService, cfg, log)
 	defer stopDemoExpiry()
 

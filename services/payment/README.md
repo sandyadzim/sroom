@@ -1,6 +1,6 @@
 # Payment Service
 
-Go + Gin service for BNI Virtual Account initiation and verified Midtrans sandbox payment outcomes. Booking confirmation follows separately.
+Go + Gin service for BNI Virtual Account initiation and verified Midtrans sandbox payment outcomes. Booking confirms eligible paid events asynchronously through its consumer.
 
 ## Run locally
 
@@ -53,11 +53,15 @@ Payment stores receipt hashes, sanitized observations, and verified state. Dupli
 
 See [sandbox notification setup and checks](../../../docs/payment-sandbox-setup.md#8-notification-url). Direct sandbox verification remains pending; automated tests use fake providers. No additional environment variable or migration is needed for this callback.
 
+## Private confirmation facts
+
+Booking reads `GET /internal/v1/bookings/{id}/payment-confirmation` with the existing `PAYMENT_BOOKING_TOKEN`. The route is registered only with that token and is not exposed by Gateway. It returns canonical references, amount/status/deadline, verification time, and review indicator; no VA or provider payload. See the [internal contract](../../packages/contracts/openapi/payment.internal.v1.yaml).
+
 ## Event delivery
 
 Optionally set `RABBITMQ_URL` to enable one outbox relay inside Payment. It sends up to 20 pending paid events every five seconds, one at a time, using persistent messages, mandatory routing, and publisher confirms. Failed/ambiguous delivery stays pending; retries retain the event ID. Invalid events are retained with `INVALID_EVENT` for inspection.
 
-The durable `booking.payment-events.v1` queue receives `payment.paid.v1` through `sroom.domain.v1`. There is no Booking consumer yet. Broker outages do not stop HTTP; readiness remains PostgreSQL-only. This relay sends saved events and does not check Midtrans. No migration is needed. See [local Compose](../../infra/compose/README.md) and [backlog/recovery guide](../../../docs/payment-outbox-setup.md).
+The durable `booking.payment-events.v1` queue receives `payment.paid.v1` through `sroom.domain.v1`. Booking can consume paid events and confirm eligible reservations after canonical verification. Broker outages do not stop HTTP; readiness remains PostgreSQL-only. This relay sends saved events and does not check Midtrans. No migration is needed. See [local Compose](../../infra/compose/README.md) and [backlog/recovery guide](../../../docs/payment-outbox-setup.md).
 
 ## Migrations
 

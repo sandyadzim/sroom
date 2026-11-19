@@ -136,6 +136,7 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 	paymentService := service.NewPaymentService(repository.NewPaymentRepository(db), bookingClient, provider, true)
 	RegisterPayment(engine, identityClient, handler.NewPaymentHandler(paymentService))
 	RegisterPaymentReads(engine, identityClient, handler.NewReadPaymentHandler(paymentService))
+	RegisterConfirmation(engine, handler.NewConfirmationHandler(paymentService, "test-only-pair-token"))
 	RegisterPaymentRefresh(engine, identityClient, handler.NewRefreshPaymentHandler(service.NewRefreshPaymentService(paymentService, provider, true)))
 	read := func(path, token string, status int) string {
 		t.Helper()
@@ -265,6 +266,10 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 	}
 	if status != "paid" {
 		t.Fatal("HTTP callback did not persist settlement")
+	}
+	confirmationBody := read("/internal/v1/bookings/"+bookingID+"/payment-confirmation", "test-only-pair-token", 200)
+	if !strings.Contains(confirmationBody, `"status":"paid"`) || !strings.Contains(confirmationBody, `"payment_id":"`+firstID+`"`) || strings.Contains(confirmationBody, "va_number") {
+		t.Fatal("incorrect private canonical payment response")
 	}
 	previousLookups := provider.lookupCalls
 	if body := refresh("customer-a", 200); !strings.Contains(body, `"status":"paid"`) || provider.lookupCalls != previousLookups || provider.calls != 1 {

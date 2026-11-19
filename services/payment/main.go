@@ -70,6 +70,9 @@ func run(log *slog.Logger) error {
 		midtransClient, cfg.BookingToken != "" && cfg.MidtransServerKey != "")
 	router.RegisterPayment(engine, identityClient, handler.NewPaymentHandler(paymentService))
 	router.RegisterPaymentReads(engine, identityClient, handler.NewReadPaymentHandler(paymentService))
+	if cfg.BookingToken != "" {
+		router.RegisterConfirmation(engine, handler.NewConfirmationHandler(paymentService, cfg.BookingToken))
+	}
 	refreshService := service.NewRefreshPaymentService(paymentService, midtransClient, cfg.MidtransServerKey != "")
 	router.RegisterPaymentRefresh(engine, identityClient, handler.NewRefreshPaymentHandler(refreshService))
 	webhookService := service.NewWebhookService(paymentRepo, midtransClient, cfg.MidtransServerKey)

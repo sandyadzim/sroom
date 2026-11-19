@@ -7,6 +7,7 @@ import (
 
 func TestLoadConfig(t *testing.T) {
 	t.Chdir(t.TempDir())
+	t.Setenv("RABBITMQ_URL", "")
 	const testDatabaseURL = "postgres://localhost/rent-car-booking"
 
 	for _, test := range []struct {
@@ -41,6 +42,7 @@ func TestLoadConfig(t *testing.T) {
 
 func TestLoadDotEnv(t *testing.T) {
 	t.Chdir(t.TempDir())
+	t.Setenv("RABBITMQ_URL", "")
 	t.Setenv("APP_PORT", "")
 	if err := os.Unsetenv("APP_PORT"); err != nil {
 		t.Fatal(err)
@@ -61,6 +63,7 @@ func TestLoadDotEnv(t *testing.T) {
 
 func TestDemoPaymentsConfig(t *testing.T) {
 	t.Chdir(t.TempDir())
+	t.Setenv("RABBITMQ_URL", "")
 	t.Setenv("DATABASE_URL", "postgres://localhost/booking-test")
 	t.Setenv("APP_PORT", "8083")
 	for _, value := range []string{"", "false", "true", "TRUE", "invalid"} {
@@ -71,5 +74,32 @@ func TestDemoPaymentsConfig(t *testing.T) {
 				t.Fatalf("demo payments must be enabled only by true (%v)", err)
 			}
 		})
+	}
+}
+
+func TestPaymentConsumerConfig(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("DATABASE_URL", "postgres://localhost/booking-test")
+	t.Setenv("APP_PORT", "")
+	t.Setenv("PAYMENT_BASE_URL", "")
+	t.Setenv("PAYMENT_BOOKING_TOKEN", "")
+	t.Setenv("BOOKING_DEMO_PAYMENTS", "false")
+	t.Setenv("RABBITMQ_URL", "")
+	cfg, err := loadConfig()
+	if err != nil || cfg.paymentURL != "http://localhost:8084" || cfg.rabbitURL != "" {
+		t.Fatal("invalid consumer defaults")
+	}
+	t.Setenv("RABBITMQ_URL", "amqp://local:synthetic-password@localhost:5672/sroom")
+	if _, err := loadConfig(); err == nil {
+		t.Fatal("consumer accepted missing pair token")
+	}
+	t.Setenv("PAYMENT_BOOKING_TOKEN", "synthetic-pair")
+	t.Setenv("BOOKING_DEMO_PAYMENTS", "true")
+	if _, err := loadConfig(); err == nil {
+		t.Fatal("consumer accepted unsafe demo expiry mode")
+	}
+	t.Setenv("BOOKING_DEMO_PAYMENTS", "false")
+	if _, err := loadConfig(); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -79,3 +79,10 @@ func RegisterPaymentRefresh(engine *gin.Engine, verifier middleware.SessionVerif
 	bookings := payment.Group("/bookings")
 	bookings.POST("/:id/payment/refresh", refreshHandler.Refresh)
 }
+
+func RegisterConfirmation(engine *gin.Engine, confirmationHandler *handler.ConfirmationHandler) {
+	internal := engine.Group("/internal")
+	v1 := internal.Group("/v1")
+	bookings := v1.Group("/bookings")
+	bookings.GET("/:id/payment-confirmation", confirmationHandler.Get)
+}

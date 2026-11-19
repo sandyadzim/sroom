@@ -35,6 +35,14 @@ Sign in through Gateway and send `POST /api/v1/customer/checkout/quotes` with th
 
 To create a demo hold, set `CATALOG_DEMO_HOLDS=true` in Catalog and restart it. Send `POST /api/v1/customer/bookings` with an `Idempotency-Key` UUID. Keep Catalog demo mode active while demo data exists. Booking's demo payment mode below controls automatic expiry; otherwise overdue holds stay blocking.
 
+## Verified payment confirmation
+
+Apply migrations before enabling the consumer. Set `RABBITMQ_URL` to the same broker/vhost as Payment, keep `BOOKING_DEMO_PAYMENTS=false`, and use the same `PAYMENT_BOOKING_TOKEN` in both services. `PAYMENT_BASE_URL` defaults to `http://localhost:8084`. An empty broker URL disables the consumer; an active consumer rejects demo payment/expiry mode.
+
+Booking consumes `payment.paid.v1`, verifies canonical facts through Payment's private API, and atomically commits inbox, confirmed/history, and a `booking.confirmed.v1` outbox event. Paid verified before the original deadline can confirm a pending booking with its allocation still blocking; late/unsafe cases go to review without changing allocations. Duplicate events do not repeat business effects.
+
+Transient failures retry three times per delivery, then go to a durable DLQ before the original is acknowledged. Broker failure does not stop HTTP. Confirmed events remain in Booking outbox until invoice delivery work; no invoice or inventory release occurs here. See [setup and Bruno](../../../docs/payment-confirm-booking-bruno.md). Real RabbitMQ/sandbox verification is pending.
+
 ## Booking history
 
 Use `GET /api/v1/customer/bookings` and `GET /api/v1/customer/bookings/{id}` through Gateway with a customer session. ADMIN and OWNER use `GET /api/v1/staff/bookings` and `GET /api/v1/staff/bookings/{id}`. Staff detail includes the customer ID, unit ID, and status history.

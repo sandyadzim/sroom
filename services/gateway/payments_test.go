@@ -155,3 +155,12 @@ func TestCustomerPaymentRefreshProxy(t *testing.T) {
 		t.Fatal("direct Payment route exposed")
 	}
 }
+
+func TestPrivatePaymentConfirmationNotExposed(t *testing.T) {
+	upstream := testUpstream(t, func(w http.ResponseWriter, r *http.Request) { t.Error("private request reached upstream") })
+	app := newRouter(upstream, upstream, upstream, upstream, testLogger())
+	response := request(app, httptest.NewRequest("GET", "/internal/v1/bookings/00000000-0000-4000-8000-000000000001/payment-confirmation", nil))
+	if response.Code != 404 {
+		t.Fatalf("private route exposed: %d", response.Code)
+	}
+}
