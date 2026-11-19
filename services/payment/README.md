@@ -19,7 +19,7 @@ curl -i http://localhost:8084/health/ready
 
 Liveness returns `200` while HTTP is running. Readiness pings PostgreSQL with a two-second timeout, returning `200` when ready or `503 DATABASE_UNAVAILABLE` when unavailable. It recovers without restarting Payment. Invalid configuration stops startup with a safe error message.
 
-The [HTTP contract](../../packages/contracts/openapi/payment.v1.yaml) documents health, VA initiation, and webhooks. RabbitMQ is not required yet.
+The [HTTP contract](../../packages/contracts/openapi/payment.v1.yaml) documents health, VA initiation, and webhooks. RabbitMQ is optional for asynchronous outbox delivery.
 
 ## Create a BNI VA
 
@@ -49,9 +49,15 @@ No attempt returns `not_started`; already-paid attempts return stored facts with
 
 Gateway forwards `POST /webhooks/midtrans` to Payment. This provider callback uses signature verification and an authenticated Midtrans status lookup, without customer cookies or Origin checks. The body limit is 16 KiB; unknown provider fields are allowed.
 
-Payment stores receipt hashes, sanitized observations, and verified state. Duplicate callbacks produce one `payment.paid.v1` outbox event per attempt; paid never regresses. Temporary failures return `503` for retry; committed review/unmatched receipts return `200`. No raw payload or signature is stored. Events are not published yet, and this endpoint does not confirm Booking or release inventory.
+Payment stores receipt hashes, sanitized observations, and verified state. Duplicate callbacks produce one `payment.paid.v1` outbox event per attempt; paid never regresses. Temporary failures return `503` for retry; committed review/unmatched receipts return `200`. No raw payload or signature is stored. When the relay is enabled, events are published to RabbitMQ; this endpoint does not wait for the broker, confirm Booking, or release inventory.
 
 See [sandbox notification setup and checks](../../../docs/payment-sandbox-setup.md#8-notification-url). Direct sandbox verification remains pending; automated tests use fake providers. No additional environment variable or migration is needed for this callback.
+
+## Event delivery
+
+Optionally set `RABBITMQ_URL` to enable one outbox relay inside Payment. It sends up to 20 pending paid events every five seconds, one at a time, using persistent messages, mandatory routing, and publisher confirms. Failed/ambiguous delivery stays pending; retries retain the event ID. Invalid events are retained with `INVALID_EVENT` for inspection.
+
+The durable `booking.payment-events.v1` queue receives `payment.paid.v1` through `sroom.domain.v1`. There is no Booking consumer yet. Broker outages do not stop HTTP; readiness remains PostgreSQL-only. This relay sends saved events and does not check Midtrans. No migration is needed. See [local Compose](../../infra/compose/README.md) and [backlog/recovery guide](../../../docs/payment-outbox-setup.md).
 
 ## Migrations
 
@@ -78,3 +84,5 @@ go test -race -count=1 ./...
 ```
 
 Export `PAYMENT_TEST_DATABASE_URL` before running these commands. Schema tests skip when it is unset; they do not fall back to `DATABASE_URL`.
+
+Relay persistence tests additionally require `PAYMENT_OUTBOX_TEST_DATABASE_URL`, a separate migrated test database because relay queries poll all pending events. RabbitMQ transport tests are opt-in with `PAYMENT_RABBITMQ_TEST_URL` pointing to a dedicated `sroom-test` vhost. Without these variables, the corresponding tests skip. Real RabbitMQ and Compose execution remain unverified until Docker is available.

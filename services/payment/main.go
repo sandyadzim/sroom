@@ -17,6 +17,7 @@ import (
 	"payment/internal/database"
 	"payment/internal/handler"
 	"payment/internal/identity"
+	"payment/internal/messaging"
 	"payment/internal/midtrans"
 	"payment/internal/repository"
 	"payment/internal/router"
@@ -92,6 +93,19 @@ func run(log *slog.Logger) error {
 		serverResult <- server.Serve(listener)
 	}()
 	log.Info("server started", "operation", "http.listen", "port", cfg.AppPort)
+	if cfg.RabbitMQURL != "" {
+		relayContext, cancelRelay := context.WithCancel(stopping)
+		relayStopped := make(chan struct{})
+		relay := service.NewOutboxRelay(paymentRepo, messaging.NewRabbitPublisher(cfg.RabbitMQURL), log)
+		go func() {
+			defer close(relayStopped)
+			relay.Run(relayContext)
+		}()
+		defer func() {
+			cancelRelay()
+			<-relayStopped
+		}()
+	}
 
 	select {
 	case err := <-serverResult:

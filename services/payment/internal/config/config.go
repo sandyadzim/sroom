@@ -2,11 +2,13 @@ package config
 
 import (
 	"errors"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type Config struct {
@@ -16,6 +18,7 @@ type Config struct {
 	BookingBaseURL    string
 	BookingToken      string
 	MidtransServerKey string
+	RabbitMQURL       string
 }
 
 func Load() (Config, error) {
@@ -43,8 +46,16 @@ func Load() (Config, error) {
 	if bookingURL == "" {
 		bookingURL = "http://localhost:8083"
 	}
+	rabbitURL := strings.TrimSpace(os.Getenv("RABBITMQ_URL"))
+	if rabbitURL != "" {
+		parsed, parseError := url.Parse(rabbitURL)
+		_, amqpError := amqp.ParseURI(rabbitURL)
+		if parseError != nil || amqpError != nil || parsed.Hostname() == "" || parsed.RawQuery != "" || parsed.Fragment != "" {
+			return Config{}, errors.New("RABBITMQ_URL must be a valid amqp or amqps connection URL")
+		}
+	}
 	return Config{AppPort: appPort, DatabaseURL: databaseURL,
 		IdentityBaseURL: identityURL, BookingBaseURL: bookingURL,
 		BookingToken:      strings.TrimSpace(os.Getenv("PAYMENT_BOOKING_TOKEN")),
-		MidtransServerKey: strings.TrimSpace(os.Getenv("MIDTRANS_SERVER_KEY"))}, nil
+		MidtransServerKey: strings.TrimSpace(os.Getenv("MIDTRANS_SERVER_KEY")), RabbitMQURL: rabbitURL}, nil
 }

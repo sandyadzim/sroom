@@ -2,11 +2,13 @@ package config
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
 func TestLoad(t *testing.T) {
 	t.Chdir(t.TempDir())
+	t.Setenv("RABBITMQ_URL", "")
 	for _, test := range []struct {
 		name        string
 		port        string
@@ -42,6 +44,7 @@ func TestLoad(t *testing.T) {
 
 func TestDotEnvPreservesEnvironment(t *testing.T) {
 	t.Chdir(t.TempDir())
+	t.Setenv("RABBITMQ_URL", "")
 	t.Setenv("APP_PORT", "")
 	if err := os.Unsetenv("APP_PORT"); err != nil {
 		t.Fatal(err)
@@ -58,6 +61,7 @@ func TestDotEnvPreservesEnvironment(t *testing.T) {
 
 func TestInvalidDotEnv(t *testing.T) {
 	t.Chdir(t.TempDir())
+	t.Setenv("RABBITMQ_URL", "")
 	if err := os.WriteFile(".env", []byte("APP_PORT=\"unterminated"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -68,6 +72,7 @@ func TestInvalidDotEnv(t *testing.T) {
 
 func TestIntegrationConfig(t *testing.T) {
 	t.Chdir(t.TempDir())
+	t.Setenv("RABBITMQ_URL", "")
 	t.Setenv("DATABASE_URL", "postgres://localhost/payment-test")
 	t.Setenv("APP_PORT", "")
 	t.Setenv("IDENTITY_BASE_URL", "")
@@ -83,5 +88,23 @@ func TestIntegrationConfig(t *testing.T) {
 	cfg, err = Load()
 	if err != nil || cfg.BookingToken != "test-only-pair-token" || cfg.MidtransServerKey != "test-only-key" {
 		t.Fatal("integration config was not loaded correctly")
+	}
+}
+
+func TestRabbitMQConfig(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("DATABASE_URL", "postgres://localhost/payment-test")
+	t.Setenv("APP_PORT", "")
+	for _, value := range []string{"", "amqp://demo:synthetic-password@localhost:5672/sroom", "amqps://localhost/sroom", "https://localhost/sroom", "amqp:///sroom", "amqp://demo:synthetic-password@localhost:bad/sroom"} {
+		t.Setenv("RABBITMQ_URL", value)
+		cfg, err := Load()
+		invalid := value == "https://localhost/sroom" || value == "amqp:///sroom" || value == "amqp://demo:synthetic-password@localhost:bad/sroom"
+		if invalid {
+			if err == nil || strings.Contains(err.Error(), "synthetic-password") {
+				t.Fatal("invalid broker URL not safely rejected")
+			}
+		} else if err != nil || cfg.RabbitMQURL != value {
+			t.Fatal("valid broker config rejected")
+		}
 	}
 }
