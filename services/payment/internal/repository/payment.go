@@ -34,10 +34,10 @@ func (r *PaymentRepository) Reserve(ctx context.Context, attempt model.PaymentAt
 			return ErrInitiationClosed
 		}
 		insert := tx.Exec(`INSERT INTO payment.payment_attempts
-			(id, booking_id, customer_id, provider_order_id, amount_idr, currency, hold_expires_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (booking_id) DO NOTHING`,
+			(id, booking_id, customer_id, provider_order_id, amount_idr, currency, hold_expires_at, customer_full_name, customer_email)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (booking_id) DO NOTHING`,
 			attempt.ID, attempt.BookingID, attempt.CustomerID, attempt.ProviderOrderID,
-			attempt.AmountIDR, attempt.Currency, attempt.HoldExpiresAt)
+			attempt.AmountIDR, attempt.Currency, attempt.HoldExpiresAt, attempt.CustomerFullName, attempt.CustomerEmail)
 		if insert.Error != nil {
 			return insert.Error
 		}

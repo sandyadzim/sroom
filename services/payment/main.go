@@ -68,8 +68,13 @@ func run(log *slog.Logger) error {
 	midtransClient := midtrans.NewClient(cfg.MidtransServerKey)
 	paymentService := service.NewPaymentService(paymentRepo, bookingClient,
 		midtransClient, cfg.BookingToken != "" && cfg.MidtransServerKey != "")
+	invoiceService, err := service.NewInvoiceService(paymentRepo, bookingClient)
+	if err != nil {
+		return err
+	}
 	router.RegisterPayment(engine, identityClient, handler.NewPaymentHandler(paymentService))
 	router.RegisterPaymentReads(engine, identityClient, handler.NewReadPaymentHandler(paymentService))
+	router.RegisterInvoices(engine, identityClient, handler.NewInvoiceHandler(invoiceService))
 	if cfg.BookingToken != "" {
 		router.RegisterConfirmation(engine, handler.NewConfirmationHandler(paymentService, cfg.BookingToken))
 	}
@@ -108,6 +113,13 @@ func run(log *slog.Logger) error {
 			cancelRelay()
 			<-relayStopped
 		}()
+		if cfg.BookingToken != "" {
+			consumerContext, cancelConsumer := context.WithCancel(stopping)
+			consumerStopped := make(chan struct{})
+			consumer := messaging.NewInvoiceConsumer(cfg.RabbitMQURL, invoiceService, log)
+			go func() { defer close(consumerStopped); consumer.Run(consumerContext) }()
+			defer func() { cancelConsumer(); <-consumerStopped }()
+		}
 	}
 
 	select {

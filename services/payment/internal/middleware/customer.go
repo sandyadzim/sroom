@@ -43,6 +43,8 @@ func RequireCustomer(verifier SessionVerifier) gin.HandlerFunc {
 			return
 		}
 		c.Set("customer_id", id.String())
+		c.Set("customer_full_name", profile.FullName)
+		c.Set("customer_email", profile.Email)
 		c.Next()
 	}
 }

@@ -3,9 +3,11 @@ package dto
 import "time"
 
 type CreateVARequest struct {
-	BookingID      string `json:"-"`
-	CustomerID     string `json:"-"`
-	IdempotencyKey string `json:"-"`
+	BookingID        string `json:"-"`
+	CustomerID       string `json:"-"`
+	IdempotencyKey   string `json:"-"`
+	CustomerFullName string `json:"-"`
+	CustomerEmail    string `json:"-"`
 }
 
 type VAResponse struct {

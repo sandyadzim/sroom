@@ -43,8 +43,10 @@ func NewClient(baseURL string) (*Client, error) {
 }
 
 type Profile struct {
-	ID   string `json:"id"`
-	Role string `json:"role"`
+	ID       string `json:"id"`
+	Role     string `json:"role"`
+	FullName string `json:"full_name"`
+	Email    string `json:"email"`
 }
 
 func (c *Client) Profile(ctx context.Context, token, requestID string) (Profile, error) {

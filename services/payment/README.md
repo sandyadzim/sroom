@@ -57,6 +57,12 @@ See [sandbox notification setup and checks](../../../docs/payment-sandbox-setup.
 
 Booking reads `GET /internal/v1/bookings/{id}/payment-confirmation` with the existing `PAYMENT_BOOKING_TOKEN`. The route is registered only with that token and is not exposed by Gateway. It returns canonical references, amount/status/deadline, verification time, and review indicator; no VA or provider payload. See the [internal contract](../../packages/contracts/openapi/payment.internal.v1.yaml).
 
+## Invoices
+
+New VA attempts snapshot the verified Identity name/email once. Confirmed Booking events issue one immutable JSON invoice with an `INV-<UUID>` number. Customer/staff read `GET /api/v1/customer/bookings/{id}/invoice` or `/api/v1/staff/bookings/{id}/invoice` through Gateway. An accessible booking without an invoice returns `409 INVOICE_NOT_AVAILABLE`; other-customer/missing bookings return `404`.
+
+Apply Payment migration `000003_create_invoices` and Booking migration `000004_add_outbox_delivery`. With the existing broker URL and pair token, Booking relays confirmed events and Payment consumes `payment.booking-events.v1`. Existing invoices read locally; issuance verifies Booking over HTTP before committing invoice/inbox together. Legacy attempts without billing snapshots remain unavailable and go to DLQ. No PDF generator or email delivery yet. See [setup and Bruno](../../../docs/payment-invoice-bruno.md).
+
 ## Expiry assessment
 
 `POST /internal/v1/bookings/{id}/expiry-assessment` uses the same pair token, with no body. Payment durably closes unused initiation after the Booking deadline. Reservation and closure lock the same gate; existing attempts never authorize release. Booking applies the release in its own transaction. Staff payment list/detail include `hold_expires_at` and computed `expiry_review_required`, separate from verification review.

@@ -41,7 +41,11 @@ Apply migrations before enabling the consumer. Set `RABBITMQ_URL` to the same br
 
 Booking consumes `payment.paid.v1`, verifies canonical facts through Payment's private API, and atomically commits inbox, confirmed/history, and a `booking.confirmed.v1` outbox event. Paid verified before the original deadline can confirm a pending booking with its allocation still blocking; late/unsafe cases go to review without changing allocations. Duplicate events do not repeat business effects.
 
-Transient failures retry three times per delivery, then go to a durable DLQ before the original is acknowledged. Broker failure does not stop HTTP. Confirmed events remain in Booking outbox until invoice delivery work; no invoice is issued by this consumer. Inventory release follows the no-attempt expiry check below. See [setup and Bruno](../../../docs/payment-confirm-booking-bruno.md). Real RabbitMQ/sandbox verification is pending.
+Transient failures retry three times per delivery, then go to a durable DLQ before the original is acknowledged. Broker failure does not stop HTTP. Confirmed events are relayed from Booking outbox to Payment for invoice issuance; this paid consumer only confirms Booking. Inventory release follows the no-attempt expiry check below. See [setup and Bruno](../../../docs/payment-confirm-booking-bruno.md). Real RabbitMQ/sandbox verification is pending.
+
+## Invoice integration
+
+`GET /internal/v1/bookings/{id}/invoice-context` uses the existing pair token and returns the verified-confirmed rental snapshot, including payment references and confirmation event ID/time. Demo confirmations are unavailable. With `RABBITMQ_URL` set, a separate relay publishes only confirmed events every five seconds, up to 20 per batch; failure retains the original outbox event. Apply migration `000004_add_outbox_delivery` before startup. Payment owns invoice issuance/read APIs. See [setup and Bruno](../../../docs/payment-invoice-bruno.md).
 
 ## Hold expiry
 
@@ -77,3 +81,5 @@ To also test the allocation schema, export `BOOKING_TEST_DATABASE_URL` for a ded
 migrate -path migrations -database "$BOOKING_TEST_DATABASE_URL" up
 go test -count=1 ./...
 ```
+
+Relay integration tests require a separate migrated `BOOKING_OUTBOX_TEST_DATABASE_URL` because relay polls all pending confirmed events. Do not reuse the ordinary test database.

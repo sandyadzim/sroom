@@ -84,12 +84,16 @@ func newRouter(identityURL, catalogURL, bookingURL, paymentURL *url.URL, logger 
 	customer.GET("/bookings/:id/payment", func(c *gin.Context) {
 		customerProxy("/api/v1/payment/bookings/"+c.Param("id")+"/payment", true, payment)(c)
 	})
+	customer.GET("/bookings/:id/invoice", func(c *gin.Context) {
+		customerProxy("/api/v1/payment/bookings/"+c.Param("id")+"/invoice", true, payment)(c)
+	})
 	customer.POST("/bookings/:id/payment/refresh", func(c *gin.Context) {
 		customerProxy("/api/v1/payment/bookings/"+c.Param("id")+"/payment/refresh", true, payment)(c)
 	})
 	staffPayments := staffProxy("/api/v1/payment/admin", true, payment)
 	staff.GET("/payments", staffPayments)
 	staff.GET("/payments/:id", staffPayments)
+	staff.GET("/bookings/:id/invoice", staffPayments)
 	staffBookings := staffProxy("/api/v1/booking/admin", true, booking)
 	staff.GET("/bookings", staffBookings)
 	staff.GET("/bookings/:id", staffBookings)

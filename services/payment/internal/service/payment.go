@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"net/mail"
 	"time"
 
 	"payment/internal/booking"
@@ -17,10 +18,11 @@ import (
 )
 
 var (
-	ErrNotConfigured  = errors.New("payment integration is not configured")
-	ErrNotPayable     = errors.New("booking is not payable")
-	ErrHoldExpired    = errors.New("booking hold has expired")
-	ErrWindowTooShort = errors.New("not enough time remains to create a virtual account")
+	ErrNotConfigured             = errors.New("payment integration is not configured")
+	ErrNotPayable                = errors.New("booking is not payable")
+	ErrHoldExpired               = errors.New("booking hold has expired")
+	ErrWindowTooShort            = errors.New("not enough time remains to create a virtual account")
+	ErrBillingProfileUnavailable = errors.New("verified customer billing profile is unavailable")
 )
 
 type BookingReader interface {
@@ -65,11 +67,16 @@ func (s *PaymentService) CreateVA(ctx context.Context, input dto.CreateVARequest
 	if !s.now().Before(snapshot.HoldExpiresAt) {
 		return dto.VAResponse{}, false, ErrHoldExpired
 	}
+	address, err := mail.ParseAddress(input.CustomerEmail)
+	if err != nil || address.Address != input.CustomerEmail {
+		return dto.VAResponse{}, false, ErrBillingProfileUnavailable
+	}
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return dto.VAResponse{}, false, repository.ErrUnavailable
 	}
 	attempt := model.PaymentAttempt{ID: id.String(), BookingID: input.BookingID, CustomerID: input.CustomerID,
+		CustomerFullName: &input.CustomerFullName, CustomerEmail: &input.CustomerEmail,
 		ProviderOrderID: "sroom-" + id.String(), AmountIDR: snapshot.TotalIDR, Currency: snapshot.Currency,
 		HoldExpiresAt: snapshot.HoldExpiresAt.UTC().Truncate(time.Microsecond)}
 	fingerprint := sha256.Sum256([]byte(input.BookingID + "|bni"))

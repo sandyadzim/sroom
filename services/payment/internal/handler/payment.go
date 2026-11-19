@@ -51,6 +51,7 @@ func (h *PaymentHandler) CreateVA(c *gin.Context) {
 		return
 	}
 	input.BookingID, input.CustomerID, input.IdempotencyKey = id.String(), c.GetString("customer_id"), key.String()
+	input.CustomerFullName, input.CustomerEmail = c.GetString("customer_full_name"), c.GetString("customer_email")
 	result, created, err := h.service.CreateVA(c.Request.Context(), input, c.Writer.Header().Get("X-Request-ID"))
 	if err != nil {
 		writePaymentError(c, err)

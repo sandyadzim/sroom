@@ -18,6 +18,7 @@ import (
 	"payment/internal/handler"
 	"payment/internal/identity"
 	"payment/internal/midtrans"
+	"payment/internal/model"
 	"payment/internal/repository"
 	"payment/internal/service"
 
@@ -72,10 +73,13 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
+		if err := db.WithContext(ctx).Exec("DELETE FROM payment.inbox_events WHERE aggregate_id = ?", bookingID).Error; err != nil {
+			t.Error(err)
+		}
 		if err := db.WithContext(ctx).Exec("DELETE FROM payment.outbox_events WHERE aggregate_id IN (SELECT id FROM payment.payment_attempts WHERE customer_id = ?)", customerA).Error; err != nil {
 			t.Error("could not clean HTTP test outbox")
 		}
-		for _, table := range []string{"provider_observations", "webhook_receipts", "idempotency_records"} {
+		for _, table := range []string{"invoices", "provider_observations", "webhook_receipts", "idempotency_records"} {
 			if err := db.WithContext(ctx).Exec("DELETE FROM payment."+table+" WHERE payment_id IN (SELECT id FROM payment.payment_attempts WHERE customer_id = ?)", customerA).Error; err != nil {
 				t.Error("could not clean HTTP test rows")
 			}
@@ -99,11 +103,12 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 		if r.Header.Get("Authorization") == "Bearer owner" {
 			role = "OWNER"
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]string{"id": id, "role": role}})
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]string{"id": id, "role": role, "full_name": "Synthetic Customer", "email": "customer@example.test"}})
 	}))
 	defer identityServer.Close()
 	deadline := time.Now().UTC().Add(15 * time.Minute).Truncate(time.Second)
 	var bookingUnavailable atomic.Bool
+	var confirmedContext atomic.Pointer[booking.InvoiceContext]
 	bookingServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if bookingUnavailable.Load() {
 			w.WriteHeader(503)
@@ -111,6 +116,14 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 		}
 		if r.Header.Get("Authorization") != "Bearer test-only-pair-token" || r.Header.Get("X-Request-ID") != "http-va-flow" {
 			t.Error("incorrect Booking credentials/correlation")
+		}
+		if r.URL.Path == "/internal/v1/bookings/"+bookingID+"/invoice-context" {
+			if snapshot := confirmedContext.Load(); snapshot != nil {
+				_ = json.NewEncoder(w).Encode(map[string]any{"data": snapshot})
+			} else {
+				w.WriteHeader(409)
+			}
+			return
 		}
 		if r.URL.Path != "/internal/v1/bookings/"+bookingID+"/payment-context" {
 			w.WriteHeader(404)
@@ -134,8 +147,13 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	paymentService := service.NewPaymentService(repository.NewPaymentRepository(db), bookingClient, provider, true)
+	invoiceService, err := service.NewInvoiceService(repository.NewPaymentRepository(db), bookingClient)
+	if err != nil {
+		t.Fatal(err)
+	}
 	RegisterPayment(engine, identityClient, handler.NewPaymentHandler(paymentService))
 	RegisterPaymentReads(engine, identityClient, handler.NewReadPaymentHandler(paymentService))
+	RegisterInvoices(engine, identityClient, handler.NewInvoiceHandler(invoiceService))
 	RegisterConfirmation(engine, handler.NewConfirmationHandler(paymentService, "test-only-pair-token"))
 	RegisterPaymentRefresh(engine, identityClient, handler.NewRefreshPaymentHandler(service.NewRefreshPaymentService(paymentService, provider, true)))
 	read := func(path, token string, status int) string {
@@ -153,6 +171,9 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 		return res.Body.String()
 	}
 	customerPath := "/api/v1/payment/bookings/" + bookingID + "/payment"
+	invoicePath := "/api/v1/payment/bookings/" + bookingID + "/invoice"
+	read(invoicePath, "customer-a", 409)
+	read(invoicePath, "customer-b", 404)
 	refresh := func(token string, expectedStatus int) string {
 		t.Helper()
 		req := httptest.NewRequest("POST", customerPath+"/refresh", strings.NewReader("{}"))
@@ -278,6 +299,27 @@ func TestPaymentHTTPFlowPostgres(t *testing.T) {
 	if body := read(customerPath, "customer-a", 200); !strings.Contains(body, `"status":"paid"`) || !strings.Contains(body, `"booking_status":"pending_payment"`) || !strings.Contains(body, `"va_number":null`) {
 		t.Fatal("paid was not separated from Booking confirmation")
 	}
+	// Verified webhook paid is followed by a canonical confirmed Booking event.
+	confirmedAt := time.Now().UTC().Truncate(time.Microsecond)
+	confirmationID := uuid.NewString()
+	confirmedContext.Store(&booking.InvoiceContext{BookingID: bookingID, CustomerID: customerA, VariantID: uuid.NewString(), VehicleLabel: "Synthetic rental", Status: "confirmed", PaymentID: firstID, ProviderOrderID: "sroom-" + firstID, ConfirmationEventID: confirmationID, ConfirmedAt: confirmedAt, PickupAt: confirmedAt.Add(24 * time.Hour), ReturnAt: confirmedAt.Add(26 * time.Hour), RentalDays: 1, DailyRateIDR: 150000, TotalIDR: 150000, Currency: "IDR"})
+	confirmedEvent := model.ConfirmedEvent{EventID: confirmationID, EventType: model.ConfirmedEventType, SchemaVersion: 1, OccurredAt: confirmedAt, AggregateID: bookingID, CorrelationID: "http-va-flow", CausationID: uuid.NewString(), Payload: model.ConfirmedPayload{BookingID: bookingID, PaymentID: firstID, CustomerID: customerA, ConfirmedAt: confirmedAt, TotalIDR: 150000, Currency: "IDR"}}
+	eventBody, err := json.Marshal(confirmedEvent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := invoiceService.Process(t.Context(), eventBody); err != nil {
+		t.Fatal(err)
+	}
+	if body := read(invoicePath, "customer-a", 200); !strings.Contains(body, `"full_name":"Synthetic Customer"`) || !strings.Contains(body, `"document_type":"non_tax_invoice"`) || strings.Contains(body, "va_number") {
+		t.Fatal("invoice did not contain the first verified profile")
+	}
+	read(invoicePath, "customer-b", 404)
+	read("/api/v1/payment/admin/bookings/"+bookingID+"/invoice", "admin", 200)
+	read("/api/v1/payment/admin/bookings/"+bookingID+"/invoice", "owner", 200)
+	bookingUnavailable.Store(true)
+	read(invoicePath, "customer-a", 200)
+	bookingUnavailable.Store(false)
 	// A separate closed pool exercises a database outage without disturbing cleanup.
 	unavailableDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Discard})
 	if err != nil {

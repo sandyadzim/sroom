@@ -87,3 +87,14 @@ func RegisterConfirmation(engine *gin.Engine, confirmationHandler *handler.Confi
 	bookings.GET("/:id/payment-confirmation", confirmationHandler.Get)
 	bookings.POST("/:id/expiry-assessment", confirmationHandler.AssessExpiry)
 }
+
+func RegisterInvoices(engine *gin.Engine, verifier middleware.SessionVerifier, invoiceHandler *handler.InvoiceHandler) {
+	api := engine.Group("/api")
+	v1 := api.Group("/v1")
+	payments := v1.Group("/payment")
+	bookings := payments.Group("/bookings", middleware.RequireCustomer(verifier))
+	bookings.GET("/:id/invoice", invoiceHandler.Customer)
+	admin := payments.Group("/admin", middleware.RequireStaff(verifier))
+	adminBookings := admin.Group("/bookings")
+	adminBookings.GET("/:id/invoice", invoiceHandler.Staff)
+}

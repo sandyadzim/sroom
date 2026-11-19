@@ -60,3 +60,5 @@ Checkout sends `POST /api/v1/customer/checkout/quotes` with the same customer co
 `POST /webhooks/midtrans` forwards provider notifications unchanged to Payment, with a 16 KiB body limit and a 10-second upstream deadline. It requires no browser cookie or Origin. Payment verifies the signature and retrieves the provider status before recording any outcome.
 
 For booking history, customers use `GET /api/v1/customer/bookings` and `GET /api/v1/customer/bookings/{id}`. Staff use the same paths under `/api/v1/staff` with the staff session cookie. Booking checks the session role and customer ownership.
+
+Invoice reads use `GET /api/v1/customer/bookings/{id}/invoice` and `GET /api/v1/staff/bookings/{id}/invoice` with their respective cookies. Gateway forwards to Payment, which enforces role/ownership. Invoice JSON is immutable after issuance; GET does not create it. Booking invoice-context stays private. See [invoice setup and Bruno](../../../docs/payment-invoice-bruno.md).

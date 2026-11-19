@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.14.0
+  version: 1.15.0
   description: |
     Local entry point for the documented Identity, Catalog, Booking, and Payment routes.
     Request and response schemas are owned by those services. The gateway forwards
@@ -17,6 +17,56 @@ servers:
   - url: http://localhost:8080
 security: []
 paths:
+  /api/v1/customer/bookings/{id}/invoice:
+    get:
+      operationId: getCustomerInvoice
+      summary: Forward customer invoice reads to Payment
+      description: Uses the customer session cookie as Bearer; never forwards cookies or exposes private invoice-context.
+      security:
+        - customerCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Immutable issued JSON invoice.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: './payment.v1.yaml#/components/schemas/Invoice' }
+        '409':
+          description: INVOICE_NOT_AVAILABLE.
+        default:
+          description: Upstream error envelope or gateway authentication/dependency error.
+  /api/v1/staff/bookings/{id}/invoice:
+    get:
+      operationId: getStaffInvoice
+      summary: Forward staff invoice reads to Payment
+      description: Uses the staff session cookie as Bearer; never forwards cookies or exposes private invoice-context.
+      security:
+        - staffCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Immutable issued JSON invoice.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: './payment.v1.yaml#/components/schemas/Invoice' }
+        '409':
+          description: INVOICE_NOT_AVAILABLE.
+        default:
+          description: Upstream error envelope or gateway authentication/dependency error.
   /api/v1/customer/bookings/{id}/payment/refresh:
     post:
       operationId: refreshCustomerPaymentAtGateway

@@ -7,6 +7,8 @@ type PaymentAttempt struct {
 	Provider              string
 	BookingID             string
 	CustomerID            string
+	CustomerFullName      *string
+	CustomerEmail         *string
 	ProviderOrderID       string
 	ProviderTransactionID *string
 	AmountIDR             int64 `gorm:"column:amount_idr"`

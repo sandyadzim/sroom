@@ -65,11 +65,15 @@ func paymentFixture(t *testing.T) (*PaymentService, *gorm.DB, *testBookingReader
 			t.Error("could not close test pool")
 		}
 	})
-	input := dto.CreateVARequest{CustomerID: uuid.NewString(), BookingID: uuid.NewString(), IdempotencyKey: uuid.NewString()}
+	input := dto.CreateVARequest{CustomerID: uuid.NewString(), BookingID: uuid.NewString(), IdempotencyKey: uuid.NewString(), CustomerFullName: "Synthetic Customer", CustomerEmail: "customer@example.test"}
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
+		if err := db.WithContext(ctx).Exec("DELETE FROM payment.inbox_events WHERE aggregate_id = ?", input.BookingID).Error; err != nil {
+			t.Error("could not clean test inbox")
+		}
 		for _, child := range []struct{ table, column string }{
+			{"invoices", "payment_id"},
 			{"outbox_events", "aggregate_id"}, {"provider_observations", "payment_id"},
 			{"webhook_receipts", "payment_id"}, {"idempotency_records", "payment_id"},
 		} {

@@ -16,6 +16,7 @@ import (
 	"booking/internal/checkout"
 	"booking/internal/identity"
 	"booking/internal/messaging"
+	"booking/internal/outbox"
 	"booking/internal/payment"
 
 	"gorm.io/driver/postgres"
@@ -75,6 +76,7 @@ func run(log *slog.Logger) error {
 	}
 	registerCheckout(router, quoteHandler{identity: identityClient, checkout: checkoutService, now: time.Now})
 	registerPaymentContext(router, checkoutService, cfg.paymentToken)
+	registerInvoiceContext(router, checkoutService, cfg.paymentToken)
 	registerDemoConfirmation(router, checkoutService, cfg.paymentToken, cfg.demoPayments, time.Now)
 	var paymentConsumer *messaging.Consumer
 	var paymentExpiry *checkout.ExpiryService
@@ -113,6 +115,11 @@ func run(log *slog.Logger) error {
 		done := make(chan struct{})
 		go func() { defer close(done); paymentConsumer.Run(consumerContext) }()
 		defer func() { cancelConsumer(); <-done }()
+		relayContext, cancelRelay := context.WithCancel(stopping)
+		relayDone := make(chan struct{})
+		relay := outbox.NewOutboxRelay(checkout.NewRepository(db), messaging.NewRabbitPublisher(cfg.rabbitURL), log)
+		go func() { defer close(relayDone); relay.Run(relayContext) }()
+		defer func() { cancelRelay(); <-relayDone }()
 	}
 	stopDemoExpiry := startDemoExpiry(stopping, checkoutService, cfg, log)
 	defer stopDemoExpiry()
