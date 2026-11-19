@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.9.0
+  version: 1.10.0
   description: |
     Local entry point for the documented Identity, Catalog, and Booking routes.
     Request and response schemas are owned by those services. The gateway forwards
@@ -115,6 +115,26 @@ paths:
         default:
           $ref: './identity.v1.yaml#/components/responses/OtherError'
   /api/v1/customer/bookings:
+    get:
+      operationId: listCustomerBookings
+      summary: List the signed-in customer's bookings
+      security:
+        - customerCookie: []
+      parameters:
+        - $ref: './booking.v1.yaml#/components/parameters/BookingPage'
+        - $ref: './booking.v1.yaml#/components/parameters/BookingLimit'
+        - $ref: './booking.v1.yaml#/components/parameters/BookingStatus'
+      responses:
+        '200':
+          $ref: './booking.v1.yaml#/components/responses/CustomerBookings'
+        '400':
+          $ref: './booking.v1.yaml#/components/responses/ReadBadRequest'
+        '401':
+          $ref: './booking.v1.yaml#/components/responses/Unauthenticated'
+        '403':
+          $ref: './booking.v1.yaml#/components/responses/CustomerRequired'
+        '503':
+          $ref: './booking.v1.yaml#/components/responses/BookingReadUnavailable'
     post:
       operationId: createCustomerDemoHold
       summary: Create a customer demo reservation
@@ -158,6 +178,27 @@ paths:
             application/json:
               schema:
                 $ref: './booking.v1.yaml#/components/schemas/Error'
+  /api/v1/customer/bookings/{id}:
+    parameters:
+      - $ref: './booking.v1.yaml#/components/parameters/BookingID'
+    get:
+      operationId: getCustomerBooking
+      summary: Read the signed-in customer's booking
+      security:
+        - customerCookie: []
+      responses:
+        '200':
+          $ref: './booking.v1.yaml#/components/responses/CustomerBooking'
+        '400':
+          $ref: './booking.v1.yaml#/components/responses/ReadBadRequest'
+        '401':
+          $ref: './booking.v1.yaml#/components/responses/Unauthenticated'
+        '403':
+          $ref: './booking.v1.yaml#/components/responses/CustomerRequired'
+        '404':
+          $ref: './booking.v1.yaml#/components/responses/BookingNotFound'
+        '503':
+          $ref: './booking.v1.yaml#/components/responses/BookingReadUnavailable'
   /api/v1/customer/checkout/quotes:
     post:
       operationId: createCustomerCheckoutQuote
@@ -250,6 +291,51 @@ paths:
           $ref: './identity.v1.yaml#/components/responses/UnsupportedMediaType'
         default:
           $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/staff/bookings:
+    get:
+      operationId: listStaffBookings
+      summary: List bookings as ADMIN or OWNER
+      security:
+        - staffCookie: []
+      parameters:
+        - $ref: './booking.v1.yaml#/components/parameters/BookingPage'
+        - $ref: './booking.v1.yaml#/components/parameters/BookingLimit'
+        - $ref: './booking.v1.yaml#/components/parameters/BookingStatus'
+        - $ref: './booking.v1.yaml#/components/parameters/BookingVariant'
+        - $ref: './booking.v1.yaml#/components/parameters/BookingPickupDate'
+        - $ref: './booking.v1.yaml#/components/parameters/BookingSearch'
+      responses:
+        '200':
+          $ref: './booking.v1.yaml#/components/responses/StaffBookings'
+        '400':
+          $ref: './booking.v1.yaml#/components/responses/ReadBadRequest'
+        '401':
+          $ref: './booking.v1.yaml#/components/responses/Unauthenticated'
+        '403':
+          $ref: './booking.v1.yaml#/components/responses/StaffRequired'
+        '503':
+          $ref: './booking.v1.yaml#/components/responses/BookingReadUnavailable'
+  /api/v1/staff/bookings/{id}:
+    parameters:
+      - $ref: './booking.v1.yaml#/components/parameters/BookingID'
+    get:
+      operationId: getStaffBooking
+      summary: Inspect a booking, its unit, and its timeline as ADMIN or OWNER
+      security:
+        - staffCookie: []
+      responses:
+        '200':
+          $ref: './booking.v1.yaml#/components/responses/StaffBookingDetail'
+        '400':
+          $ref: './booking.v1.yaml#/components/responses/ReadBadRequest'
+        '401':
+          $ref: './booking.v1.yaml#/components/responses/Unauthenticated'
+        '403':
+          $ref: './booking.v1.yaml#/components/responses/StaffRequired'
+        '404':
+          $ref: './booking.v1.yaml#/components/responses/BookingNotFound'
+        '503':
+          $ref: './booking.v1.yaml#/components/responses/BookingReadUnavailable'
   /api/v1/staff/login:
     post:
       operationId: staffLogin

@@ -49,3 +49,5 @@ Customer Profile reads `GET /api/v1/customer/me`. The customer changes their own
 Checkout sends `POST /api/v1/customer/checkout/quotes` with the same customer cookie and an allowed origin. Gateway forwards the session as a Bearer token to [Booking](../booking/README.md).
 
 `POST /api/v1/customer/bookings` uses the same cookie and origin. Gateway also forwards the required `Idempotency-Key` header.
+
+For booking history, customers use `GET /api/v1/customer/bookings` and `GET /api/v1/customer/bookings/{id}`. Staff use the same paths under `/api/v1/staff` with the staff session cookie. Booking checks the session role and customer ownership.

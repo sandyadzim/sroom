@@ -64,12 +64,20 @@ func newRouter(identityURL, catalogURL, bookingURL *url.URL, logger *slog.Logger
 	catalogRoutes.GET("/cars/:slug/related", catalog)
 
 	registerCatalogAdmin(catalogRoutes.Group("/admin"), catalog, upload)
-	registerStaff(v1.Group("/staff"), client, identityURL, identity, catalog, upload, logger)
+	staff := v1.Group("/staff")
+	registerStaff(staff, client, identityURL, identity, catalog, upload, logger)
 	customer := v1.Group("/customer")
 	registerCustomerSession(customer, client, identityURL, logger)
 	booking := forwardTo(client, bookingURL, "booking", 16*1024, 8*time.Second, logger)
 	customer.POST("/checkout/quotes", customerProxy("/api/v1/booking/checkout/quotes", true, booking))
 	customer.POST("/bookings", customerProxy("/api/v1/booking/bookings", true, booking))
+	customer.GET("/bookings", customerProxy("/api/v1/booking/bookings", true, booking))
+	customer.GET("/bookings/:id", func(c *gin.Context) {
+		customerProxy("/api/v1/booking/bookings/"+c.Param("id"), true, booking)(c)
+	})
+	staffBookings := staffProxy("/api/v1/booking/admin", true, booking)
+	staff.GET("/bookings", staffBookings)
+	staff.GET("/bookings/:id", staffBookings)
 	return app
 }
 

@@ -35,6 +35,10 @@ Sign in through Gateway and send `POST /api/v1/customer/checkout/quotes` with th
 
 To create a demo hold, set `CATALOG_DEMO_HOLDS=true` in Catalog and restart it. Send `POST /api/v1/customer/bookings` with an `Idempotency-Key` UUID. Keep demo mode active while demo holds exist. Holds remain blocking until an expiry workflow can safely release them.
 
+## Booking history
+
+Use `GET /api/v1/customer/bookings` and `GET /api/v1/customer/bookings/{id}` through Gateway with a customer session. ADMIN and OWNER use `GET /api/v1/staff/bookings` and `GET /api/v1/staff/bookings/{id}`. Staff detail includes the customer ID, unit ID, and status history.
+
 ## Checks
 
 Run `go test ./...` from this directory.

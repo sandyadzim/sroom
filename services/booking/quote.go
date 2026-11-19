@@ -35,6 +35,11 @@ func registerCheckout(router *gin.Engine, handler quoteHandler) {
 	group := router.Group("/api/v1/booking")
 	group.POST("/checkout/quotes", handler.quote)
 	group.POST("/bookings", handler.createHold)
+	group.GET("/bookings", handler.customerBookings)
+	group.GET("/bookings/:id", handler.customerBookings)
+	admin := group.Group("/admin")
+	admin.GET("/bookings", handler.staffBookings)
+	admin.GET("/bookings/:id", handler.staffBookings)
 }
 
 func (h quoteHandler) quote(c *gin.Context) {
@@ -62,6 +67,18 @@ func (h quoteHandler) quote(c *gin.Context) {
 }
 
 func (h quoteHandler) requireCustomer(c *gin.Context, ctx context.Context, requestID string) (identity.Profile, bool) {
+	profile, ok := h.sessionProfile(c, ctx, requestID)
+	if !ok {
+		return identity.Profile{}, false
+	}
+	if profile.Role != "CUSTOMER" {
+		writeError(c, http.StatusForbidden, "CUSTOMER_REQUIRED", "use a customer account")
+		return identity.Profile{}, false
+	}
+	return profile, true
+}
+
+func (h quoteHandler) sessionProfile(c *gin.Context, ctx context.Context, requestID string) (identity.Profile, bool) {
 	auth := strings.Fields(c.GetHeader("Authorization"))
 	if len(auth) != 2 || !strings.EqualFold(auth[0], "Bearer") {
 		writeError(c, http.StatusUnauthorized, "UNAUTHENTICATED", "authentication required")
@@ -73,8 +90,6 @@ func (h quoteHandler) requireCustomer(c *gin.Context, ctx context.Context, reque
 		writeError(c, http.StatusUnauthorized, "UNAUTHENTICATED", "invalid session")
 	case err != nil:
 		writeError(c, http.StatusServiceUnavailable, "DEPENDENCY_UNAVAILABLE", "could not verify customer session")
-	case profile.Role != "CUSTOMER":
-		writeError(c, http.StatusForbidden, "CUSTOMER_REQUIRED", "use a customer account")
 	default:
 		return profile, true
 	}

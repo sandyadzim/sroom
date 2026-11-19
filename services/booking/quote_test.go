@@ -130,8 +130,10 @@ func quoteTestRouter(t *testing.T, client *catalog.Client, pool *sql.DB) *gin.En
 			t.Error("unexpected Identity route or request ID")
 		}
 		switch token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "); token {
-		case "CUSTOMER", "ADMIN":
+		case "CUSTOMER", "ADMIN", "OWNER":
 			_ = json.NewEncoder(w).Encode(gin.H{"data": gin.H{"id": testCustomerID, "role": token}})
+		case "OTHER_CUSTOMER":
+			_ = json.NewEncoder(w).Encode(gin.H{"data": gin.H{"id": otherBookingCustomer, "role": "CUSTOMER"}})
 		case "identity-down":
 			http.Error(w, "synthetic private detail", 500)
 		default:
