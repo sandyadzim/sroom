@@ -43,6 +43,16 @@ func verifiedPaymentOutcome(attempt model.PaymentAttempt, verified midtrans.Stat
 		switch verified.Status {
 		case "pending":
 			outcome.Status = "pending"
+			if verified.VANumber != "" && !verified.ExpiresAt.IsZero() {
+				if verified.ExpiresAt.After(attempt.HoldExpiresAt) ||
+					(attempt.VANumber != nil && *attempt.VANumber != verified.VANumber) ||
+					(attempt.ProviderExpiresAt != nil && !attempt.ProviderExpiresAt.Equal(verified.ExpiresAt)) {
+					reason := "PROVIDER_INSTRUCTIONS_MISMATCH"
+					outcome.Status, outcome.ReviewReason = "", &reason
+				} else {
+					outcome.VANumber, outcome.ProviderExpiresAt = &verified.VANumber, &verified.ExpiresAt
+				}
+			}
 		case "settlement":
 			if verified.StatusCode == "200" && verified.FraudStatus == "accept" {
 				outcome.Status = "paid"

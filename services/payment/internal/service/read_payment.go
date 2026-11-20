@@ -102,7 +102,7 @@ func (s *PaymentService) PaymentDetail(ctx context.Context, id, requestID string
 
 func staffPayment(attempt model.PaymentAttempt, now time.Time) dto.StaffPaymentResponse {
 	// Operational overdue review is separate from canonical payment verification.
-	expiryReview := !now.Before(attempt.HoldExpiresAt) &&
+	expiryReview := attempt.ReleaseAuthorizedAt == nil && !now.Before(attempt.HoldExpiresAt) &&
 		(attempt.Status != "paid" || attempt.VerifiedAt == nil || !attempt.VerifiedAt.Before(attempt.HoldExpiresAt))
 	return dto.StaffPaymentResponse{PaymentID: attempt.ID, BookingID: attempt.BookingID, CustomerID: attempt.CustomerID,
 		Provider: attempt.Provider, ProviderOrderID: attempt.ProviderOrderID, ProviderTransactionID: attempt.ProviderTransactionID,

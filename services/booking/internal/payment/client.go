@@ -41,11 +41,13 @@ func NewClient(baseURL, token string) (*Client, error) {
 		base.RawQuery != "" || base.ForceQuery || base.Fragment != "" || (base.Path != "" && base.Path != "/") {
 		return nil, errors.New("PAYMENT_BASE_URL must be an HTTP origin")
 	}
-	return &Client{baseURL: strings.TrimRight(base.String(), "/"), token: token, http: &http.Client{Timeout: 2 * time.Second,
+	return &Client{baseURL: strings.TrimRight(base.String(), "/"), token: token, http: &http.Client{Timeout: 8 * time.Second,
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}}, nil
 }
 
 func (c *Client) Confirmation(ctx context.Context, bookingID, requestID string) (Confirmation, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/internal/v1/bookings/"+bookingID+"/payment-confirmation", nil)
 	if err != nil {
 		return Confirmation{}, ErrUnavailable

@@ -14,14 +14,17 @@ import (
 var ErrNotExpirable = errors.New("booking is not eligible for expiry assessment")
 
 type ExpiryAssessment struct {
-	BookingID     string     `json:"booking_id"`
-	HoldExpiresAt time.Time  `json:"hold_expires_at"`
-	Result        string     `json:"result"`
-	ClosedAt      *time.Time `json:"closed_at"`
-	PaymentID     *string    `json:"payment_id"`
+	BookingID           string     `json:"booking_id"`
+	HoldExpiresAt       time.Time  `json:"hold_expires_at"`
+	Result              string     `json:"result"`
+	ClosedAt            *time.Time `json:"closed_at"`
+	PaymentID           *string    `json:"payment_id"`
+	ReleaseAuthorizedAt *time.Time `json:"release_authorized_at,omitempty"`
 }
 
 func (c *Client) AssessExpiry(ctx context.Context, bookingID, requestID string) (ExpiryAssessment, error) {
+	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/internal/v1/bookings/"+bookingID+"/expiry-assessment", nil)
 	if err != nil {
 		return ExpiryAssessment{}, ErrUnavailable
@@ -55,11 +58,17 @@ func (c *Client) AssessExpiry(ctx context.Context, bookingID, requestID string) 
 	}
 	switch data.Result {
 	case "no_attempt_closed":
-		if data.PaymentID != nil || data.ClosedAt == nil || data.ClosedAt.IsZero() || data.ClosedAt.Before(data.HoldExpiresAt) {
+		if data.ReleaseAuthorizedAt != nil || data.PaymentID != nil || data.ClosedAt == nil || data.ClosedAt.IsZero() || data.ClosedAt.Before(data.HoldExpiresAt) {
+			return ExpiryAssessment{}, ErrUnavailable
+		}
+	case "provider_expired":
+		if data.ClosedAt != nil || data.PaymentID == nil || data.ReleaseAuthorizedAt == nil ||
+			data.ReleaseAuthorizedAt.IsZero() || data.ReleaseAuthorizedAt.Before(data.HoldExpiresAt) ||
+			len(*data.PaymentID) != 36 || uuid.Validate(*data.PaymentID) != nil || *data.PaymentID == uuid.Nil.String() {
 			return ExpiryAssessment{}, ErrUnavailable
 		}
 	case "attempt_exists":
-		if data.ClosedAt != nil || data.PaymentID == nil {
+		if data.ClosedAt != nil || data.PaymentID == nil || data.ReleaseAuthorizedAt != nil {
 			return ExpiryAssessment{}, ErrUnavailable
 		}
 		id, err := uuid.Parse(*data.PaymentID)

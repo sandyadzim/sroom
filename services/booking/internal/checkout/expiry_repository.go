@@ -17,8 +17,23 @@ import (
 var ErrInvalidExpiryAssessment = errors.New("expiry assessment does not authorize release")
 
 func (r *Repository) expireUnusedHold(ctx context.Context, assessment payment.ExpiryAssessment, now func() time.Time, requestID string) (bool, error) {
-	if assessment.Result != "no_attempt_closed" || assessment.PaymentID != nil || assessment.ClosedAt == nil ||
-		assessment.ClosedAt.Before(assessment.HoldExpiresAt) {
+	proofAt := assessment.ClosedAt
+	reason := "NO_PAYMENT_ATTEMPT_CLOSED"
+	switch assessment.Result {
+	case "no_attempt_closed":
+		if assessment.PaymentID != nil || assessment.ReleaseAuthorizedAt != nil {
+			return false, ErrInvalidExpiryAssessment
+		}
+	case "provider_expired":
+		if assessment.PaymentID == nil || len(*assessment.PaymentID) != 36 || uuid.Validate(*assessment.PaymentID) != nil ||
+			*assessment.PaymentID == uuid.Nil.String() || assessment.ClosedAt != nil {
+			return false, ErrInvalidExpiryAssessment
+		}
+		proofAt, reason = assessment.ReleaseAuthorizedAt, "PROVIDER_EXPIRED"
+	default:
+		return false, ErrInvalidExpiryAssessment
+	}
+	if proofAt == nil || proofAt.IsZero() || proofAt.Before(assessment.HoldExpiresAt) {
 		return false, ErrInvalidExpiryAssessment
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
@@ -52,7 +67,7 @@ func (r *Repository) expireUnusedHold(ctx context.Context, assessment payment.Ex
 			return err
 		}
 		at := now().UTC().Truncate(time.Microsecond)
-		if at.Before(booking.HoldExpiresAt) || at.Before(*assessment.ClosedAt) {
+		if at.Before(booking.HoldExpiresAt) || at.Before(*proofAt) {
 			return nil
 		}
 		if err := tx.Exec("UPDATE booking.bookings SET status = 'expired', updated_at = ? WHERE id = ?", at, booking.BookingID).Error; err != nil {
@@ -61,7 +76,6 @@ func (r *Repository) expireUnusedHold(ctx context.Context, assessment payment.Ex
 		if err := tx.Exec("UPDATE booking.allocations SET blocks_inventory = false, released_at = ? WHERE id = ?", at, allocationID).Error; err != nil {
 			return err
 		}
-		const reason = "NO_PAYMENT_ATTEMPT_CLOSED"
 		if err := tx.Exec(`INSERT INTO booking.booking_status_history
    (booking_id,from_status,to_status,actor_type,reason_code,request_id,occurred_at)
    VALUES (?, 'pending_payment','expired','system', ?, ?, ?)`, booking.BookingID, reason, requestID, at).Error; err != nil {
@@ -72,10 +86,16 @@ func (r *Repository) expireUnusedHold(ctx context.Context, assessment payment.Ex
 			return err
 		}
 		const eventType = "booking.expired.v1"
+		payload := map[string]any{"booking_id": booking.BookingID, "expired_at": at, "reason_code": reason,
+			"hold_expires_at": booking.HoldExpiresAt}
+		if assessment.Result == "provider_expired" {
+			payload["payment_id"], payload["release_authorized_at"] = assessment.PaymentID, assessment.ReleaseAuthorizedAt
+		} else {
+			payload["initiation_closed_at"] = assessment.ClosedAt
+		}
 		envelope, err := json.Marshal(map[string]any{"event_id": id.String(), "event_type": eventType, "schema_version": 1,
 			"occurred_at": at, "aggregate_id": booking.BookingID, "correlation_id": requestID, "causation_id": nil,
-			"payload": map[string]any{"booking_id": booking.BookingID, "expired_at": at, "reason_code": reason,
-				"hold_expires_at": booking.HoldExpiresAt, "initiation_closed_at": assessment.ClosedAt}})
+			"payload": payload})
 		if err != nil {
 			return err
 		}

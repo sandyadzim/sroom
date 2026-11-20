@@ -33,6 +33,8 @@ type testProvider struct {
 	calls       int
 	err         error
 	afterCharge func(midtrans.ChargeInput)
+	status      midtrans.StatusResult
+	statusError error
 }
 
 func (p *testProvider) CreateVA(_ context.Context, input midtrans.ChargeInput, _ string) (midtrans.ChargeResult, error) {
@@ -44,6 +46,13 @@ func (p *testProvider) CreateVA(_ context.Context, input midtrans.ChargeInput, _
 	}
 	return midtrans.ChargeResult{OrderID: input.OrderID, TransactionID: input.OrderID, Status: "pending", AmountIDR: input.AmountIDR,
 		Currency: "IDR", Bank: "bni", VANumber: "0000000000000000", ExpiresAt: input.HoldExpiresAt.Truncate(time.Second)}, p.err
+}
+
+func (p *testProvider) GetStatus(context.Context, string, string) (midtrans.StatusResult, error) {
+	if p.status.OrderID == "" && p.statusError == nil {
+		return midtrans.StatusResult{}, midtrans.ErrUnavailable
+	}
+	return p.status, p.statusError
 }
 
 func paymentFixture(t *testing.T) (*PaymentService, *gorm.DB, *testBookingReader, *testProvider, dto.CreateVARequest) {

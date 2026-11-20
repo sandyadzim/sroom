@@ -51,7 +51,7 @@ func (s *ExpiryService) ExpireHolds(ctx context.Context, now func() time.Time, r
 			err = ErrInvalidExpiryAssessment
 		}
 		if err == nil {
-			if assessment.Result == "no_attempt_closed" {
+			if assessment.Result == "no_attempt_closed" || assessment.Result == "provider_expired" {
 				var expired bool
 				expired, err = s.repo.expireUnusedHold(ctx, assessment, now, requestID)
 				if expired {

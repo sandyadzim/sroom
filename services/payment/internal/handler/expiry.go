@@ -31,7 +31,7 @@ func (h *ConfirmationHandler) AssessExpiry(c *gin.Context) {
 		httpapi.WriteError(c, 400, "INVALID_REQUEST", "send this request without a body")
 		return
 	}
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 7*time.Second)
 	defer cancel()
 	result, err := h.service.AssessExpiry(ctx, id, c.Writer.Header().Get("X-Request-ID"))
 	if errors.Is(err, service.ErrNotExpirable) {

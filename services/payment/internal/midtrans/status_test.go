@@ -73,3 +73,16 @@ func TestStatusCancellation(t *testing.T) {
 		t.Fatalf("error=%v", err)
 	}
 }
+
+func TestStatusReadsBNIInstructions(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"order_id":"demo-order","transaction_id":"demo-tx","merchant_id":"demo-merchant","transaction_status":"pending","status_code":"200","payment_type":"bank_transfer","currency":"IDR","gross_amount":"150000.00","expiry_time":"2030-01-01 07:15:00","va_numbers":[{"bank":"bni","va_number":"0000000000000000"}]}`))
+	}))
+	defer server.Close()
+	client := NewClient("synthetic-key")
+	client.baseURL = server.URL
+	result, err := client.GetStatus(t.Context(), "demo-order", "instructions")
+	if err != nil || result.VANumber != "0000000000000000" || result.ExpiresAt.Format("2006-01-02T15:04:05Z07:00") != "2030-01-01T00:15:00Z" {
+		t.Fatalf("instructions were not parsed with WIB: %+v %v", result, err)
+	}
+}

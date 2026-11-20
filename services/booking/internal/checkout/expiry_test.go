@@ -285,3 +285,32 @@ func TestReleasedUnitIsNotReclaimedPostgres(t *testing.T) {
 		t.Fatal("late payment reclaimed inventory")
 	}
 }
+
+func TestProviderExpiredHoldReleasesOncePostgres(t *testing.T) {
+	f := paidFixture(t)
+	deadline := f.reader.data.HoldExpiresAt
+	proof := payment.ExpiryAssessment{BookingID: f.event.Payload.BookingID, HoldExpiresAt: deadline,
+		Result: "provider_expired", PaymentID: &f.reader.data.PaymentID, ReleaseAuthorizedAt: &deadline}
+	repo := NewRepository(f.db)
+	for _, want := range []bool{true, false} {
+		expired, err := repo.expireUnusedHold(t.Context(), proof, func() time.Time { return deadline }, "provider-expiry")
+		if err != nil || expired != want || bookingStatus(t, f) != "expired" || allocationBlocks(t, f) {
+			t.Fatalf("expiry=%v error=%v", expired, err)
+		}
+	}
+	var reason, paymentID string
+	if err := f.db.Raw("SELECT envelope->'payload'->>'reason_code',envelope->'payload'->>'payment_id' FROM booking.outbox_events WHERE aggregate_id = ?", proof.BookingID).Row().Scan(&reason, &paymentID); err != nil {
+		t.Fatal(err)
+	}
+	if reason != "PROVIDER_EXPIRED" || paymentID != *proof.PaymentID || countRows(t, f, "booking_status_history", "booking_id") != 1 {
+		t.Fatal("release evidence or idempotence was lost")
+	}
+	// The existing confirmation path must send later payment to review without reclaiming inventory.
+	f.reader.data.ReviewRequired = true
+	if err := f.service.Process(t.Context(), eventBody(t, f.event)); err != nil {
+		t.Fatal(err)
+	}
+	if bookingStatus(t, f) != "payment_review" || allocationBlocks(t, f) {
+		t.Fatal("late payment reclaimed the released unit")
+	}
+}

@@ -27,7 +27,7 @@ Set `MIDTRANS_SERVER_KEY` to your sandbox key and use the same `PAYMENT_BOOKING_
 
 Start Gateway and send `POST /api/v1/customer/bookings/{id}/payments/va` with the customer cookie, an allowed Origin, a UUID `Idempotency-Key`, and JSON `{}`. Payment verifies the session and ownership, then uses Booking's amount and original deadline. The provider is fixed to the Midtrans sandbox.
 
-The first ready VA returns `201`; existing attempts return `200`; uncertain initialization or review returns `202` without usable instructions. Retry the same booking/key. An uncertain attempt never creates a replacement charge; recovery follows later reconciliation work. Disable Booking's `BOOKING_DEMO_PAYMENTS` mode before trying Midtrans-backed holds.
+The first ready VA returns `201`; existing attempts return `200`; uncertain initialization or review returns `202` without usable instructions. Retry the same booking/key. An uncertain attempt never creates a replacement charge; use manual refresh to recover valid provider instructions when available. Disable Booking's `BOOKING_DEMO_PAYMENTS` mode before trying Midtrans-backed holds.
 
 See the [account setup guide](../../../docs/payment-sandbox-setup.md) and [Bruno flow](../../../docs/payment-create-va-bruno.md). Direct sandbox verification remains pending; automated tests use fake providers.
 
@@ -43,7 +43,7 @@ Payment independently verifies Identity sessions. Customer reads and staff detai
 
 `POST /api/v1/customer/bookings/{id}/payment/refresh` through Gateway uses the customer cookie, an allowed Origin, and JSON `{}`. No idempotency key is needed. Payment verifies ownership, checks the existing sandbox order once, and applies the same verification/transaction rules as the webhook. The response matches customer GET.
 
-No attempt returns `not_started`; already-paid attempts return stored facts without a lookup. Other attempts require the existing sandbox key. Temporary lookup failures return `503` and preserve state; committed mismatches return `200` with review required. Refresh never creates a VA, extends the deadline, or confirms Booking. Missing VA instructions are not recovered. No automatic worker or new configuration/migration is added. See [Bruno refresh examples](../../../docs/payment-refresh-bruno.md).
+No attempt returns `not_started`; already-paid attempts return stored facts without a lookup. Other attempts require the existing sandbox key. Temporary lookup failures return `503` and preserve state; committed mismatches return `200` with review required. Refresh never creates a VA, extends the deadline, or confirms Booking. Refresh recovers a matching BNI VA and expiry if provided by Midtrans, within the original hold deadline. Missing fields remain null. No general reconciliation worker is added. See [Bruno refresh examples](../../../docs/payment-refresh-bruno.md).
 
 ## Payment notifications
 
@@ -71,9 +71,9 @@ The worker checks at startup/every 10 seconds, with five attempts and persisted 
 
 ## Expiry assessment
 
-`POST /internal/v1/bookings/{id}/expiry-assessment` uses the same pair token, with no body. Payment durably closes unused initiation after the Booking deadline. Reservation and closure lock the same gate; existing attempts never authorize release. Booking applies the release in its own transaction. Staff payment list/detail include `hold_expires_at` and computed `expiry_review_required`, separate from verification review.
+`POST /internal/v1/bookings/{id}/expiry-assessment` uses the same pair token, with no body. Payment durably closes unused initiation after the Booking deadline. Reservation and closure lock the same gate. For an existing attempt, an authenticated matching BNI `expire` lookup after the deadline can commit durable release permission under the attempt lock. Pending, 404, timeout, paid or review do not grant new permission. Booking applies the release in its own transaction. Staff payment list/detail include `hold_expires_at` and computed `expiry_review_required`, separate from verification review.
 
-Apply migration `000002_create_initiation_gates` before starting this version. Stop old Payment/Booking writers before rollout. See [setup, Bruno and review limits](../../../docs/payment-expiry-bruno.md). Release with a provider attempt remains deferred.
+Apply migration `000005_add_release_authorization` before starting this version. Stop old Payment/Booking writers before rollout. See [setup, Bruno and review limits](../../../docs/payment-expiry-bruno.md). Paid learned after release permission is recorded for review without reclaiming inventory. Sandbox/broker evidence is tracked in the linked guide.
 
 ## Event delivery
 

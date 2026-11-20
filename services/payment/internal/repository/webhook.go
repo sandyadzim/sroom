@@ -115,7 +115,9 @@ func (r *PaymentRepository) ApplyVerifiedObservation(ctx context.Context, paymen
 			case outcome.Status == "paid":
 				changes["status"], changes["verified_at"] = "paid", outcome.VerifiedAt
 				changes["provider_status"], changes["provider_transaction_id"] = outcome.ProviderStatus, outcome.TransactionID
-				if attempt.Status == "expired" || attempt.Status == "failed" {
+				if attempt.ReleaseAuthorizedAt != nil {
+					changes["review_reason"] = "PAID_AFTER_RELEASE_AUTHORIZATION"
+				} else if attempt.Status == "expired" || attempt.Status == "failed" {
 					changes["review_reason"] = "PAID_AFTER_TERMINAL_STATUS"
 				}
 				if err := insertPaidEvent(tx, attempt, outcome, receiptID); err != nil {
@@ -125,6 +127,21 @@ func (r *PaymentRepository) ApplyVerifiedObservation(ctx context.Context, paymen
 				changes["status"], changes["provider_status"] = outcome.Status, outcome.ProviderStatus
 				changes["provider_transaction_id"] = outcome.TransactionID
 			}
+		}
+		if outcome.ReviewReason == nil && outcome.Status == "pending" && (attempt.Status == "initiating" || attempt.Status == "pending") {
+			if outcome.VANumber != nil && outcome.ProviderExpiresAt != nil {
+				if attempt.VANumber != nil && *attempt.VANumber != *outcome.VANumber ||
+					attempt.ProviderExpiresAt != nil && !attempt.ProviderExpiresAt.Equal(*outcome.ProviderExpiresAt) {
+					changes["review_reason"] = "PROVIDER_INSTRUCTIONS_MISMATCH"
+				} else {
+					changes["va_number"], changes["provider_expires_at"] = outcome.VANumber, outcome.ProviderExpiresAt
+				}
+			}
+		}
+		if outcome.AuthorizeRelease && outcome.Status == "expired" && outcome.ReviewReason == nil &&
+			attempt.Status != "paid" && attempt.ReviewReason == nil && !outcome.VerifiedAt.Before(attempt.HoldExpiresAt) && attempt.ReleaseAuthorizedAt == nil {
+			changes["release_authorized_at"] = outcome.VerifiedAt
+			changes["status"], changes["provider_status"] = "expired", outcome.ProviderStatus
 		}
 		if err := tx.Table("payment.payment_attempts").Where("id = ?", attempt.ID).Updates(changes).Error; err != nil {
 			return err

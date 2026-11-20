@@ -19,6 +19,8 @@ func TestExpiryAssessmentClient(t *testing.T) {
 		data   ExpiryAssessment
 		want   error
 	}{
+		{"provider expired", 200, ExpiryAssessment{BookingID: bookingID, HoldExpiresAt: deadline, Result: "provider_expired", PaymentID: stringPointer(paymentID), ReleaseAuthorizedAt: &deadline}, nil},
+		{"provider without proof", 200, ExpiryAssessment{BookingID: bookingID, HoldExpiresAt: deadline, Result: "provider_expired", PaymentID: stringPointer(paymentID)}, ErrUnavailable},
 		{"closed", 200, ExpiryAssessment{BookingID: bookingID, HoldExpiresAt: deadline, Result: "no_attempt_closed", ClosedAt: &deadline}, nil},
 		{"existing", 200, ExpiryAssessment{BookingID: bookingID, HoldExpiresAt: deadline, Result: "attempt_exists", PaymentID: stringPointer(paymentID)}, nil},
 		{"not eligible", 409, ExpiryAssessment{}, ErrNotExpirable}, {"missing", 404, ExpiryAssessment{}, ErrUnavailable}, {"down", 503, ExpiryAssessment{}, ErrUnavailable},

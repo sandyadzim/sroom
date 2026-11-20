@@ -242,3 +242,46 @@ func TestRefreshTransactionFailurePostgres(t *testing.T) {
 		t.Fatal("refresh committed partial payment effects")
 	}
 }
+
+func TestRefreshRecoversInstructionsPostgres(t *testing.T) {
+	for _, scenario := range []string{"valid", "past deadline", "extended expiry", "wrong VA"} {
+		t.Run(scenario, func(t *testing.T) {
+			svc, db, _, provider, attempt := refreshFixture(t)
+			if err := db.Exec("UPDATE payment.payment_attempts SET status = 'initiating', provider_transaction_id = NULL, va_number = NULL, provider_expires_at = NULL WHERE id = ?", attempt.ID).Error; err != nil {
+				t.Fatal(err)
+			}
+			provider.result.Status, provider.result.VANumber = "pending", "0000000000000000"
+			provider.result.ExpiresAt = attempt.HoldExpiresAt.Truncate(time.Second)
+			switch scenario {
+			case "past deadline":
+				svc.payments.now = func() time.Time { return attempt.HoldExpiresAt.Add(time.Second) }
+			case "extended expiry":
+				provider.result.ExpiresAt = attempt.HoldExpiresAt.Add(time.Minute)
+			case "wrong VA":
+				if err := db.Exec("UPDATE payment.payment_attempts SET va_number = '1111111111111111' WHERE id = ?", attempt.ID).Error; err != nil {
+					t.Fatal(err)
+				}
+			}
+			response, err := svc.Refresh(t.Context(), attempt.BookingID, attempt.CustomerID, "recover")
+			if err != nil {
+				t.Fatal(err)
+			}
+			saved := reloadAttempt(t, db, attempt.ID)
+			if !response.HoldExpiresAt.Equal(attempt.HoldExpiresAt) || countPaymentRows(t, db, "payment_attempts", "booking_id", attempt.BookingID) != 1 {
+				t.Fatal("recovery replaced the payment or moved its deadline")
+			}
+			if scenario == "valid" {
+				if response.VANumber == nil || *response.VANumber != provider.result.VANumber || saved.ProviderExpiresAt == nil || saved.ProviderTransactionID == nil {
+					t.Fatal("valid provider instructions were not recovered")
+				}
+			} else if response.VANumber != nil {
+				t.Fatal("unsafe or expired instructions were displayed")
+			}
+			if scenario == "extended expiry" || scenario == "wrong VA" {
+				if !response.ReviewRequired || saved.ProviderExpiresAt != nil {
+					t.Fatal("instruction mismatch was accepted")
+				}
+			}
+		})
+	}
+}

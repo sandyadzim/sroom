@@ -29,19 +29,20 @@ type BookingReader interface {
 	PaymentContext(context.Context, string, string) (booking.PaymentContext, error)
 }
 
-type VAProvider interface {
+type PaymentProvider interface {
+	StatusProvider
 	CreateVA(context.Context, midtrans.ChargeInput, string) (midtrans.ChargeResult, error)
 }
 
 type PaymentService struct {
 	repo       *repository.PaymentRepository
 	bookings   BookingReader
-	provider   VAProvider
+	provider   PaymentProvider
 	configured bool
 	now        func() time.Time
 }
 
-func NewPaymentService(repo *repository.PaymentRepository, bookings BookingReader, provider VAProvider, configured bool) *PaymentService {
+func NewPaymentService(repo *repository.PaymentRepository, bookings BookingReader, provider PaymentProvider, configured bool) *PaymentService {
 	return &PaymentService{repo: repo, bookings: bookings, provider: provider, configured: configured, now: time.Now}
 }
 

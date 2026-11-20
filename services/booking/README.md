@@ -49,9 +49,9 @@ Transient failures retry three times per delivery, then go to a durable DLQ befo
 
 ## Hold expiry
 
-With `RABBITMQ_URL` configured and demo mode off, a separate startup/30-second worker asks Payment to close initiation for overdue holds. Only durable closure without any attempt allows Booking to atomically expire/release the allocation and save history/outbox. Existing attempts and dependency failures keep inventory blocked. The scanner rotates through batches of 50; release can lag the deadline. No new environment variable or Booking migration is needed.
+With `RABBITMQ_URL` configured and demo mode off, a separate startup/30-second worker asks Payment to close initiation for overdue holds. Durable no-attempt closure, or a matching authenticated BNI expiry lookup with saved release permission, allows Booking to atomically expire/release the allocation and save history/outbox. Uncertain dependencies and attempts without permission keep inventory blocked. The scanner rotates through batches of 50; release can lag the deadline. No new environment variable or Booking migration is needed.
 
-Stop old Payment/Booking processes and apply Payment's new migration before restarting. No broker connection is needed for these HTTP checks. See [setup and Bruno](../../../docs/payment-expiry-bruno.md). Provider-attempt release remains pending; demo expiry must stay disabled for Midtrans flows.
+Stop old Payment/Booking processes and apply Payment migration `000005_add_release_authorization` before restarting. No broker connection is needed for these HTTP checks. See [setup and Bruno](../../../docs/payment-expiry-bruno.md). Paid learned after release permission goes to review without reclaiming inventory; demo expiry must stay disabled for Midtrans flows.
 
 ## Booking history
 
@@ -61,7 +61,7 @@ Use `GET /api/v1/customer/bookings` and `GET /api/v1/customer/bookings/{id}` thr
 
 Set `PAYMENT_BOOKING_TOKEN` to enable `GET /internal/v1/bookings/{id}/payment-context` directly on Booking. The caller uses the same token as a Bearer credential. See the [private contract](../../packages/contracts/openapi/booking.internal.v1.yaml).
 
-Provider reconciliation and release for existing attempts remain deferred.
+General provider reconciliation remains deferred; the expiry worker checks overdue attempts through Payment.
 
 ## Demo payments
 

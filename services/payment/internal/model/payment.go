@@ -22,6 +22,7 @@ type PaymentAttempt struct {
 	ReviewReason          *string
 	VerifiedAt            *time.Time
 	ProviderPaidAt        *time.Time
+	ReleaseAuthorizedAt   *time.Time
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
 }
@@ -50,10 +51,13 @@ type WebhookReceipt struct {
 }
 
 type PaymentOutcome struct {
-	Status         string
-	ProviderStatus string
-	TransactionID  string
-	ReviewReason   *string
-	Observation    ProviderObservation
-	VerifiedAt     time.Time
+	Status            string
+	ProviderStatus    string
+	TransactionID     string
+	ReviewReason      *string
+	Observation       ProviderObservation
+	VerifiedAt        time.Time
+	VANumber          *string
+	ProviderExpiresAt *time.Time
+	AuthorizeRelease  bool
 }

@@ -63,7 +63,7 @@ func TestExpiryEligibilityPostgres(t *testing.T) {
 	}
 }
 
-func TestExistingAttemptNeverAuthorizesReleasePostgres(t *testing.T) {
+func TestStoredStatusAloneNeverAuthorizesReleasePostgres(t *testing.T) {
 	for _, state := range []string{"initiating", "pending", "paid", "expired", "failed"} {
 		t.Run(state, func(t *testing.T) {
 			svc, db, reader, provider, input := paymentFixture(t)
@@ -76,6 +76,12 @@ func TestExistingAttemptNeverAuthorizesReleasePostgres(t *testing.T) {
 			}
 			svc.now = func() time.Time { return reader.snapshot.HoldExpiresAt.Add(time.Minute) }
 			result, err := svc.AssessExpiry(t.Context(), input.BookingID, "existing")
+			if state != "paid" {
+				if !errors.Is(err, ErrVerificationUnavailable) || reloadAttempt(t, db, attempt.PaymentID).ReleaseAuthorizedAt != nil {
+					t.Fatalf("unverified expiry authorized release: %+v %v", result, err)
+				}
+				return
+			}
 			if err != nil || result.Result != "attempt_exists" || result.ClosedAt != nil || result.PaymentID == nil || *result.PaymentID != attempt.PaymentID || provider.calls != 1 {
 				t.Fatalf("attempt assessment=%+v error=%v", result, err)
 			}
@@ -171,5 +177,125 @@ func TestExpiryStaffIndicator(t *testing.T) {
 				t.Fatal("operational expiry review changed payment verification facts")
 			}
 		})
+	}
+}
+
+func TestVerifiedProviderExpiryAuthorizesReleasePostgres(t *testing.T) {
+	for _, initial := range []string{"initiating", "pending", "expired", "failed"} {
+		t.Run(initial, func(t *testing.T) {
+			svc, db, reader, provider, input := paymentFixture(t)
+			created, _, err := svc.CreateVA(t.Context(), input, "create")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := db.Exec("UPDATE payment.payment_attempts SET status = ? WHERE id = ?", initial, created.PaymentID).Error; err != nil {
+				t.Fatal(err)
+			}
+			attempt := reloadAttempt(t, db, created.PaymentID)
+			provider.status = midtrans.StatusResult{OrderID: attempt.ProviderOrderID, TransactionID: *attempt.ProviderTransactionID,
+				MerchantID: "test-merchant", Status: "expire", StatusCode: "200", PaymentType: "bank_transfer", Bank: "bni", Currency: "IDR", AmountIDR: attempt.AmountIDR}
+			svc.now = func() time.Time { return reader.snapshot.HoldExpiresAt }
+			assessment, err := svc.AssessExpiry(t.Context(), input.BookingID, "provider-expiry")
+			if err != nil || assessment.Result != "provider_expired" || assessment.PaymentID == nil ||
+				*assessment.PaymentID != attempt.ID || assessment.ReleaseAuthorizedAt == nil || !assessment.ReleaseAuthorizedAt.Equal(reader.snapshot.HoldExpiresAt) || assessment.ClosedAt != nil {
+				t.Fatalf("assessment=%+v error=%v", assessment, err)
+			}
+			saved := reloadAttempt(t, db, attempt.ID)
+			if saved.Status != "expired" || saved.ReleaseAuthorizedAt == nil || countPaymentRows(t, db, "outbox_events", "aggregate_id", attempt.ID) != 0 {
+				t.Fatal("expiry permission was not saved, or expiry invented a paid event")
+			}
+			provider.statusError = midtrans.ErrUnavailable
+			retry, err := svc.AssessExpiry(t.Context(), input.BookingID, "retry")
+			if err != nil || retry.ReleaseAuthorizedAt == nil || !retry.ReleaseAuthorizedAt.Equal(*assessment.ReleaseAuthorizedAt) ||
+				countPaymentRows(t, db, "provider_observations", "payment_id", attempt.ID) != 2 {
+				t.Fatal("retry changed permission or repeated the provider lookup")
+			}
+			// A later paid fact is retained but can never authorize automatic confirmation.
+			provider.status.Status, provider.status.FraudStatus = "settlement", "accept"
+			observation := providerObservation(attempt.ID, provider.status, "status_lookup", "late-paid")
+			outcome := verifiedPaymentOutcome(attempt, provider.status, observation, svc.now().Add(time.Second))
+			if err := svc.repo.ApplyVerifiedObservation(t.Context(), attempt.ID, "", outcome); err != nil {
+				t.Fatal(err)
+			}
+			saved = reloadAttempt(t, db, attempt.ID)
+			if saved.Status != "paid" || saved.ReviewReason == nil || *saved.ReviewReason != "PAID_AFTER_RELEASE_AUTHORIZATION" ||
+				saved.ReleaseAuthorizedAt == nil || countPaymentRows(t, db, "outbox_events", "aggregate_id", attempt.ID) != 1 {
+				t.Fatal("late payment was lost or did not require review")
+			}
+		})
+	}
+}
+
+func TestProviderExpiryRequiresMatchingFactsPostgres(t *testing.T) {
+	for _, scenario := range []string{"pending", "deny", "settlement", "mismatch", "unavailable", "review"} {
+		t.Run(scenario, func(t *testing.T) {
+			svc, db, reader, provider, input := paymentFixture(t)
+			created, _, err := svc.CreateVA(t.Context(), input, "create")
+			if err != nil {
+				t.Fatal(err)
+			}
+			attempt := reloadAttempt(t, db, created.PaymentID)
+			provider.status = midtrans.StatusResult{OrderID: attempt.ProviderOrderID, TransactionID: *attempt.ProviderTransactionID,
+				MerchantID: "test-merchant", Status: "expire", StatusCode: "200", FraudStatus: "accept", PaymentType: "bank_transfer", Bank: "bni", Currency: "IDR", AmountIDR: attempt.AmountIDR}
+			switch scenario {
+			case "pending", "deny", "settlement":
+				provider.status.Status = scenario
+			case "mismatch":
+				provider.status.AmountIDR++
+			case "unavailable":
+				provider.statusError = midtrans.ErrUnavailable
+			case "review":
+				if err := db.Exec("UPDATE payment.payment_attempts SET review_reason = 'PROVIDER_REFERENCE_MISMATCH' WHERE id = ?", attempt.ID).Error; err != nil {
+					t.Fatal(err)
+				}
+			}
+			svc.now = func() time.Time { return reader.snapshot.HoldExpiresAt }
+			assessment, err := svc.AssessExpiry(t.Context(), input.BookingID, "guard")
+			if scenario == "unavailable" {
+				if !errors.Is(err, ErrVerificationUnavailable) {
+					t.Fatal("provider failure was not reported")
+				}
+			} else if err != nil || assessment.Result != "attempt_exists" {
+				t.Fatalf("unexpected assessment=%+v error=%v", assessment, err)
+			}
+			saved := reloadAttempt(t, db, attempt.ID)
+			if saved.ReleaseAuthorizedAt != nil || assessment.ReleaseAuthorizedAt != nil {
+				t.Fatal("unverified expiry authorized release")
+			}
+			if scenario == "settlement" && saved.Status != "paid" {
+				t.Fatal("expiry lookup discarded a paid fact")
+			}
+		})
+	}
+}
+
+func TestPaidAndReleasePermissionUseCurrentStoredStatePostgres(t *testing.T) {
+	for _, paidFirst := range []bool{true, false} {
+		svc, db, reader, _, input := paymentFixture(t)
+		created, _, err := svc.CreateVA(t.Context(), input, "create")
+		if err != nil {
+			t.Fatal(err)
+		}
+		attempt := reloadAttempt(t, db, created.PaymentID)
+		facts := midtrans.StatusResult{OrderID: attempt.ProviderOrderID, TransactionID: *attempt.ProviderTransactionID,
+			MerchantID: "test-merchant", Status: "settlement", StatusCode: "200", FraudStatus: "accept", PaymentType: "bank_transfer", Bank: "bni", Currency: "IDR", AmountIDR: attempt.AmountIDR}
+		paid := verifiedPaymentOutcome(attempt, facts, providerObservation(attempt.ID, facts, "status_lookup", "paid"), reader.snapshot.HoldExpiresAt.Add(-time.Second))
+		facts.Status = "expire"
+		expired := verifiedPaymentOutcome(attempt, facts, providerObservation(attempt.ID, facts, "status_lookup", "expire"), reader.snapshot.HoldExpiresAt)
+		expired.AuthorizeRelease = true
+		outcomes := []model.PaymentOutcome{expired, paid}
+		if paidFirst {
+			outcomes = []model.PaymentOutcome{paid, expired}
+		}
+		for _, outcome := range outcomes {
+			if err := svc.repo.ApplyVerifiedObservation(t.Context(), attempt.ID, "", outcome); err != nil {
+				t.Fatal(err)
+			}
+		}
+		saved := reloadAttempt(t, db, attempt.ID)
+		if saved.Status != "paid" || (paidFirst && saved.ReleaseAuthorizedAt != nil) ||
+			(!paidFirst && (saved.ReleaseAuthorizedAt == nil || saved.ReviewReason == nil || *saved.ReviewReason != "PAID_AFTER_RELEASE_AUTHORIZATION")) {
+			t.Fatal("stale observations bypassed the persisted paid/release decision")
+		}
 	}
 }

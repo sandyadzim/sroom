@@ -38,6 +38,8 @@ type StatusResult struct {
 	PaymentType, Currency, Bank, FraudStatus               string
 	AmountIDR                                              int64
 	Digest                                                 string
+	VANumber                                               string
+	ExpiresAt                                              time.Time
 }
 
 func (c *Client) GetStatus(ctx context.Context, orderID, requestID string) (StatusResult, error) {
@@ -75,8 +77,10 @@ func (c *Client) GetStatus(ctx context.Context, orderID, requestID string) (Stat
 		GrossAmount   string `json:"gross_amount"`
 		FraudStatus   string `json:"fraud_status"`
 		Bank          string `json:"bank"`
+		ExpiryTime    string `json:"expiry_time"`
 		VANumbers     []struct {
-			Bank string `json:"bank"`
+			Bank   string `json:"bank"`
+			Number string `json:"va_number"`
 		} `json:"va_numbers"`
 	}
 	if json.Unmarshal(body, &response) != nil {
@@ -88,6 +92,21 @@ func (c *Client) GetStatus(ctx context.Context, orderID, requestID string) (Stat
 	result.Bank = response.Bank
 	if result.Bank == "" && len(response.VANumbers) == 1 {
 		result.Bank = response.VANumbers[0].Bank
+	}
+	for _, va := range response.VANumbers {
+		if va.Bank == "bni" && va.Number != "" {
+			if result.VANumber != "" || strings.Trim(va.Number, "0123456789") != "" || result.Bank != "bni" {
+				return result, ErrInvalidResponse
+			}
+			result.VANumber = va.Number
+		}
+	}
+	if response.ExpiryTime != "" {
+		result.ExpiresAt, err = time.ParseInLocation("2006-01-02 15:04:05", response.ExpiryTime, time.FixedZone("WIB", 7*60*60))
+		if err != nil {
+			return result, ErrInvalidResponse
+		}
+		result.ExpiresAt = result.ExpiresAt.UTC()
 	}
 	result.AmountIDR, err = ParseAmount(response.GrossAmount)
 	if err != nil || result.OrderID == "" || result.TransactionID == "" || result.MerchantID == "" || result.Status == "" || result.Currency == "" || result.PaymentType == "" {
