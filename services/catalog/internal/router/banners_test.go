@@ -126,7 +126,7 @@ func TestBannerCarReferencePostgres(t *testing.T) {
 	toyota := createCarTestBrand(t, brands, "Toyota")
 	honda := createCarTestBrand(t, brands, "Honda")
 	banners := handler.NewBannerHandler(service.NewBannerService(repository.NewBannerRepository(db), testImages{}, "https://assets.example.test"))
-	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db), carTestImages{}, ""))
+	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db), carTestImages{}, "", nil))
 	router := newCatalogTestRouter(t, handler.NewBrandHandler(nil), banners, cars, nil, nil)
 
 	active := model.CarActive

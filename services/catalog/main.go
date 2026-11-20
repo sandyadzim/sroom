@@ -1,6 +1,7 @@
 package main
 
 import (
+	"catalog/internal/cache"
 	"catalog/internal/config"
 	"catalog/internal/database"
 	"catalog/internal/handler"
@@ -60,6 +61,19 @@ func main() {
 		imageChecker = r2
 	}
 
+	brandCache, err := cache.NewBrandCache(cfg.RedisURL)
+	if err != nil {
+		slog.Error("cache setup failed", "reason", err.Error())
+		os.Exit(1)
+	}
+	if brandCache != nil {
+		defer func() {
+			if err := brandCache.Close(); err != nil {
+				slog.Warn("cache close failed", "service", "catalog", "operation", "cache.close")
+			}
+		}()
+	}
+
 	// Initialize Repository
 	brandRepository := repository.NewBrandRepository(db)
 	bannerRepository := repository.NewBannerRepository(db)
@@ -68,9 +82,9 @@ func main() {
 	featuredCarRepository := repository.NewFeaturedCarRepository(db)
 
 	// Initialize Service
-	brandService := service.NewBrandService(brandRepository, imageChecker, cfg.R2PublicBaseURL)
+	brandService := service.NewBrandService(brandRepository, imageChecker, cfg.R2PublicBaseURL, brandCache)
 	bannerService := service.NewBannerService(bannerRepository, imageChecker, cfg.R2PublicBaseURL)
-	carService := service.NewCarService(carRepository, imageChecker, cfg.R2PublicBaseURL)
+	carService := service.NewCarService(carRepository, imageChecker, cfg.R2PublicBaseURL, brandCache)
 	unitService := service.NewCarUnitService(unitRepository)
 	featuredCarService := service.NewFeaturedCarService(featuredCarRepository, cfg.R2PublicBaseURL)
 

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"catalog/internal/cache"
 	"catalog/internal/dto"
 	"catalog/internal/model"
 	"catalog/internal/repository"
@@ -22,10 +23,11 @@ type CarService struct {
 	repo               *repository.CarRepository
 	images             ImageChecker
 	publicImageBaseURL string
+	brandCache         *cache.BrandCache
 }
 
-func NewCarService(repo *repository.CarRepository, images ImageChecker, publicImageBaseURL string) *CarService {
-	return &CarService{repo: repo, images: images, publicImageBaseURL: strings.TrimRight(publicImageBaseURL, "/")}
+func NewCarService(repo *repository.CarRepository, images ImageChecker, publicImageBaseURL string, brandCache *cache.BrandCache) *CarService {
+	return &CarService{repo: repo, images: images, publicImageBaseURL: strings.TrimRight(publicImageBaseURL, "/"), brandCache: brandCache}
 }
 
 func (s *CarService) List(ctx context.Context, filters model.CarFilter) (dto.AdminCarList, error) {
@@ -84,6 +86,9 @@ func (s *CarService) Create(ctx context.Context, req dto.CreateCarRequest) (dto.
 	if err != nil {
 		return dto.AdminCarDetail{}, err
 	}
+	if s.brandCache != nil {
+		s.brandCache.Invalidate(ctx)
+	}
 	return s.adminCarDetail(item), nil
 }
 
@@ -141,6 +146,9 @@ func (s *CarService) Update(ctx context.Context, id string, req dto.UpdateCarReq
 	item, err := s.repo.Update(ctx, id, changes, cover, gallery)
 	if err != nil {
 		return dto.AdminCarDetail{}, err
+	}
+	if s.brandCache != nil {
+		s.brandCache.Invalidate(ctx)
 	}
 	return s.adminCarDetail(item), nil
 }
@@ -225,6 +233,11 @@ func (s *CarService) ListRelated(ctx context.Context, slug string, limit int) ([
 }
 
 func (s *CarService) ListPublicBrands(ctx context.Context, activeOnly bool) ([]dto.CarBrandOption, error) {
+	if s.brandCache != nil {
+		if brands, found := s.brandCache.Get(ctx, activeOnly); found {
+			return brands, nil
+		}
+	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	brands, err := s.repo.ListPublicBrands(ctx, activeOnly)
@@ -236,6 +249,9 @@ func (s *CarService) ListPublicBrands(ctx context.Context, activeOnly bool) ([]d
 		data = append(data, dto.CarBrandOption{
 			ID: brand.ID, Name: brand.Name, ImageURL: brandImageURL(s.publicImageBaseURL, brand.ImageObjectKey),
 		})
+	}
+	if s.brandCache != nil {
+		s.brandCache.Set(ctx, activeOnly, data)
 	}
 	return data, nil
 }

@@ -21,6 +21,7 @@ Use the Go version specified in [go.mod](go.mod), a Catalog PostgreSQL database,
 | `DATABASE_URL` | Catalog PostgreSQL connection string, required |
 | `APP_PORT` | HTTP port, defaults to `8082` |
 | `IDENTITY_BASE_URL` | Identity service URL, defaults to `http://localhost:8081` |
+| `REDIS_URL` | Optional public brand cache connection (`redis://` or `rediss://`); empty disables caching |
 | `BOOKING_CATALOG_TOKEN` | Optional shared secret for Booking access to the private snapshot route |
 | `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | R2 bucket settings, required to upload and verify images |
 | `R2_PUBLIC_BASE_URL` | Public HTTPS base URL for serving images. Image URLs are `null` when unset |
@@ -56,6 +57,8 @@ Local base URL is `http://localhost:8082/api/v1/catalog`. Admin routes require a
 
 See [OpenAPI](../../packages/contracts/openapi/catalog.v1.yaml) for the contract and [DEVELOPMENT.md](DEVELOPMENT.md) for Bruno examples.
 
+Public brand reads use a 60-second Redis cache when configured. Successful Brand/Car writes invalidate it; Redis failure falls back to PostgreSQL. See [Redis setup and Bruno](../../../docs/catalog-redis-setup.md) for VPS/tunnel URLs, keys, TTL, and safe inspection commands.
+
 Booking calls the [private snapshot API](../../packages/contracts/openapi/catalog.internal.v1.yaml) directly. Use a private network and HTTPS when the connection goes beyond localhost.
 
 ## Checks
@@ -66,4 +69,4 @@ go test -race -count=1 ./...
 go build ./...
 ```
 
-Set `CATALOG_TEST_DATABASE_URL` to a dedicated PostgreSQL test database with permission to create schemas to enable integration tests. Identity and R2 are simulated in tests.
+Set `CATALOG_TEST_DATABASE_URL` to a dedicated PostgreSQL test database with permission to create schemas to enable integration tests. Set `CATALOG_TEST_REDIS_URL` to a separate Redis test database to enable cache integration tests; use `-p 1` when running packages together. Identity and R2 are simulated in these tests.

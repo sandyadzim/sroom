@@ -19,7 +19,7 @@ func snapshotPath(id string) string {
 }
 
 func TestBookingSnapshotAccess(t *testing.T) {
-	cars := handler.NewCarHandler(service.NewCarService(nil, nil, ""))
+	cars := handler.NewCarHandler(service.NewCarService(nil, nil, "", nil))
 	enabled := newCatalogTestRouterWithBookingToken(t, nil, nil, cars, nil, nil, testBookingToken)
 	catalogRequest(t, enabled, http.MethodGet, snapshotPath(missingBrandID), "", "", 401)
 	catalogRequest(t, enabled, http.MethodGet, snapshotPath(missingBrandID), "ADMIN", "", 401)
@@ -32,7 +32,7 @@ func TestBookingSnapshotAccess(t *testing.T) {
 func TestBookingSnapshotPostgres(t *testing.T) {
 	db := catalogTestDatabase(t)
 	brand := createCarTestBrand(t, repository.NewBrandRepository(db), "Toyota")
-	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db), carTestImages{}, ""))
+	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db), carTestImages{}, "", nil))
 	units := handler.NewCarUnitHandler(service.NewCarUnitService(repository.NewCarUnitRepository(db)))
 	router := newCatalogTestRouterWithBookingToken(t, nil, nil, cars, nil, units, testBookingToken)
 	active := model.CarActive
@@ -76,7 +76,7 @@ func TestBookingSnapshotPostgres(t *testing.T) {
 func TestDeactivationChangesBookingSnapshotPostgres(t *testing.T) {
 	db := catalogTestDatabase(t)
 	brand := createCarTestBrand(t, repository.NewBrandRepository(db), "Booking Brand")
-	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db), carTestImages{}, ""))
+	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db), carTestImages{}, "", nil))
 	units := handler.NewCarUnitHandler(service.NewCarUnitService(repository.NewCarUnitRepository(db)))
 	router := newCatalogTestRouterWithBookingToken(t, nil, nil, cars, nil, units, testBookingToken)
 	active := model.CarActive

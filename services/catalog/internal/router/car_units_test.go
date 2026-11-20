@@ -46,7 +46,7 @@ func TestCarUnitAuthorizationAndInput(t *testing.T) {
 func TestCarUnitsPostgres(t *testing.T) {
 	db := catalogTestDatabase(t)
 	brand := createCarTestBrand(t, repository.NewBrandRepository(db), "Toyota")
-	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db), carTestImages{}, ""))
+	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db), carTestImages{}, "", nil))
 	units := handler.NewCarUnitHandler(service.NewCarUnitService(repository.NewCarUnitRepository(db)))
 	router := newCatalogTestRouter(t, nil, nil, cars, nil, units)
 	active := model.CarActive

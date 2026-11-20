@@ -15,6 +15,7 @@ type Config struct {
 	DatabaseURL       string
 	IdentityBaseURL   string
 	BookingToken      string
+	RedisURL          string
 	R2Endpoint        string
 	R2Bucket          string
 	R2AccessKeyID     string
@@ -55,6 +56,7 @@ func Load() (Config, error) {
 	}
 
 	return Config{
+		RedisURL:          strings.TrimSpace(os.Getenv("REDIS_URL")),
 		AppPort:           appPort,
 		DatabaseURL:       databaseURL,
 		IdentityBaseURL:   identityBaseURL,

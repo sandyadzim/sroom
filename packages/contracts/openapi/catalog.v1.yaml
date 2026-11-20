@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Catalog API
-  version: 1.10.0
+  version: 1.11.0
   description: |
     The local gateway forwards the same Catalog API. An incoming X-Request-ID
     with 1-64 ASCII letters, digits, underscores, or hyphens is preserved.
@@ -577,6 +577,11 @@ paths:
     get:
       operationId: listPublicCarBrands
       summary: List brands and public logos for active cars
+      description: >-
+        When configured, Redis caches each status variant for 60 seconds. Hits do not
+        renew the TTL. Successful Brand or Car mutations invalidate both cache keys;
+        Redis errors fall back to PostgreSQL. Failed invalidation or concurrent reads
+        may leave stale data until the affected key expires. HTTP Cache-Control remains no-store.
       security: []
       parameters:
         - name: status

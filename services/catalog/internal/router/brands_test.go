@@ -42,7 +42,7 @@ func (testImages) ImageExists(_ context.Context, key string) (bool, error) {
 
 func newBrandTestRouter(t *testing.T, repo *repository.BrandRepository) *gin.Engine {
 	t.Helper()
-	brandHandler := handler.NewBrandHandler(service.NewBrandService(repo, testImages{}, "https://assets.example.test/"))
+	brandHandler := handler.NewBrandHandler(service.NewBrandService(repo, testImages{}, "https://assets.example.test/", nil))
 	return newCatalogTestRouter(t, brandHandler, handler.NewBannerHandler(nil), handler.NewCarHandler(nil), nil, nil)
 }
 

@@ -8,6 +8,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"catalog/internal/cache"
 	"catalog/internal/dto"
 	"catalog/internal/model"
 	"catalog/internal/repository"
@@ -28,10 +29,11 @@ type BrandService struct {
 	repo               *repository.BrandRepository
 	images             ImageChecker
 	publicImageBaseURL string
+	brandCache         *cache.BrandCache
 }
 
-func NewBrandService(repo *repository.BrandRepository, images ImageChecker, publicImageBaseURL string) *BrandService {
-	return &BrandService{repo: repo, images: images, publicImageBaseURL: strings.TrimRight(publicImageBaseURL, "/")}
+func NewBrandService(repo *repository.BrandRepository, images ImageChecker, publicImageBaseURL string, brandCache *cache.BrandCache) *BrandService {
+	return &BrandService{repo: repo, images: images, publicImageBaseURL: strings.TrimRight(publicImageBaseURL, "/"), brandCache: brandCache}
 }
 
 func (s *BrandService) List(ctx context.Context, search string, page, limit int) (*dto.BrandListResponse, error) {
@@ -73,6 +75,9 @@ func (s *BrandService) Create(ctx context.Context, req dto.CreateBrandRequest) (
 	if err != nil {
 		return nil, err
 	}
+	if s.brandCache != nil {
+		s.brandCache.Invalidate(ctx)
+	}
 	result := s.brandResponse(item)
 	return &result, nil
 }
@@ -103,6 +108,9 @@ func (s *BrandService) Update(ctx context.Context, id string, changes model.Bran
 	item, err := s.repo.Update(ctx, id, changes)
 	if err != nil {
 		return nil, err
+	}
+	if s.brandCache != nil {
+		s.brandCache.Invalidate(ctx)
 	}
 	result := s.brandResponse(item)
 	return &result, nil
