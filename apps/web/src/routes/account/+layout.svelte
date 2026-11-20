@@ -7,13 +7,11 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import Link from '#lib/components/ui/Link.svelte';
 	import { customerProfileQuery } from '#lib/queries/customer-auth.ts';
-	import { customerAccountPath } from '#lib/utils/customer-auth.ts';
+	import { customerReturnPath } from '#lib/utils/customer-auth.ts';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
-	const previewBookings = $derived(
-		import.meta.env.DEV && page.route.id?.startsWith('/account/bookings')
-	);
+	const previewBookings = $derived(import.meta.env.DEV && page.route.id === '/account/bookings');
 	const profile = createQuery(() => ({ ...customerProfileQuery, refetchOnMount: 'always' }));
 	const profilePath = $derived(resolve('/account/profile'));
 	const securityPath = $derived(resolve('/account/profile/change-password'));
@@ -27,7 +25,7 @@
 
 	$effect(() => {
 		if (!previewBookings && profile.data === null && !profile.isFetching) {
-			const next = customerAccountPath(page.route.id) ?? '/account/profile';
+			const next = customerReturnPath(page.url.pathname) ?? '/account/profile';
 			void goto(resolve(`/(auth)/login?next=${encodeURIComponent(next)}`), { replace: true });
 		}
 	});
@@ -39,7 +37,7 @@
 
 <div data-account-shell class="page-container py-10 sm:py-14 lg:py-18">
 	<div class="mx-auto max-w-5xl">
-		{#if previewBookings || profile.data}
+		{#if previewBookings || (profile.data && !profile.isError)}
 			<div
 				data-account-grid
 				class="grid gap-8 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-12 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-16"
@@ -55,7 +53,8 @@
 									{href}
 									variant="plain"
 									aria-current={page.url.pathname === href ||
-									(label === 'My Bookings' && previewBookings)
+									(label === 'My Bookings' &&
+										page.url.pathname.startsWith(resolve('/account/bookings')))
 										? 'page'
 										: undefined}
 									class="flex min-h-11 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-panel-muted hover:text-ink aria-[current=page]:bg-panel-muted aria-[current=page]:text-primary motion-reduce:transition-none sm:px-3 md:gap-3"
@@ -79,7 +78,9 @@
 						{/if}
 					</ul>
 				</nav>
-				<div class="min-w-0">{@render children()}</div>
+				<div class="min-w-0">
+					{#key profile.data?.id}{@render children()}{/key}
+				</div>
 			</div>
 		{:else if profile.isError && !profile.isFetching}
 			<section aria-labelledby="account-title" class="space-y-4">

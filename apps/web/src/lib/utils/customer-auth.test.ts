@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { customerAccountPath, customerCheckoutSlug } from './customer-auth.ts';
+import { customerAccountPath, customerCheckoutSlug, customerReturnPath } from './customer-auth.ts';
 
 describe('customer return destination', () => {
 	it('accepts a checkout slug carried as an encoded query parameter', () => {
@@ -36,5 +36,33 @@ describe('customer account return path', () => {
 		'/account/bookings'
 	])('ignores an unapproved path of %s', (path) => {
 		expect(customerAccountPath(path)).toBeUndefined();
+	});
+});
+
+describe('integrated customer return routes', () => {
+	const id = '12345678-1234-4321-8765-123456789abc';
+	it.each([
+		`/payment/${id}`,
+		`/bookings/${id}/success`,
+		`/bookings/${id}/expired`,
+		`/bookings/${id}/review`,
+		`/account/bookings/${id}`,
+		`/account/bookings/${id}/invoice`,
+		'/checkout/toyota-avanza'
+	])('preserves %s', (path) => {
+		expect(customerReturnPath(path)).toBe(path);
+	});
+	it.each([
+		'/account/bookings',
+		'/admin/bookings',
+		'//example.invalid',
+		'/payment/preview-fake',
+		`/bookings/${id}/paid`,
+		`/account/bookings/${id}/invoice?paid=true`,
+		'/checkout/car%2Fadmin',
+		'/checkout/car\n',
+		'/checkout/%E0%A4%A'
+	])('rejects %s', (path) => {
+		expect(customerReturnPath(path)).toBeUndefined();
 	});
 });

@@ -14,9 +14,11 @@
 	const name = $derived(`${car.brand} ${car.model}`);
 	const profile = createQuery(() => customerProfileQuery);
 	const bookingHref = $derived(
-		car.status === 'active' && !profile.data
-			? `${resolve('/(auth)/login')}?next=${encodeURIComponent(`/checkout/${car.slug}`)}`
-			: undefined
+		car.status !== 'active' || profile.isLoading || profile.isError
+			? undefined
+			: profile.data
+				? resolve('/checkout/[slug]', { slug: car.slug })
+				: `${resolve('/(auth)/login')}?next=${encodeURIComponent(`/checkout/${car.slug}`)}`
 	);
 	const specs = $derived([
 		{ label: 'Seats', value: `${car.seats} people`, icon: UsersRound },
@@ -91,7 +93,10 @@
 			<RentalSummary
 				{car}
 				{bookingHref}
-				bookingComingLater={car.status === 'active' && Boolean(profile.data)}
+				bookingLoading={profile.isLoading}
+				bookingError={profile.isError}
+				signedIn={Boolean(profile.data)}
+				onRetry={() => void profile.refetch()}
 			/>
 		</aside>
 	</div>

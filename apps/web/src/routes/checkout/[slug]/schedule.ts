@@ -29,7 +29,11 @@ export function validateSchedule(schedule: Schedule, earliestPickup: string) {
 			: pickupDate < earliestPickup
 				? 'Pickup starts tomorrow in Samarinda.'
 				: undefined,
-		pickupTime: pickupTime ? undefined : 'Choose a pickup time.',
+		pickupTime: !pickupTime
+			? 'Choose a pickup time.'
+			: !isHandoverSlot(pickupTime)
+				? 'Choose a 30-minute slot from 08:00 to 18:00 WITA.'
+				: undefined,
 		returnDate: !returnDate
 			? 'Choose a return date.'
 			: returnDate < pickupDate
@@ -37,8 +41,14 @@ export function validateSchedule(schedule: Schedule, earliestPickup: string) {
 				: undefined,
 		returnTime: !returnTime
 			? 'Choose a return time.'
-			: returnDate === pickupDate && !!pickupTime && returnTime <= pickupTime
-				? 'Return time must be after pickup.'
-				: undefined
+			: !isHandoverSlot(returnTime)
+				? 'Choose a 30-minute slot from 08:00 to 18:00 WITA.'
+				: returnDate === pickupDate && !!pickupTime && returnTime <= pickupTime
+					? 'Return time must be after pickup.'
+					: undefined
 	};
+}
+
+export function isHandoverSlot(time: string) {
+	return /^(?:0[89]|1[0-7]):(?:00|30)$|^18:00$/.test(time);
 }

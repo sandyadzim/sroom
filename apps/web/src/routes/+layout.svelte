@@ -7,6 +7,7 @@
 	import AuthHeader from '#lib/components/auth/AuthHeader.svelte';
 	import { navigating, page } from '$app/state';
 	import Link from '#lib/components/ui/Link.svelte';
+	import CustomerCache from '#lib/components/auth/CustomerCache.svelte';
 	import Toaster from '#lib/components/ui/Toaster.svelte';
 	import { setToastContext, type ToastFeedback, type ToastItem } from '#lib/ui/toast.ts';
 	import interFont from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
@@ -17,6 +18,9 @@
 	const authPage = $derived(page.route.id?.startsWith('/(auth)/') ?? false);
 	const adminPage = $derived(page.route.id === '/admin' || page.route.id?.startsWith('/admin/'));
 	const staffPage = $derived(page.route.id?.startsWith('/admin/(staff)'));
+	const transactionPage = $derived(
+		['/checkout/', '/payment/', '/bookings/'].some((prefix) => page.route.id?.startsWith(prefix))
+	);
 
 	const customerQueryClient = new QueryClient();
 
@@ -38,7 +42,7 @@
 	<link rel="icon" href={favicon} />
 	<link rel="preload" href={interFont} as="font" type="font/woff2" crossorigin="anonymous" />
 	<link rel="preload" href={manropeFont} as="font" type="font/woff2" crossorigin="anonymous" />
-	{#if adminPage}<meta name="robots" content="noindex, nofollow" />{/if}
+	{#if adminPage || transactionPage}<meta name="robots" content="noindex, nofollow" />{/if}
 </svelte:head>
 
 <div class="flex min-h-dvh flex-col">
@@ -56,6 +60,7 @@
 		<main id="main-content" tabindex="-1" class="min-w-0 flex-1">{@render children()}</main>
 	{:else}
 		<QueryClientProvider client={customerQueryClient}>
+			<CustomerCache />
 			{#if authPage}<AuthHeader />{:else}<SiteHeader />{/if}
 
 			{#if navigating.to?.route.id === '/cars/[slug]'}

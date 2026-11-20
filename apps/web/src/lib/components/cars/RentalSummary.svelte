@@ -9,12 +9,18 @@
 	let {
 		car,
 		bookingHref,
-		bookingComingLater = false,
+		bookingLoading = false,
+		bookingError = false,
+		signedIn = false,
+		onRetry,
 		compact = false
 	}: {
 		car: CarPreview;
 		bookingHref?: string;
-		bookingComingLater?: boolean;
+		bookingLoading?: boolean;
+		bookingError?: boolean;
+		signedIn?: boolean;
+		onRetry?: () => void;
 		compact?: boolean;
 	} = $props();
 </script>
@@ -56,9 +62,14 @@
 				aria-label={`Book Now — ${car.brand} ${car.model} ${car.trim}`}
 				>Book Now <ArrowUpRight size={18} strokeWidth={1.5} aria-hidden="true" /></Button
 			>
-			<p class="mt-3 text-center text-sm/6 text-ink-muted">Sign in to continue your booking.</p>
-		{:else if bookingComingLater}
-			<p class="mt-3 text-sm/6 text-ink-muted">Booking is currently unavailable.</p>
+			{#if !signedIn}<p class="mt-3 text-center text-sm/6 text-ink-muted">
+					Sign in to continue your booking.
+				</p>{/if}
+		{:else if bookingLoading}
+			<p role="status" class="mt-3 text-sm text-ink-muted">Checking your session…</p>
+		{:else if bookingError}
+			<p role="alert" class="mt-3 text-sm text-ink-muted">Could not verify your session.</p>
+			<Button variant="secondary" class="mt-4" onclick={onRetry}>Try again</Button>
 		{:else}
 			<p class="mt-3 text-sm/6 text-ink-muted">This car is currently unavailable for booking.</p>
 			<Button href={resolve('/cars')} variant="secondary" class="mt-6 w-full">Explore Cars</Button>

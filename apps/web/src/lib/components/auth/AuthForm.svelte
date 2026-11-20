@@ -8,7 +8,11 @@
 	import { getApiError } from '#lib/api/error.ts';
 	import { customerProfileQuery } from '#lib/queries/customer-auth.ts';
 	import { useToast } from '#lib/ui/toast.ts';
-	import { customerAccountPath, customerCheckoutSlug } from '#lib/utils/customer-auth.ts';
+	import {
+		customerReturnPath,
+		customerAccountPath,
+		customerCheckoutSlug
+	} from '#lib/utils/customer-auth.ts';
 	import { useRegistrationEmail } from './registration-email.ts';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Link from '#lib/components/ui/Link.svelte';
@@ -31,12 +35,21 @@
 	const signIn = createMutation(() => ({ mutationFn: loginCustomer, retry: false, gcTime: 0 }));
 	const signUp = createMutation(() => ({ mutationFn: registerCustomer, retry: false, gcTime: 0 }));
 	const next = $derived(page.url.searchParams.get('next'));
-	const slug = $derived(customerCheckoutSlug(next));
-	const accountPath = $derived(customerAccountPath(next));
-	const destination = $derived(
-		accountPath ? resolve(accountPath) : slug ? resolve('/cars/[slug]', { slug }) : resolve('/cars')
-	);
-	const nextPath = $derived(accountPath ?? (slug ? `/checkout/${slug}` : null));
+	const nextPath = $derived(customerReturnPath(next));
+	const destination = $derived.by(() => {
+		const account = customerAccountPath(nextPath ?? null);
+		if (account) return resolve(account);
+		const slug = customerCheckoutSlug(nextPath ?? null);
+		if (slug) return resolve('/checkout/[slug]', { slug });
+		if (!nextPath) return resolve('/cars');
+		const parts = nextPath.split('/');
+		if (parts[1] === 'payment') return resolve('/payment/[bookingId]', { bookingId: parts[2] });
+		if (parts[1] === 'bookings')
+			return resolve('/bookings/[bookingId]/[outcome]', { bookingId: parts[2], outcome: parts[3] });
+		return parts[4] === 'invoice'
+			? resolve('/account/bookings/[bookingId]/invoice', { bookingId: parts[3] })
+			: resolve('/account/bookings/[bookingId]', { bookingId: parts[3] });
+	});
 	const nextQuery = $derived(nextPath ? (`?next=${encodeURIComponent(nextPath)}` as const) : '');
 	const loginHref = $derived(`${resolve('/(auth)/login')}${nextQuery}`);
 	const registerHref = $derived(`${resolve('/(auth)/register')}${nextQuery}`);

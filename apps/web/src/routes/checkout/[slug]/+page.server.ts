@@ -1,33 +1,15 @@
 import { error } from '@sveltejs/kit';
-import {
-	bookingOutcomeFixture,
-	checkoutPreviewCustomer,
-	checkoutPreviewSlug
-} from '#lib/utils/booking-preview.ts';
-import { earliestPickupDate } from './schedule.ts';
+import { fetchPublicCar } from '#lib/api/catalog/public.server.ts';
 import type { PageServerLoad } from './$types';
-
-export const load = (({ params, url }) => {
-	if (!import.meta.env.DEV || params.slug !== checkoutPreviewSlug) {
-		error(404, 'Checkout is unavailable.');
+export const load = (async ({ params }) => {
+	if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(params.slug)) error(404, 'This car could not be found.');
+	let car;
+	try {
+		car = await fetchPublicCar(params.slug);
+	} catch {
+		error(503, 'This car could not be loaded. Please try again.');
 	}
-
-	const requested = url.searchParams.get('scenario');
-	const scenario =
-		requested === 'unavailable' || requested === 'error' || requested === 'conflict'
-			? requested
-			: 'available';
-
-	return {
-		car: {
-			name: 'Toyota Fortuner',
-			trim: '2.8 VRZ',
-			category: 'SUV',
-			dailyRate: 850_000
-		},
-		customer: checkoutPreviewCustomer,
-		earliestPickup: earliestPickupDate(),
-		nextOutcome: bookingOutcomeFixture(url.searchParams.get('outcome')),
-		scenario
-	};
+	if (!car) error(404, 'This car could not be found.');
+	if (car.status !== 'active') error(404, 'This car is currently unavailable for booking.');
+	return { car };
 }) satisfies PageServerLoad;

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { earliestPickupDate, inclusiveRentalDays, validateSchedule } from './schedule.ts';
+import {
+	earliestPickupDate,
+	inclusiveRentalDays,
+	validateSchedule,
+	isHandoverSlot
+} from './schedule.ts';
 
 describe('checkout schedule', () => {
 	it('advances the earliest pickup at midnight in Samarinda', () => {
@@ -37,5 +42,14 @@ describe('checkout schedule', () => {
 			'2026-11-11'
 		);
 		expect(result.returnTime).toBeDefined();
+	});
+});
+
+describe('backend handover slots', () => {
+	it.each(['08:00', '08:30', '17:30', '18:00'])('accepts %s WITA', (time) => {
+		expect(isHandoverSlot(time)).toBe(true);
+	});
+	it.each(['07:30', '08:15', '18:30', '23:00', '08:00:01'])('rejects %s WITA', (time) => {
+		expect(isHandoverSlot(time)).toBe(false);
 	});
 });
