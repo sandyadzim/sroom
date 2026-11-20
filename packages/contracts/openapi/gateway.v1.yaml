@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.16.0
+  version: 1.17.0
   description: |
     Local entry point for the documented Identity, Catalog, Booking, and Payment routes.
     Request and response schemas are owned by those services. The gateway forwards
@@ -17,6 +17,59 @@ servers:
   - url: http://localhost:8080
 security: []
 paths:
+  /api/v1/staff/overview:
+    get:
+      operationId: getStaffOverview
+      summary: Read staff overview
+      description: >-
+        Uses the staff session cookie as Bearer; owning services independently verify ADMIN/OWNER.
+        No Origin header is required for GET. Responses are no-store. Overview combines Booking
+        and current Catalog fleet counts. Reports forwards Booking creation-date WITA filters.
+        Dependency errors fail the request; missing data is never replaced with zero counts.
+      security: [{ staffCookie: [] }]
+      responses:
+        '200':
+          description: Simulated operational statistics. Overview always uses the last seven WITA dates; reports permits up to 366 dates.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/StaffOverview' }
+        default:
+          description: INVALID_REQUEST (400), authentication (401/403), invalid overview response (502), dependency failure (503), or timeout (504).
+          content:
+            application/json:
+              schema: { $ref: './booking.v1.yaml#/components/schemas/Error' }
+  /api/v1/staff/reports:
+    get:
+      operationId: getStaffReports
+      summary: Read staff reports
+      description: >-
+        Uses the staff session cookie as Bearer; owning services independently verify ADMIN/OWNER.
+        No Origin header is required for GET. Responses are no-store. Overview combines Booking
+        and current Catalog fleet counts. Reports forwards Booking creation-date WITA filters.
+        Dependency errors fail the request; missing data is never replaced with zero counts.
+      security: [{ staffCookie: [] }]
+      parameters:
+        - $ref: './booking.v1.yaml#/components/parameters/ReportFrom'
+        - $ref: './booking.v1.yaml#/components/parameters/ReportTo'
+      responses:
+        '200':
+          description: Simulated operational statistics. Overview always uses the last seven WITA dates; reports permits up to 366 dates.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: './booking.v1.yaml#/components/schemas/BookingReports' }
+        default:
+          description: INVALID_REQUEST (400), authentication (401/403), invalid overview response (502), dependency failure (503), or timeout (504).
+          content:
+            application/json:
+              schema: { $ref: './booking.v1.yaml#/components/schemas/Error' }
   /api/v1/customer/bookings/{id}/invoice:
     get:
       operationId: getCustomerInvoice
@@ -1010,6 +1063,14 @@ paths:
         default:
           $ref: './catalog.v1.yaml#/components/responses/Error'
 components:
+  schemas:
+    StaffOverview:
+      allOf:
+        - $ref: './booking.v1.yaml#/components/schemas/BookingOverview'
+        - type: object
+          required: [fleet]
+          properties:
+            fleet: { $ref: './catalog.v1.yaml#/components/schemas/FleetSummary' }
   securitySchemes:
     bearerAuth:
       $ref: './identity.v1.yaml#/components/securitySchemes/bearerAuth'

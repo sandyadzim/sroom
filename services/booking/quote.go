@@ -38,6 +38,8 @@ func registerCheckout(router *gin.Engine, handler quoteHandler) {
 	group.GET("/bookings", handler.customerBookings)
 	group.GET("/bookings/:id", handler.customerBookings)
 	admin := group.Group("/admin")
+	admin.GET("/overview", handler.staffOverview)
+	admin.GET("/reports", handler.staffReports)
 	admin.GET("/bookings", handler.staffBookings)
 	admin.GET("/bookings/:id", handler.staffBookings)
 }

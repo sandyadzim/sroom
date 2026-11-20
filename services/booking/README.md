@@ -71,6 +71,10 @@ This simulates payment and records `booking.demo_confirmed.v1` in the outbox. Co
 
 Use a dedicated local demo database. The mode is disabled by default; saved records remain when it is disabled. The confirmation endpoint is unavailable through Gateway. Provider verification, RabbitMQ publication, invoices, email, and real-payment release policies are pending.
 
+## Staff reports
+
+ADMIN/OWNER can read `/api/v1/staff/overview` and `/api/v1/staff/reports` through Gateway. Reports filter booking creation dates in WITA; default seven dates, maximum 366. Confirmed value/conversion exclude demo confirmations without canonical Payment references. Reads use saved Booking data and never call Midtrans. See [definitions and Bruno requests](../../../docs/admin-reports-bruno.md).
+
 ## Checks
 
 Run `go test ./...` from this directory.

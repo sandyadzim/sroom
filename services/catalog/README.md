@@ -61,6 +61,8 @@ Public brand reads use a 60-second Redis cache when configured. Successful Brand
 
 Booking calls the [private snapshot API](../../packages/contracts/openapi/catalog.internal.v1.yaml) directly. Use a private network and HTTPS when the connection goes beyond localhost.
 
+`GET /admin/fleet-summary` returns current car/unit totals with active/inactive counts for ADMIN/OWNER. Gateway uses it in staff Overview; it is not historical availability. See [Overview and Reports](../../../docs/admin-reports-bruno.md).
+
 ## Checks
 
 ```sh

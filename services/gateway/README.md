@@ -41,6 +41,8 @@ Set `X-Request-ID` to `bruno-check-1` to match the response with a service error
 
 Run `go test -race ./...` from `services/gateway`. See the [OpenAPI contract](../../packages/contracts/openapi/gateway.v1.yaml).
 
+`GET /api/v1/staff/overview` combines Booking statistics and current Catalog fleet counts. `GET /api/v1/staff/reports` forwards optional `from`/`to` WITA creation dates to Booking. Both use the staff cookie; owning services verify ADMIN/OWNER. No new configuration is needed. See [definitions and Bruno requests](../../../docs/admin-reports-bruno.md).
+
 ## Customer browser authentication
 
 The public `/api/v1/identity/register` route creates a customer account without a session. The customer frontend uses `POST /api/v1/customer/login`, `GET /api/v1/customer/me`, and `POST /api/v1/customer/logout`. These session routes use a dedicated HttpOnly `sroom_customer_session` cookie scoped to `/api/v1/customer` and check the CUSTOMER role through Identity. The cookie expires with the Identity session. Use the same site for web and Gateway and configure the exact web origin in `WEB_ORIGINS`. `APP_ENV=production` requires HTTPS for cookies.

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Catalog API
-  version: 1.11.0
+  version: 1.12.0
   description: |
     The local gateway forwards the same Catalog API. An incoming X-Request-ID
     with 1-64 ASCII letters, digits, underscores, or hyphens is preserved.
@@ -9,6 +9,24 @@ info:
 servers:
   - url: http://localhost:8082
 paths:
+  /api/v1/catalog/admin/fleet-summary:
+    get:
+      operationId: getFleetSummary
+      summary: Count current cars and physical units
+      description: ADMIN/OWNER only. No query parameters. Current status counts, not historical availability. Unit status is independent of parent car status. Database failures return 503 DEPENDENCY_UNAVAILABLE.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Current fleet counts.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/FleetSummary' }
+        default:
+          $ref: '#/components/responses/Error'
   /api/v1/catalog/admin/images:
     post:
       operationId: uploadImage
@@ -680,6 +698,19 @@ components:
       in: query
       schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
   schemas:
+    FleetCounts:
+      type: object
+      required: [total, active, inactive]
+      properties:
+        total: { type: integer, format: int64, minimum: 0 }
+        active: { type: integer, format: int64, minimum: 0 }
+        inactive: { type: integer, format: int64, minimum: 0 }
+    FleetSummary:
+      type: object
+      required: [cars, units]
+      properties:
+        cars: { $ref: '#/components/schemas/FleetCounts' }
+        units: { $ref: '#/components/schemas/FleetCounts' }
     CreateCarInput:
       type: object
       additionalProperties: false
@@ -1036,7 +1067,7 @@ components:
       description: |
         400 invalid input or image key, 401 invalid or missing session, 403 role denied,
         404 resource not found, 409 duplicate name, variant, slug, or car cover conflict, 413 body too large,
-        415 unsupported media type, 500 unexpected error, or 503 Identity/R2 unavailable.
+        415 unsupported media type, 500 unexpected error, or 503 Identity/R2/database unavailable.
       content:
         application/json:
           schema:

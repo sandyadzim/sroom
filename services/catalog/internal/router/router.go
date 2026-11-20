@@ -48,6 +48,7 @@ func New(identityClient *identity.Client, brands *handler.BrandHandler, banners 
 	catalogGroup.GET("/brands", defaultBodyLimit, cars.ListPublicBrands)
 
 	admin := catalogGroup.Group("/admin", middleware.RequireAdmin(identityClient))
+	admin.GET("/fleet-summary", defaultBodyLimit, cars.FleetSummary)
 
 	brandRoutes := admin.Group("/brands", defaultBodyLimit)
 	brandRoutes.GET("", brands.List)

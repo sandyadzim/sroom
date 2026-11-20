@@ -95,6 +95,8 @@ func newRouter(identityURL, catalogURL, bookingURL, paymentURL *url.URL, logger 
 	staff.GET("/payments/:id", staffPayments)
 	staff.GET("/bookings/:id/invoice", staffPayments)
 	staffBookings := staffProxy("/api/v1/booking/admin", true, booking)
+	staff.GET("/overview", staffProxy("/api/v1/booking/admin", true, staffOverview(client, bookingURL, catalogURL, logger)))
+	staff.GET("/reports", staffBookings)
 	staff.GET("/bookings", staffBookings)
 	staff.GET("/bookings/:id", staffBookings)
 	return app
