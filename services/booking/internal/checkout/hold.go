@@ -13,7 +13,6 @@ import (
 
 var (
 	ErrInvalidTerms         = errors.New("accept the current rental terms")
-	ErrDemoHoldsDisabled    = errors.New("demo holds are disabled")
 	ErrAvailabilityConflict = errors.New("no unit is available for this schedule")
 	ErrIdempotencyConflict  = errors.New("this idempotency key was used with a different request")
 	ErrHoldInProgress       = errors.New("booking request is in progress, retry with the same key")
@@ -84,9 +83,7 @@ func (s *Service) CreateHold(ctx context.Context, input HoldInput, now func() ti
 	if err != nil {
 		return Hold{}, err
 	}
-	if !snapshot.DemoHoldsEnabled {
-		return Hold{}, ErrDemoHoldsDisabled
-	}
+	// Eligibility is decided by this snapshot. Later deactivation does not cancel this request.
 
 	if err := s.allocations.rememberHoldKey(ctx, input, hash); err != nil {
 		return Hold{}, err

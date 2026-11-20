@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.15.0
+  version: 1.16.0
   description: |
     Local entry point for the documented Identity, Catalog, Booking, and Payment routes.
     Request and response schemas are owned by those services. The gateway forwards
@@ -331,8 +331,8 @@ paths:
         '503':
           $ref: './booking.v1.yaml#/components/responses/BookingReadUnavailable'
     post:
-      operationId: createCustomerDemoHold
-      summary: Create a customer demo reservation
+      operationId: createCustomerHold
+      summary: Create a 15-minute customer reservation
       description: Use an allowed Origin and the customer session cookie. Booking verifies the customer role.
       security:
         - customerCookie: []

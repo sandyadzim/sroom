@@ -17,12 +17,11 @@ var (
 )
 
 type CarUnitRepository struct {
-	db        *gorm.DB
-	demoHolds bool
+	db *gorm.DB
 }
 
-func NewCarUnitRepository(db *gorm.DB, demoHolds bool) *CarUnitRepository {
-	return &CarUnitRepository{db: db, demoHolds: demoHolds}
+func NewCarUnitRepository(db *gorm.DB) *CarUnitRepository {
+	return &CarUnitRepository{db: db}
 }
 
 func (r *CarUnitRepository) List(ctx context.Context, carID, status string, offset, limit int) ([]model.CarUnit, int64, error) {
@@ -66,29 +65,6 @@ func (r *CarUnitRepository) Create(ctx context.Context, unit model.CarUnit) (mod
 
 func (r *CarUnitRepository) Update(ctx context.Context, id string, changes map[string]any) (model.CarUnit, error) {
 	db := r.db.WithContext(ctx)
-	if !r.demoHolds || changes["status"] != model.UnitInactive {
-		return updateCarUnit(db, id, changes)
-	}
-
-	var unit model.CarUnit
-	err := db.Transaction(func(tx *gorm.DB) error {
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Take(&unit, "id = ?", id).Error
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrCarUnitNotFound
-		}
-		if err != nil {
-			return err
-		}
-		if unit.Status == model.UnitActive {
-			return ErrDemoHoldsActive
-		}
-		unit, err = updateCarUnit(tx, id, changes)
-		return err
-	})
-	return unit, err
-}
-
-func updateCarUnit(db *gorm.DB, id string, changes map[string]any) (model.CarUnit, error) {
 	var unit model.CarUnit
 	result := db.Model(&unit).Where("id = ?", id).
 		Clauses(clause.Returning{}).Select("internal_code", "status", "updated_at").Updates(changes)

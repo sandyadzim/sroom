@@ -15,7 +15,6 @@ type Config struct {
 	DatabaseURL       string
 	IdentityBaseURL   string
 	BookingToken      string
-	DemoHolds         bool
 	R2Endpoint        string
 	R2Bucket          string
 	R2AccessKeyID     string
@@ -60,7 +59,6 @@ func Load() (Config, error) {
 		DatabaseURL:       databaseURL,
 		IdentityBaseURL:   identityBaseURL,
 		BookingToken:      strings.TrimSpace(os.Getenv("BOOKING_CATALOG_TOKEN")),
-		DemoHolds:         os.Getenv("CATALOG_DEMO_HOLDS") == "true",
 		R2Endpoint:        os.Getenv("R2_ENDPOINT"),
 		R2Bucket:          os.Getenv("R2_BUCKET"),
 		R2AccessKeyID:     os.Getenv("R2_ACCESS_KEY_ID"),

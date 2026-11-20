@@ -22,7 +22,6 @@ Use the Go version specified in [go.mod](go.mod), a Catalog PostgreSQL database,
 | `APP_PORT` | HTTP port, defaults to `8082` |
 | `IDENTITY_BASE_URL` | Identity service URL, defaults to `http://localhost:8081` |
 | `BOOKING_CATALOG_TOKEN` | Optional shared secret for Booking access to the private snapshot route |
-| `CATALOG_DEMO_HOLDS` | Defaults to `false`. Use `true` with demo data to allow holds and pause deactivation of active cars and units. |
 | `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | R2 bucket settings, required to upload and verify images |
 | `R2_PUBLIC_BASE_URL` | Public HTTPS base URL for serving images. Image URLs are `null` when unset |
 
@@ -47,6 +46,7 @@ Local base URL is `http://localhost:8082/api/v1/catalog`. Admin routes require a
 
 - Upload files through `/admin/images`, then submit the returned object keys with the Car, Brand, or Banner data. Creating a Car requires one cover and at least one gallery photo.
 - Public lists and recommendations show active variants. An inactive variant linked to a Hero banner still has a public detail page with `status: inactive`.
+- Deactivating a car or unit affects future booking snapshots. Existing bookings and holds already using an active snapshot remain valid. Deactivating a car does not change its unit statuses.
 - `GET /brands` lists brands represented by active variants and includes the nullable public logo `image_url`. Add `?status=active` to restrict results to active brands.
 - The Hero has three fixed slots. Save a slot with `car_id` and banner copy and image. Filled slots stay visible if the linked Car is inactive. Existing manual Brand, model, and slug inputs remain supported.
 

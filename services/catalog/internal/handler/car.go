@@ -186,8 +186,6 @@ func writeCarError(c *gin.Context, err error) {
 		response.Error(c, http.StatusNotFound, "CAR_NOT_FOUND", err.Error())
 	case repository.ErrCarAlreadyExists:
 		response.Error(c, http.StatusConflict, "CAR_ALREADY_EXISTS", err.Error())
-	case repository.ErrDemoHoldsActive:
-		response.Error(c, http.StatusConflict, "DEMO_HOLDS_ACTIVE", err.Error())
 	case repository.ErrCarCoverRequired:
 		response.Error(c, http.StatusConflict, "CAR_COVER_REQUIRED", err.Error())
 	case service.ErrImageUnavailable:

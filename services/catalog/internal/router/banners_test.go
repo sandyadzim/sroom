@@ -126,7 +126,7 @@ func TestBannerCarReferencePostgres(t *testing.T) {
 	toyota := createCarTestBrand(t, brands, "Toyota")
 	honda := createCarTestBrand(t, brands, "Honda")
 	banners := handler.NewBannerHandler(service.NewBannerService(repository.NewBannerRepository(db), testImages{}, "https://assets.example.test"))
-	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db, false), carTestImages{}, ""))
+	cars := handler.NewCarHandler(service.NewCarService(repository.NewCarRepository(db), carTestImages{}, ""))
 	router := newCatalogTestRouter(t, handler.NewBrandHandler(nil), banners, cars, nil, nil)
 
 	active := model.CarActive
@@ -203,7 +203,7 @@ func TestBannerCarReferenceMigrationPostgres(t *testing.T) {
 	brands := repository.NewBrandRepository(db)
 	brand := createCarTestBrand(t, brands, "Toyota")
 	otherBrand := createCarTestBrand(t, brands, "Honda")
-	router := newCarTestRouter(t, repository.NewCarRepository(db, false))
+	router := newCarTestRouter(t, repository.NewCarRepository(db))
 	car := createTestCar(t, router, carTestRequest(brand.ID, "Fortuner", 600000))
 
 	migrate := func(direction string) {

@@ -63,8 +63,8 @@ func main() {
 	// Initialize Repository
 	brandRepository := repository.NewBrandRepository(db)
 	bannerRepository := repository.NewBannerRepository(db)
-	carRepository := repository.NewCarRepository(db, cfg.DemoHolds)
-	unitRepository := repository.NewCarUnitRepository(db, cfg.DemoHolds)
+	carRepository := repository.NewCarRepository(db)
+	unitRepository := repository.NewCarUnitRepository(db)
 	featuredCarRepository := repository.NewFeaturedCarRepository(db)
 
 	// Initialize Service

@@ -33,7 +33,7 @@ Start Identity, Catalog, and Gateway. Booking uses `IDENTITY_BASE_URL` (default 
 
 Sign in through Gateway and send `POST /api/v1/customer/checkout/quotes` with the customer cookie and an allowed origin. See the [Booking request and response schemas](../../packages/contracts/openapi/booking.v1.yaml) and the [Gateway contract](../../packages/contracts/openapi/gateway.v1.yaml).
 
-To create a demo hold, set `CATALOG_DEMO_HOLDS=true` in Catalog and restart it. Send `POST /api/v1/customer/bookings` with an `Idempotency-Key` UUID. Keep Catalog demo mode active while demo data exists. Use the verified payment integration below for Midtrans flows; demo payment/expiry mode remains a separate simulation.
+Create a hold with `POST /api/v1/customer/bookings` and an `Idempotency-Key` UUID. Catalog must have an active car and active unit; no Catalog demo flag is needed. Each new hold reads current eligibility from Catalog. Later deactivation preserves existing bookings and in-flight holds already using an active snapshot. Successful retries return the saved booking. Use the verified payment integration below for Midtrans flows; demo payment/expiry mode remains a separate simulation.
 
 ## Verified payment confirmation
 

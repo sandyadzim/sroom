@@ -35,7 +35,7 @@ func TestHoldToVerifiedConfirmationHTTPPostgres(t *testing.T) {
 			}
 		}
 	})
-	router := quoteTestRouter(t, quoteTestCatalog(t, 200, "active", []string{uuid.NewString()}, true), pool)
+	router := quoteTestRouter(t, quoteTestCatalog(t, 200, "active", []string{uuid.NewString()}), pool)
 	payload := holdRequest{quoteRequest: quoteRequest{VariantID: quoteVariantID, PickupAt: pickup, ReturnAt: nextReturn}, ExpectedTotalIDR: 1350000, TermsVersion: "rental-terms-v1", AcceptTerms: true}
 	body, err := json.Marshal(payload)
 	if err != nil {

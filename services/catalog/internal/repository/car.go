@@ -19,16 +19,14 @@ var (
 	ErrCarBrandInactive = errors.New("choose an active brand")
 	ErrCarAlreadyExists = errors.New("car variant or slug already exists")
 	ErrCarCoverRequired = errors.New("an active car requires a cover image")
-	ErrDemoHoldsActive  = errors.New("deactivation is paused while demo holds are enabled")
 )
 
 type CarRepository struct {
-	db        *gorm.DB
-	demoHolds bool
+	db *gorm.DB
 }
 
-func NewCarRepository(db *gorm.DB, demoHolds bool) *CarRepository {
-	return &CarRepository{db: db, demoHolds: demoHolds}
+func NewCarRepository(db *gorm.DB) *CarRepository {
+	return &CarRepository{db: db}
 }
 
 func (r *CarRepository) List(ctx context.Context, filters model.CarFilter) ([]model.Car, int64, error) {
@@ -169,9 +167,6 @@ func (r *CarRepository) Update(ctx context.Context, id string, changes map[strin
 		car, err := lockCar(tx, id)
 		if err != nil {
 			return err
-		}
-		if r.demoHolds && car.Status == model.CarActive && changes["status"] == model.CarInactive {
-			return ErrDemoHoldsActive
 		}
 		if brandID, ok := changes["brand_id"].(string); ok && brandID != car.BrandID {
 			if _, err := lockActiveCarBrand(tx, brandID); err != nil {

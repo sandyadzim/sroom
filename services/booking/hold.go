@@ -71,8 +71,6 @@ func writeHoldError(c *gin.Context, err error) {
 		writeErrorDetails(c, http.StatusConflict, "QUOTE_CHANGED", err.Error(), gin.H{"quote": priceChanged.Quote})
 	case errors.Is(err, checkout.ErrInvalidTerms):
 		writeError(c, http.StatusUnprocessableEntity, "INVALID_TERMS", err.Error())
-	case errors.Is(err, checkout.ErrDemoHoldsDisabled):
-		writeError(c, http.StatusServiceUnavailable, "HOLD_NOT_ENABLED", err.Error())
 	case errors.Is(err, checkout.ErrAvailabilityConflict):
 		writeError(c, http.StatusConflict, "AVAILABILITY_CONFLICT", err.Error())
 	case errors.Is(err, checkout.ErrIdempotencyConflict):
