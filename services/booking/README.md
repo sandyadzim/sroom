@@ -41,17 +41,17 @@ Apply migrations before enabling the consumer. Set `RABBITMQ_URL` to the same br
 
 Booking consumes `payment.paid.v1`, verifies canonical facts through Payment's private API, and atomically commits inbox, confirmed/history, and a `booking.confirmed.v1` outbox event. Paid verified before the original deadline can confirm a pending booking with its allocation still blocking; late/unsafe cases go to review without changing allocations. Duplicate events do not repeat business effects.
 
-Transient failures retry three times per delivery, then go to a durable DLQ before the original is acknowledged. Broker failure does not stop HTTP. Confirmed events are relayed from Booking outbox to Payment for invoice issuance; this paid consumer only confirms Booking. Inventory release follows the no-attempt expiry check below. See [setup and Bruno](../../../docs/payment-confirm-booking-bruno.md). Real RabbitMQ/sandbox verification is pending.
+Transient failures retry three times per delivery, then go to a durable DLQ before the original is acknowledged. Broker failure does not stop HTTP. Confirmed events are relayed from Booking outbox to Payment for invoice issuance; this paid consumer only confirms Booking. Inventory release follows the no-attempt expiry check below.
 
 ## Invoice integration
 
-`GET /internal/v1/bookings/{id}/invoice-context` uses the existing pair token and returns the verified-confirmed rental snapshot, including payment references and confirmation event ID/time. Demo confirmations are unavailable. With `RABBITMQ_URL` set, a separate relay publishes only confirmed events every five seconds, up to 20 per batch; failure retains the original outbox event. Apply migration `000004_add_outbox_delivery` before startup. Payment owns invoice issuance/read APIs. See [setup and Bruno](../../../docs/payment-invoice-bruno.md).
+`GET /internal/v1/bookings/{id}/invoice-context` uses the existing pair token and returns the verified-confirmed rental snapshot, including payment references and confirmation event ID/time. Demo confirmations are unavailable. With `RABBITMQ_URL` set, a separate relay publishes only confirmed events every five seconds, up to 20 per batch; failure retains the original outbox event. Apply migration `000004_add_outbox_delivery` before startup. Payment owns invoice issuance/read APIs.
 
 ## Hold expiry
 
 With `RABBITMQ_URL` configured and demo mode off, a separate startup/30-second worker asks Payment to close initiation for overdue holds. Durable no-attempt closure, or a matching authenticated BNI expiry lookup with saved release permission, allows Booking to atomically expire/release the allocation and save history/outbox. Uncertain dependencies and attempts without permission keep inventory blocked. The scanner rotates through batches of 50; release can lag the deadline. No new environment variable or Booking migration is needed.
 
-Stop old Payment/Booking processes and apply Payment migration `000005_add_release_authorization` before restarting. No broker connection is needed for these HTTP checks. See [setup and Bruno](../../../docs/payment-expiry-bruno.md). Paid learned after release permission goes to review without reclaiming inventory; demo expiry must stay disabled for Midtrans flows.
+Stop old Payment/Booking processes and apply Payment migration `000005_add_release_authorization` before restarting. No broker connection is needed for these HTTP checks. Paid learned after release permission goes to review without reclaiming inventory; demo expiry must stay disabled for Midtrans flows.
 
 ## Booking history
 
@@ -69,11 +69,11 @@ Set `BOOKING_DEMO_PAYMENTS=true` and `PAYMENT_BOOKING_TOKEN`, then restart Booki
 
 This simulates payment and records `booking.demo_confirmed.v1` in the outbox. Confirmed inventory stays blocked. The same mode runs expiry at startup and every 30 seconds, processing up to 50 pending holds per check. Due holds are assumed unpaid, become `expired`, release their units, and record `booking.demo_expired.v1`. Backlogs or database failures can delay release beyond the 15-minute deadline. Restart resumes from saved state.
 
-Use a dedicated local demo database. The mode is disabled by default; saved records remain when it is disabled. The confirmation endpoint is unavailable through Gateway. Provider verification, RabbitMQ publication, invoices, email, and real-payment release policies are pending.
+Use a dedicated local demo database. The mode is disabled by default; saved records remain when it is disabled. The confirmation endpoint is unavailable through Gateway. This mode only simulates Booking state; use the verified payment integration above for Midtrans, RabbitMQ, invoice/email and provider-backed release.
 
 ## Staff reports
 
-ADMIN/OWNER can read `/api/v1/staff/overview` and `/api/v1/staff/reports` through Gateway. Reports filter booking creation dates in WITA; default seven dates, maximum 366. Confirmed value/conversion exclude demo confirmations without canonical Payment references. Reads use saved Booking data and never call Midtrans. See [definitions and Bruno requests](../../../docs/admin-reports-bruno.md).
+ADMIN/OWNER can read `/api/v1/staff/overview` and `/api/v1/staff/reports` through Gateway. Reports filter booking creation dates in WITA; default seven dates, maximum 366. Confirmed value/conversion exclude demo confirmations without canonical Payment references. Reads use saved Booking data and never call Midtrans.
 
 ## Checks
 

@@ -7,7 +7,7 @@ Authentication and staff account management for SROOM, built with Go, Fiber v3, 
 Requirements: the Go version specified in [go.mod](go.mod) and PostgreSQL. Run all commands from this service directory.
 
 1. Create `.env` from [env.example](env.example) and set `DATABASE_URL`.
-2. Apply the `*.up.sql` files in [migrations](migrations/) in numerical order. Skip migrations already applied; the application does not run them automatically.
+2. Export the same service `DATABASE_URL` in your shell, then run `migrate -path migrations -database "$DATABASE_URL" up`. The API does not run migrations automatically. For databases previously migrated manually, check the existing history first.
 3. Start the API:
 
 ```sh
@@ -73,4 +73,4 @@ go test -race -count=1 ./...
 go build ./...
 ```
 
-Tests use fake repositories and GORM DryRun; real PostgreSQL integration tests are not included yet.
+Unit tests use fake repositories and GORM DryRun. Set `IDENTITY_TEST_DATABASE_URL` to a dedicated migrated test database with no OWNER to run the real API/seed PostgreSQL integration test. It creates its own accounts and removes only those accounts; never use the development database.

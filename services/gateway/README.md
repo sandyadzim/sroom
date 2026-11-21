@@ -41,7 +41,7 @@ Set `X-Request-ID` to `bruno-check-1` to match the response with a service error
 
 Run `go test -race ./...` from `services/gateway`. See the [OpenAPI contract](../../packages/contracts/openapi/gateway.v1.yaml).
 
-`GET /api/v1/staff/overview` combines Booking statistics and current Catalog fleet counts. `GET /api/v1/staff/reports` forwards optional `from`/`to` WITA creation dates to Booking. Both use the staff cookie; owning services verify ADMIN/OWNER. No new configuration is needed. See [definitions and Bruno requests](../../../docs/admin-reports-bruno.md).
+`GET /api/v1/staff/overview` combines Booking statistics and current Catalog fleet counts. `GET /api/v1/staff/reports` forwards optional `from`/`to` WITA creation dates to Booking. Both use the staff cookie; owning services verify ADMIN/OWNER. No new configuration is needed.
 
 ## Customer browser authentication
 
@@ -55,12 +55,12 @@ Checkout sends `POST /api/v1/customer/checkout/quotes` with the same customer co
 
 `POST /api/v1/customer/bookings/{id}/payments/va` forwards the same customer session, Origin checks, and idempotency key to [Payment](../payment/README.md), with a 15-second upstream deadline. Send JSON `{}`; Payment determines BNI, amount, and deadline server-side. Direct Payment and private service routes are not exposed.
 
-`GET /api/v1/customer/bookings/{id}/payment` uses the customer cookie. Staff use `GET /api/v1/staff/payments` and `GET /api/v1/staff/payments/{id}`. Gateway forwards these to Payment; Payment verifies roles and ownership. GET requires no Origin header, forwards list filters, and reads stored state without a Midtrans call. See [Bruno examples](../../../docs/payment-read-bruno.md).
+`GET /api/v1/customer/bookings/{id}/payment` uses the customer cookie. Staff use `GET /api/v1/staff/payments` and `GET /api/v1/staff/payments/{id}`. Gateway forwards these to Payment; Payment verifies roles and ownership. GET requires no Origin header, forwards list filters, and reads stored state without a Midtrans call.
 
-`POST /api/v1/customer/bookings/{id}/payment/refresh` requires the customer cookie and an allowed Origin. Send `{}` without an idempotency key. Gateway forwards it to Payment with the existing 15-second deadline; Payment verifies ownership and looks up the saved provider order. See [Bruno refresh examples](../../../docs/payment-refresh-bruno.md).
+`POST /api/v1/customer/bookings/{id}/payment/refresh` requires the customer cookie and an allowed Origin. Send `{}` without an idempotency key. Gateway forwards it to Payment with the existing 15-second deadline; Payment verifies ownership and looks up the saved provider order.
 
 `POST /webhooks/midtrans` forwards provider notifications unchanged to Payment, with a 16 KiB body limit and a 10-second upstream deadline. It requires no browser cookie or Origin. Payment verifies the signature and retrieves the provider status before recording any outcome.
 
 For booking history, customers use `GET /api/v1/customer/bookings` and `GET /api/v1/customer/bookings/{id}`. Staff use the same paths under `/api/v1/staff` with the staff session cookie. Booking checks the session role and customer ownership.
 
-Invoice reads use `GET /api/v1/customer/bookings/{id}/invoice` and `GET /api/v1/staff/bookings/{id}/invoice` with their respective cookies. Gateway forwards to Payment, which enforces role/ownership. Invoice JSON is immutable after issuance; GET does not create it. Booking invoice-context stays private. See [invoice setup and Bruno](../../../docs/payment-invoice-bruno.md).
+Invoice reads use `GET /api/v1/customer/bookings/{id}/invoice` and `GET /api/v1/staff/bookings/{id}/invoice` with their respective cookies. Gateway forwards to Payment, which enforces role/ownership. Invoice JSON is immutable after issuance; GET does not create it. Booking invoice-context stays private.

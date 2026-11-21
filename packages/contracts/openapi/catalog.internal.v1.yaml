@@ -1,0 +1,100 @@
+openapi: 3.0.3
+info:
+  title: SROOM Catalog Internal API
+  version: 1.2.0
+  description: Private Catalog endpoints for the Booking service.
+servers:
+  - url: http://localhost:8082
+    description: Local Catalog service
+paths:
+  /internal/v1/variants/{id}/booking-snapshot:
+    get:
+      operationId: getBookingSnapshot
+      summary: Get current variant and eligible physical unit IDs
+      description: Catalog eligibility is based on current variant and unit status. Booking checks schedule availability separately. This endpoint is registered when the Booking service token is configured.
+      security:
+        - bookingToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Request-ID
+          in: header
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9_-]{1,64}$'
+      responses:
+        '200':
+          description: Variant and candidate unit snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BookingSnapshot'
+        '400':
+          $ref: '#/components/responses/SnapshotError'
+        '401':
+          $ref: '#/components/responses/SnapshotError'
+        '404':
+          $ref: '#/components/responses/SnapshotError'
+        '413':
+          $ref: '#/components/responses/SnapshotError'
+        '500':
+          $ref: '#/components/responses/SnapshotError'
+components:
+  securitySchemes:
+    bookingToken:
+      type: http
+      scheme: bearer
+      description: Token provisioned specifically for Booking to call Catalog.
+  responses:
+    SnapshotError:
+      description: Structured Catalog error. A missing variant uses CAR_NOT_FOUND. A disabled route uses NOT_FOUND.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error, request_id]
+            properties:
+              error:
+                type: object
+                required: [code, message, details]
+                properties:
+                  code:
+                    type: string
+                  message:
+                    type: string
+                  details:
+                    type: object
+              request_id:
+                type: string
+  schemas:
+    BookingSnapshot:
+      type: object
+      required: [variant_id, vehicle_label, daily_rate_idr, status, eligible_unit_ids]
+      properties:
+        variant_id:
+          type: string
+          format: uuid
+        vehicle_label:
+          type: string
+          description: Brand, model, and trim.
+        daily_rate_idr:
+          type: integer
+          format: int64
+          minimum: 1
+        status:
+          type: string
+          enum: [active, inactive]
+        eligible_unit_ids:
+          type: array
+          description: Active units of this variant at snapshot read time, ordered by ID. Empty when the variant is inactive or has no active units. Later deactivation does not cancel an in-flight hold that already received an active snapshot.
+          items:
+            type: string
+            format: uuid

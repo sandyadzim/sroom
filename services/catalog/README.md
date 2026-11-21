@@ -57,11 +57,11 @@ Local base URL is `http://localhost:8082/api/v1/catalog`. Admin routes require a
 
 See [OpenAPI](../../packages/contracts/openapi/catalog.v1.yaml) for the contract and [DEVELOPMENT.md](DEVELOPMENT.md) for Bruno examples.
 
-Public brand reads use a 60-second Redis cache when configured. Successful Brand/Car writes invalidate it; Redis failure falls back to PostgreSQL. See [Redis setup and Bruno](../../../docs/catalog-redis-setup.md) for VPS/tunnel URLs, keys, TTL, and safe inspection commands.
+Public brand reads use a 60-second Redis cache when configured. Successful Brand/Car writes invalidate it; Redis failure falls back to PostgreSQL. For a VPS tunnel, use its local forwarded address in `REDIS_URL`.
 
 Booking calls the [private snapshot API](../../packages/contracts/openapi/catalog.internal.v1.yaml) directly. Use a private network and HTTPS when the connection goes beyond localhost.
 
-`GET /admin/fleet-summary` returns current car/unit totals with active/inactive counts for ADMIN/OWNER. Gateway uses it in staff Overview; it is not historical availability. See [Overview and Reports](../../../docs/admin-reports-bruno.md).
+`GET /admin/fleet-summary` returns current car/unit totals with active/inactive counts for ADMIN/OWNER. Gateway uses it in staff Overview; it is not historical availability.
 
 ## Checks
 

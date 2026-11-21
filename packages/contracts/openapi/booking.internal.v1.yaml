@@ -1,0 +1,234 @@
+openapi: 3.0.3
+info:
+  title: SROOM Booking Internal API
+  version: 1.2.0
+  description: >-
+    Private Booking snapshot for Payment and an opt-in demo confirmation endpoint. Demo mode also
+    expires overdue pending holds at startup and every 30 seconds, processing up to 50 per check.
+    Requires BOOKING_DEMO_PAYMENTS=true and PAYMENT_BOOKING_TOKEN. Confirmed bookings stay blocking.
+    Demo payment and expiry do not establish provider payment facts or real release safety.
+servers:
+  - url: http://localhost:8083
+    description: Local Booking service
+paths:
+  /internal/v1/bookings/{id}/invoice-context:
+    get:
+      operationId: getBookingInvoiceContext
+      summary: Read the canonical verified-confirmed rental snapshot
+      description: >-
+        Registered with PAYMENT_BOOKING_TOKEN; not exposed by Gateway. UUID without query.
+        Only confirmed bookings with saved payment/order references and a booking.confirmed.v1
+        outbox record qualify; demo confirmations do not. Two-second database deadline.
+        Snapshot contains original rental prices, WITA schedule, confirmation event ID/time;
+        no current Catalog query, customer email or provider payload.
+      security:
+        - paymentToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Canonical invoice context.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/InvoiceContext' }
+        '400':
+          description: INVALID_REQUEST.
+          content:
+            application/json:
+              schema: { $ref: './booking.v1.yaml#/components/schemas/Error' }
+        '401':
+          description: UNAUTHENTICATED.
+          content:
+            application/json:
+              schema: { $ref: './booking.v1.yaml#/components/schemas/Error' }
+        '404':
+          description: BOOKING_NOT_FOUND.
+          content:
+            application/json:
+              schema: { $ref: './booking.v1.yaml#/components/schemas/Error' }
+        '409':
+          description: INVOICE_NOT_AVAILABLE for pending, review, expired or demo confirmation.
+          content:
+            application/json:
+              schema: { $ref: './booking.v1.yaml#/components/schemas/Error' }
+        '503':
+          description: DATABASE_UNAVAILABLE or dependency failure.
+          content:
+            application/json:
+              schema: { $ref: './booking.v1.yaml#/components/schemas/Error' }
+  /internal/v1/bookings/{id}/payment-context:
+    get:
+      operationId: getBookingPaymentContext
+      summary: Read the saved booking amount and deadline
+      description: Registered when PAYMENT_BOOKING_TOKEN is configured. Returns the stored status and deadline even after the deadline has passed. Payment evaluates eligibility when initiating payment.
+      security:
+        - paymentToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: X-Request-ID
+          in: header
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9_-]{1,64}$'
+      responses:
+        '200':
+          description: Snapshot from the Booking database.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PaymentContext'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /internal/v1/bookings/{id}/demo-confirmation:
+    post:
+      operationId: confirmDemoBooking
+      summary: Simulate payment and confirm an eligible demo hold
+      description: >-
+        Registered only when BOOKING_DEMO_PAYMENTS=true and PAYMENT_BOOKING_TOKEN is configured.
+        Calls Booking directly, not Gateway. Requires a pending hold strictly before its deadline
+        and an allocation still blocking the agreed interval. Amount must match the saved total.
+        A successful retry returns the original confirmation, even after the deadline.
+        Writes booking.demo_confirmed.v1 to the outbox; does not publish real payment or confirmation events,
+        issue invoices, send email, or release inventory.
+      security:
+        - paymentToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: X-Request-ID
+          in: header
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9_-]{1,64}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [amount_idr, currency]
+              properties:
+                amount_idr: { type: integer, format: int64, minimum: 1 }
+                currency: { type: string, enum: [IDR] }
+            example: { amount_idr: 800000, currency: IDR }
+      responses:
+        '200':
+          description: Demo confirmation or the original result on retry. Allocation remains blocking.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/DemoConfirmation' }
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: HOLD_EXPIRED at or beyond the deadline; BOOKING_NOT_CONFIRMABLE for an ineligible status or allocation. No state changes.
+          content:
+            application/json:
+              schema: { $ref: './booking.v1.yaml#/components/schemas/Error' }
+        '413':
+          description: PAYLOAD_TOO_LARGE for a body exceeding 16 KiB.
+          content:
+            application/json:
+              schema: { $ref: './booking.v1.yaml#/components/schemas/Error' }
+        '422':
+          description: PAYMENT_AMOUNT_MISMATCH when the positive amount differs from the saved total.
+          content:
+            application/json:
+              schema: { $ref: './booking.v1.yaml#/components/schemas/Error' }
+        '503':
+          $ref: '#/components/responses/Unavailable'
+components:
+  securitySchemes:
+    paymentToken:
+      type: http
+      scheme: bearer
+      description: Dedicated PAYMENT_BOOKING_TOKEN provisioned for Payment to call Booking over a private network. Use HTTPS beyond localhost.
+  responses:
+    InvalidRequest:
+      description: INVALID_REQUEST for an invalid booking UUID or body. Demo confirmation requires one application/json object, a positive integer amount and IDR currency.
+      content:
+        application/json:
+          schema: { $ref: './booking.v1.yaml#/components/schemas/Error' }
+    Unauthenticated:
+      description: UNAUTHENTICATED for a missing or incorrect Bearer token.
+      content:
+        application/json:
+          schema: { $ref: './booking.v1.yaml#/components/schemas/Error' }
+    NotFound:
+      description: BOOKING_NOT_FOUND for a missing booking. NOT_FOUND when the route is disabled.
+      content:
+        application/json:
+          schema: { $ref: './booking.v1.yaml#/components/schemas/Error' }
+    Unavailable:
+      description: DEPENDENCY_UNAVAILABLE when PostgreSQL cannot complete the operation. Failed confirmation transactions are rolled back.
+      content:
+        application/json:
+          schema: { $ref: './booking.v1.yaml#/components/schemas/Error' }
+  schemas:
+    InvoiceContext:
+      type: object
+      required: [booking_id, customer_id, variant_id, payment_id, confirmation_event_id, vehicle_label, provider_order_id, status, confirmed_at, pickup_at, return_at, rental_days, daily_rate_idr, total_idr, currency]
+      properties:
+        booking_id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid }
+        variant_id: { type: string, format: uuid }
+        payment_id: { type: string, format: uuid }
+        confirmation_event_id: { type: string, format: uuid }
+        vehicle_label: { type: string }
+        provider_order_id: { type: string }
+        status: { type: string, enum: [confirmed] }
+        confirmed_at: { type: string, format: date-time }
+        pickup_at: { type: string, format: date-time }
+        return_at: { type: string, format: date-time }
+        rental_days: { type: integer, minimum: 1 }
+        daily_rate_idr: { type: integer, format: int64, minimum: 1 }
+        total_idr: { type: integer, format: int64, minimum: 1 }
+        currency: { type: string, enum: [IDR] }
+    DemoConfirmation:
+      type: object
+      required: [booking_id, status, confirmed_at, simulated]
+      properties:
+        booking_id: { type: string, format: uuid }
+        status: { type: string, enum: [confirmed] }
+        confirmed_at: { type: string, format: date-time, description: Original confirmation time in UTC. }
+        simulated: { type: boolean, enum: [true] }
+    PaymentContext:
+      type: object
+      required: [booking_id, customer_id, total_idr, currency, status, hold_expires_at]
+      properties:
+        booking_id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid }
+        total_idr: { type: integer, format: int64, minimum: 1 }
+        currency: { type: string, enum: [IDR] }
+        status: { $ref: './booking.v1.yaml#/components/schemas/BookingStatus' }
+        hold_expires_at: { type: string, format: date-time, description: Original deadline in UTC. }

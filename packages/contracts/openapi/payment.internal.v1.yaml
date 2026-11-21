@@ -1,0 +1,161 @@
+openapi: 3.0.3
+info:
+  title: SROOM Payment internal API
+  version: 0.3.0
+  description: >-
+    Canonical payment facts and durable expiry release authorization for Booking. Not exposed by
+    Gateway. Uses the existing PAYMENT_BOOKING_TOKEN pair credential; no user session.
+servers:
+  - url: http://localhost:8084
+security:
+  - serviceToken: []
+paths:
+  /internal/v1/bookings/{id}/payment-confirmation:
+    get:
+      operationId: getCanonicalPaymentConfirmation
+      summary: Read the canonical payment attempt for a booking
+      description: >-
+        Route registered only when the pair token is configured. UUID path, no query.
+        Maximum two-second request/database deadline. No provider lookup or writes.
+        Returns attempts across states; Booking only confirms from verified paid
+        facts. No VA, email, provider payload, or signature. Responses are no-store.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Canonical stored attempt; paid and Booking confirmed remain separate states.
+          headers:
+            X-Request-ID:
+              schema: { type: string }
+              description: Validated or generated correlation ID.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/PaymentConfirmation' }
+        '400':
+          description: INVALID_REQUEST for UUID or query validation.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+        '401':
+          description: UNAUTHENTICATED for missing or incorrect service token.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+        '404':
+          description: PAYMENT_NOT_FOUND for a booking without an attempt.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+        '503':
+          description: DEPENDENCY_UNAVAILABLE for database failure.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+  /internal/v1/bookings/{id}/expiry-assessment:
+    post:
+      operationId: assessBookingExpiry
+      summary: Assess an overdue hold for safe inventory release
+      description: >-
+        Service token required; no body or query. Seven-second handler budget.
+        Reads Booking and provider outside database transactions. Only pending_payment
+        at/after its original deadline is eligible. no_attempt_closed permanently closes
+        initiation without an attempt. provider_expired contains durable permission after
+        an authenticated matching BNI lookup returned expire; local time, 404, pending,
+        failed, review or already-paid facts do not grant permission. Retries return the
+        same committed authorization. Paid learned after authorization is retained for
+        review and never reclaims inventory. Provider lookup is bounded to three seconds.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Durable release proof, or an existing attempt without release permission.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/ExpiryAssessment' }
+        '400':
+          description: INVALID_REQUEST for invalid UUID, query, or a nonempty body.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+        '401':
+          description: UNAUTHENTICATED for missing or incorrect pair token.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+        '404':
+          description: BOOKING_NOT_FOUND from the private Booking API.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+        '409':
+          description: BOOKING_NOT_EXPIRABLE before the deadline or outside pending_payment.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+        '413':
+          description: PAYLOAD_TOO_LARGE.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+        '503':
+          description: DEPENDENCY_UNAVAILABLE; never permission to release.
+          content:
+            application/json:
+              schema: { $ref: './payment.v1.yaml#/components/schemas/Error' }
+components:
+  securitySchemes:
+    serviceToken:
+      type: http
+      scheme: bearer
+      description: Existing PAYMENT_BOOKING_TOKEN shared only between Payment and Booking.
+  schemas:
+    PaymentConfirmation:
+      type: object
+      required: [payment_id, booking_id, customer_id, provider_order_id, amount_idr, currency, status, hold_expires_at, verified_at, provider_paid_at, review_required]
+      properties:
+        payment_id: { type: string, format: uuid }
+        booking_id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid }
+        provider_order_id: { type: string }
+        amount_idr: { type: integer, format: int64, minimum: 1 }
+        currency: { type: string, enum: [IDR] }
+        status: { type: string, enum: [initiating, pending, paid, expired, failed] }
+        hold_expires_at: { type: string, format: date-time }
+        verified_at: { type: string, format: date-time, nullable: true }
+        provider_paid_at: { type: string, format: date-time, nullable: true }
+        review_required: { type: boolean }
+    ExpiryAssessment:
+      type: object
+      required: [booking_id, hold_expires_at, result, closed_at, payment_id]
+      properties:
+        booking_id: { type: string, format: uuid }
+        hold_expires_at: { type: string, format: date-time }
+        result: { type: string, enum: [no_attempt_closed, attempt_exists, provider_expired] }
+        closed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Non-null only for permanent no-attempt closure; at/after the original deadline.
+        payment_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Non-null for attempt_exists or provider_expired; closed_at is null in those cases.
+        release_authorized_at:
+          type: string
+          format: date-time
+          description: Present only for provider_expired. Durable permission at/after the original hold deadline; stable on retries.

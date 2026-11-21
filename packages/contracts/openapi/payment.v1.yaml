@@ -1,0 +1,718 @@
+openapi: 3.0.3
+info:
+  title: SROOM Payment API
+  version: 0.9.0
+  description: >-
+    Create or retrieve one BNI VA attempt for an owned pending Booking. Prices and
+    the original hold deadline come from Booking. Sandbox-only; direct sandbox
+    verification is pending. Provider callbacks verify settlement through an authenticated
+    status lookup. Booking confirms eligible paid events asynchronously. No-attempt expiry uses
+    a private durable initiation-closure contract; matching BNI expire lookups can durably authorize provider-attempt release.
+    Invoice issuance consumes canonical confirmed events. The first VA attempt snapshots
+    verified Identity name/email; legacy attempts are not backfilled automatically.
+servers:
+  - url: http://localhost:8084
+    description: Local Payment service
+paths:
+  /api/v1/payment/bookings/{id}/invoice:
+    get:
+      operationId: readOwnInvoice
+      summary: CUSTOMER reads an issued invoice for their own booking
+      description: >-
+        GET only reads issued snapshots; it never issues an invoice. UUID path,
+        no query parameters. An existing invoice requires no Booking/Catalog call.
+        Responses are no-store and include verified profile snapshots, never VA numbers.
+        Missing or other-customer bookings use the same BOOKING_NOT_FOUND response.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Immutable JSON non-tax invoice. No PDF file or download URL.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Invoice' }
+        '400':
+          description: INVALID_REQUEST for UUID or query.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: UNAUTHENTICATED.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: FORBIDDEN for an incompatible role.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: BOOKING_NOT_FOUND.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: INVOICE_NOT_AVAILABLE for an accessible booking without an issued invoice.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: DEPENDENCY_UNAVAILABLE; missing invoice requires checking Booking access.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/payment/admin/bookings/{id}/invoice:
+    get:
+      operationId: readStaffInvoice
+      summary: ADMIN or OWNER reads an issued booking invoice
+      description: >-
+        GET only reads issued snapshots; it never issues an invoice. UUID path,
+        no query parameters. An existing invoice requires no Booking/Catalog call.
+        Responses are no-store and include verified profile snapshots, never VA numbers.
+        Missing or other-customer bookings use the same BOOKING_NOT_FOUND response.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Immutable JSON non-tax invoice. No PDF file or download URL.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Invoice' }
+        '400':
+          description: INVALID_REQUEST for UUID or query.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: UNAUTHENTICATED.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: FORBIDDEN for an incompatible role.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: BOOKING_NOT_FOUND.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: INVOICE_NOT_AVAILABLE for an accessible booking without an issued invoice.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: DEPENDENCY_UNAVAILABLE; missing invoice requires checking Booking access.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/payment/bookings/{id}/payment/refresh:
+    post:
+      operationId: refreshCustomerPayment
+      summary: Check the existing payment order with Midtrans
+      description: >-
+        CUSTOMER-only; verifies ownership through Booking before any provider call.
+        Send {} without query parameters. No Idempotency-Key is needed. An owned
+        booking without an attempt returns not_started; an already-paid attempt
+        returns stored facts. Neither case calls Midtrans or requires its key.
+        Otherwise, perform one authenticated sandbox status lookup using the saved
+        order ID (three-second timeout), then apply the webhook verification rules
+        and local paid/outbox transaction. No automatic retries or replacement VA.
+        Provider unavailability, including 404, is unknown rather than unpaid and
+        returns 503 after a safe observation is saved. Durable mismatch/unknown
+        status returns 200 with review_required. No Booking confirmation/release or
+        deadline extension. Response shape and VA visibility match customer GET;
+        missing VA instructions can be recovered when the provider returns valid matching BNI instructions and expiry within the original deadline. Missing fields remain null; no replacement charge is made.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/ReadID'
+      requestBody:
+        $ref: '#/components/requestBodies/CreateVA'
+      responses:
+        '200':
+          $ref: '#/paths/~1api~1v1~1payment~1bookings~1{id}~1payment/get/responses/200'
+        '400': { $ref: '#/components/responses/ReadInvalid' }
+        '401': { $ref: '#/components/responses/ReadUnauthenticated' }
+        '403': { $ref: '#/components/responses/ReadForbidden' }
+        '404': { $ref: '#/components/responses/ReadNotFound' }
+        '413':
+          description: PAYLOAD_TOO_LARGE. Maximum body size is 16 KiB.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: PAYMENT_NOT_CONFIGURED when lookup needs a missing key, or DEPENDENCY_UNAVAILABLE. Retry does not create a charge.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/payment/bookings/{id}/payment:
+    get:
+      operationId: readCustomerPayment
+      summary: Read payment state for an owned booking
+      description: >-
+        CUSTOMER-only. Verifies Booking ownership through its private API. Returns
+        not_started with a null payment_id when the owned booking has no attempt.
+        Existing amounts and deadlines come from the saved Payment snapshot. Only
+        pending, unexpired attempts without review expose a VA number, following
+        the create-VA rules. Payment status and booking_status are separate fields.
+        Reads never call Midtrans, create charges, or mark an attempt expired from
+        the clock. No query parameters. No Midtrans key is required for reads.
+        Identity, Booking, or database failures return 503; no fabricated fallback.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/ReadID'
+      responses:
+        '200':
+          description: Stored payment state, or not_started for an owned booking. Cache-Control no-store.
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/RequestID' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/CustomerPayment' }
+        '400': { $ref: '#/components/responses/ReadInvalid' }
+        '401': { $ref: '#/components/responses/ReadUnauthenticated' }
+        '403': { $ref: '#/components/responses/ReadForbidden' }
+        '404': { $ref: '#/components/responses/ReadNotFound' }
+        '503': { $ref: '#/components/responses/ReadUnavailable' }
+  /api/v1/payment/admin/payments:
+    get:
+      operationId: listStaffPayments
+      summary: List all payment attempts for ADMIN or OWNER
+      description: >-
+        Reads Payment only. Sorted by created_at DESC, id DESC, with the same filters
+        for rows and total. Search is a case-insensitive literal substring of payment
+        ID, booking ID, or provider order ID; percent and underscore are not wildcards.
+        Unknown/repeated query parameters or invalid values return 400. Empty optional
+        filters are ignored. No VA number, payload, hash, or signature is returned.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/PaymentStatus'
+        - $ref: '#/components/parameters/Reconciliation'
+      responses:
+        '200':
+          description: Filtered attempts and pagination. An empty list is []. Cache-Control no-store.
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/RequestID' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, page]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/StaffPayment' }
+                  page:
+                    type: object
+                    required: [number, limit, total]
+                    properties:
+                      number: { type: integer, minimum: 1 }
+                      limit: { type: integer, minimum: 1, maximum: 100 }
+                      total: { type: integer, format: int64, minimum: 0 }
+        '400': { $ref: '#/components/responses/ReadInvalid' }
+        '401': { $ref: '#/components/responses/ReadUnauthenticated' }
+        '403': { $ref: '#/components/responses/ReadForbidden' }
+        '503': { $ref: '#/components/responses/ReadUnavailable' }
+  /api/v1/payment/admin/payments/{id}:
+    get:
+      operationId: readStaffPayment
+      summary: Read payment detail and observations for ADMIN or OWNER
+      description: >-
+        Includes current booking_status from Booking's private API and safe provider
+        observation history, oldest first by observed_at and id, preceded by attempt
+        creation. It does not invent intermediate status transitions. No query
+        parameters or VA number. A missing attempt is 404 PAYMENT_NOT_FOUND; a
+        missing/unavailable linked Booking is 503. No Midtrans call or state mutation.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/ReadID'
+      responses:
+        '200':
+          description: Stored payment detail with current Booking status. Cache-Control no-store.
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/RequestID' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/StaffPaymentDetail' }
+        '400': { $ref: '#/components/responses/ReadInvalid' }
+        '401': { $ref: '#/components/responses/ReadUnauthenticated' }
+        '403': { $ref: '#/components/responses/ReadForbidden' }
+        '404': { $ref: '#/components/responses/ReadNotFound' }
+        '503': { $ref: '#/components/responses/ReadUnavailable' }
+  /webhooks/midtrans:
+    post:
+      operationId: receiveMidtransNotification
+      summary: Verify and record a Midtrans sandbox BNI outcome
+      description: >-
+        Provider callback; no customer cookie, Origin, Bearer token, or Booking
+        service token is required. Verify SHA512(order_id + status_code + gross_amount
+        + server_key) using the original strings, then GET status with server credentials
+        against the fixed sandbox endpoint. Match order, transaction, amount, IDR,
+        and BNI bank transfer. The lookup is authoritative even for a stale notification.
+        Body limit 16 KiB; Payment deadline 8 seconds; provider lookup 3 seconds.
+        Unknown JSON fields are allowed. Exact receipts are deduplicated. Unknown signed
+        orders and durable review outcomes are acknowledged without creating a payment.
+        A verified settlement records paid and one local payment.paid.v1 outbox event;
+        it does not confirm Booking, release units, or publish to RabbitMQ.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MidtransNotification'
+      responses:
+        '200':
+          description: Committed processed, rejected, unmatched, or already-handled receipt.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ok] }
+        '400':
+          description: INVALID_REQUEST for malformed JSON or missing/invalid signed fields.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: INVALID_SIGNATURE. No receipt, provider call, or business mutation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '413':
+          description: PAYLOAD_TOO_LARGE. Maximum body size is 16 KiB.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: PAYMENT_NOT_CONFIGURED or DEPENDENCY_UNAVAILABLE. Retry is safe; no successful acknowledgement of temporary failure.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/payment/bookings/{id}/payments/va:
+    post:
+      operationId: createOrGetBNIVA
+      summary: Create or retrieve the customer's BNI virtual account
+      description: >-
+        Requires a CUSTOMER session verified through Identity. Send {} only, with
+        no query parameters. The provider is called only for a newly committed
+        attempt; retry keys never create replacement orders. A new provider call
+        needs at least 20 seconds before the original deadline, rounded down to
+        seconds. Uncertain/rejected responses remain initiating, with review_required
+        for mismatches. Recovery follows later reconciliation work. Replays are
+        rejected if Booking is no longer pending or its hold has expired.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: UUID scoped to the customer; reuse with a different booking is a conflict.
+          schema: { type: string, format: uuid }
+      requestBody:
+        $ref: '#/components/requestBodies/CreateVA'
+      responses:
+        '200':
+          description: Existing attempt. No new provider charge.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VAEnvelope' }
+        '201':
+          description: New pending VA instructions were saved.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VAEnvelope' }
+        '202':
+          description: Initiation is uncertain or requires review. No replacement order is created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VAEnvelope' }
+        '400':
+          description: INVALID_REQUEST for invalid UUIDs, media type, body, or query parameters.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: UNAUTHENTICATED for a missing or invalid customer session.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: FORBIDDEN for a non-CUSTOMER role.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: BOOKING_NOT_FOUND for missing bookings or another customer's booking.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: IDEMPOTENCY_CONFLICT, BOOKING_NOT_PAYABLE, HOLD_EXPIRED, or PAYMENT_WINDOW_TOO_SHORT.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '413':
+          description: PAYLOAD_TOO_LARGE. Maximum body size is 16 KiB.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: PAYMENT_NOT_CONFIGURED or DEPENDENCY_UNAVAILABLE. After a possible charge, retry the same booking/key.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /health/live:
+    get:
+      operationId: paymentLiveness
+      summary: Check whether the HTTP process responds
+      responses:
+        '200':
+          $ref: '#/components/responses/Healthy'
+  /health/ready:
+    get:
+      operationId: paymentReadiness
+      summary: Check PostgreSQL with a two-second timeout
+      description: A temporary database outage returns 503 and can recover without restarting Payment.
+      responses:
+        '200':
+          $ref: '#/components/responses/Healthy'
+        '503':
+          description: PostgreSQL is unavailable. Driver errors and the DSN are never returned.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: DATABASE_UNAVAILABLE
+                  message: database is not ready
+                  details: {}
+                request_id: payment-health-1
+components:
+  parameters:
+    ReadID:
+      name: id
+      in: path
+      required: true
+      description: Booking UUID for customer reads; payment UUID for staff detail.
+      schema: { type: string, format: uuid }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Search:
+      name: search
+      in: query
+      description: Trimmed literal substring, case-insensitive; maximum 200 characters.
+      schema: { type: string, maxLength: 200 }
+    PaymentStatus:
+      name: status
+      in: query
+      schema: { type: string, enum: [initiating, pending, paid, expired, failed] }
+    Reconciliation:
+      name: reconciliation
+      in: query
+      description: required means review_reason is present; clear means it is null.
+      schema: { type: string, enum: [required, clear] }
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Opaque Identity session, independently verified by Payment.
+  requestBodies:
+    CreateVA:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            maxProperties: 0
+          example: {}
+  headers:
+    RequestID:
+      description: Validated caller request ID or a generated ID.
+      schema:
+        type: string
+  responses:
+    ReadInvalid:
+      description: INVALID_REQUEST for invalid UUIDs, pagination, or filters.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ReadUnauthenticated:
+      description: UNAUTHENTICATED for a missing, invalid, or expired session.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ReadForbidden:
+      description: FORBIDDEN for an incorrect role.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ReadNotFound:
+      description: BOOKING_NOT_FOUND for missing or other-customer bookings; PAYMENT_NOT_FOUND for missing staff attempts.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ReadUnavailable:
+      description: DEPENDENCY_UNAVAILABLE. No provider call or state mutation; retry reads safely.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Healthy:
+      description: Ready to respond. Responses include Cache-Control no-store.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestID'
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [status]
+            properties:
+              status:
+                type: string
+                enum: [ok]
+          example:
+            status: ok
+  schemas:
+    CustomerPayment:
+      type: object
+      required: [payment_id, booking_id, booking_status, status, amount_idr, currency, bank, va_number, hold_expires_at, provider_expires_at, verified_at, provider_paid_at, review_required]
+      properties:
+        payment_id: { type: string, format: uuid, nullable: true }
+        booking_id: { type: string, format: uuid }
+        booking_status: { type: string, description: Current Booking state; paid does not imply confirmed. }
+        status: { type: string, enum: [not_started, initiating, pending, paid, expired, failed] }
+        amount_idr: { type: integer, format: int64, minimum: 1 }
+        currency: { type: string, enum: [IDR] }
+        bank: { type: string, enum: [bni, null], nullable: true }
+        va_number:
+          type: string
+          nullable: true
+          description: Only a pending, unexpired, review-free attempt exposes instructions. Null for not_started.
+        hold_expires_at: { type: string, format: date-time }
+        provider_expires_at: { type: string, format: date-time, nullable: true }
+        verified_at: { type: string, format: date-time, nullable: true }
+        provider_paid_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Currently null; cutoff policy and provider paid-time semantics remain OPEN.
+        review_required: { type: boolean }
+    StaffPayment:
+      type: object
+      required: [payment_id, booking_id, customer_id, provider, provider_order_id, provider_transaction_id, status, bank, amount_idr, currency, review_required, review_reason, hold_expires_at, expiry_review_required, created_at, updated_at]
+      properties:
+        payment_id: { type: string, format: uuid }
+        booking_id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid }
+        provider: { type: string, enum: [midtrans] }
+        provider_order_id: { type: string }
+        provider_transaction_id: { type: string, nullable: true }
+        status: { type: string, enum: [initiating, pending, paid, expired, failed] }
+        bank: { type: string, enum: [bni] }
+        amount_idr: { type: integer, format: int64, minimum: 1 }
+        currency: { type: string, enum: [IDR] }
+        review_required: { type: boolean }
+        review_reason: { type: string, nullable: true }
+        hold_expires_at: { type: string, format: date-time }
+        expiry_review_required:
+          type: boolean
+          description: >-
+            Computed at read time. True at/after the hold deadline unless paid was
+            verified before that deadline or expiry release was already authorized. Operational review only; does not change
+            canonical review_required or authorize release. No provider lookup.
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    StaffPaymentDetail:
+      allOf:
+        - $ref: '#/components/schemas/StaffPayment'
+        - type: object
+          required: [booking_status, provider_status, hold_expires_at, provider_expires_at, verified_at, provider_paid_at, timeline, email_deliveries]
+          properties:
+            booking_status: { type: string }
+            provider_status: { type: string, nullable: true }
+            hold_expires_at: { type: string, format: date-time }
+            provider_expires_at: { type: string, format: date-time, nullable: true }
+            verified_at: { type: string, format: date-time, nullable: true }
+            provider_paid_at: { type: string, format: date-time, nullable: true }
+            email_deliveries:
+              type: array
+              description: >-
+                Staff-only delivery status, without recipient/body. sent means SMTP
+                Mailpit accepted DATA, not delivery to an internet inbox. Empty if
+                no invoice exists. Reading does not send or retry email.
+              items: { $ref: '#/components/schemas/EmailDeliveryStatus' }
+            timeline:
+              type: array
+              items: { $ref: '#/components/schemas/PaymentTimelineEntry' }
+    PaymentTimelineEntry:
+      type: object
+      required: [id, source, occurred_at, provider_status, verification_result, error_code]
+      properties:
+        id: { type: string, format: uuid }
+        source: { type: string, enum: [created, charge, webhook, status_lookup] }
+        occurred_at: { type: string, format: date-time }
+        provider_status: { type: string, nullable: true }
+        verification_result: { type: string, enum: [verified, rejected, unavailable, null], nullable: true }
+        error_code: { type: string, nullable: true }
+    MidtransNotification:
+      type: object
+      additionalProperties: true
+      required: [order_id, status_code, gross_amount, signature_key]
+      properties:
+        order_id: { type: string, minLength: 1, maxLength: 50 }
+        status_code: { type: string, pattern: '^[0-9]{3}$' }
+        gross_amount:
+          type: string
+          minLength: 1
+          description: Preserve the exact provider string for signature verification; compare as integer IDR afterward.
+        signature_key:
+          type: string
+          minLength: 1
+          description: Hex SHA512; never log or persist this value.
+        transaction_id: { type: string }
+        merchant_id: { type: string }
+        payment_type: { type: string }
+        currency: { type: string }
+        transaction_status: { type: string }
+    VAEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/VirtualAccount'
+    VirtualAccount:
+      type: object
+      required: [payment_id, booking_id, status, amount_idr, currency, bank, va_number, hold_expires_at, provider_expires_at, review_required]
+      properties:
+        payment_id: { type: string, format: uuid }
+        booking_id: { type: string, format: uuid }
+        status: { type: string, enum: [initiating, pending, paid, expired, failed] }
+        amount_idr: { type: integer, format: int64, minimum: 1 }
+        currency: { type: string, enum: [IDR] }
+        bank: { type: string, enum: [bni] }
+        va_number:
+          type: string
+          nullable: true
+          description: Only exposed for pending, unexpired attempts without review. Never log this field.
+        hold_expires_at: { type: string, format: date-time }
+        provider_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Observed provider expiry. An unsafe mismatch is stored for review without exposing VA instructions.
+        review_required: { type: boolean }
+    Error:
+      type: object
+      required: [error, request_id]
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+        request_id:
+          type: string
+    Invoice:
+      type: object
+      description: Issued once from verified paid and canonical confirmed Booking; schedule uses WITA offsets. Issued/confirmed timestamps are UTC.
+      required: [id, booking_id, payment_id, customer_id, variant_id, invoice_number, provider_order_id, vehicle_label, pickup_at, return_at, confirmed_at, issued_at, rental_days, daily_rate_idr, total_idr, currency, bank, payment_method, status, document_type, billed_to]
+      properties:
+        id: { type: string, format: uuid }
+        booking_id: { type: string, format: uuid }
+        payment_id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid }
+        variant_id: { type: string, format: uuid }
+        invoice_number: { type: string, pattern: "^INV-[0-9A-F-]{36}$" }
+        provider_order_id: { type: string }
+        vehicle_label: { type: string }
+        pickup_at: { type: string, format: date-time }
+        return_at: { type: string, format: date-time }
+        confirmed_at: { type: string, format: date-time }
+        issued_at: { type: string, format: date-time }
+        rental_days: { type: integer, minimum: 1 }
+        daily_rate_idr: { type: integer, format: int64, minimum: 1 }
+        total_idr: { type: integer, format: int64, minimum: 1 }
+        currency: { type: string, enum: [IDR] }
+        bank: { type: string, enum: [bni] }
+        payment_method: { type: string, enum: [virtual_account] }
+        status: { type: string, enum: [paid] }
+        document_type: { type: string, enum: [non_tax_invoice] }
+        billed_to:
+          type: object
+          required: [full_name, email]
+          properties:
+            full_name:
+              type: string
+              description: May be empty; use email for display fallback. Snapshot from first create VA.
+            email: { type: string, format: email }
+    EmailDeliveryStatus:
+      type: object
+      required: [kind, status, attempt_count, next_attempt_at, sent_at, last_error_code]
+      properties:
+        kind: { type: string, enum: [booking_confirmation, invoice] }
+        status: { type: string, enum: [queued, sending, sent, failed] }
+        attempt_count: { type: integer, minimum: 0, maximum: 5 }
+        next_attempt_at: { type: string, format: date-time, nullable: true }
+        sent_at: { type: string, format: date-time, nullable: true }
+        last_error_code:
+          type: string
+          nullable: true
+          enum: [SMTP_UNAVAILABLE, INVALID_RECIPIENT, INVALID_MESSAGE, DELIVERY_INTERRUPTED, null]

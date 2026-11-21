@@ -1,0 +1,681 @@
+openapi: 3.0.3
+info:
+  title: SROOM Booking API
+  version: 1.7.1
+  description: >-
+    Calculate rental quotes, create 15-minute holds, and read bookings. When BOOKING_DEMO_PAYMENTS=true
+    and PAYMENT_BOOKING_TOKEN is configured, a demo worker runs at startup and every 30 seconds,
+    expiring up to 50 overdue pending holds per check and releasing their units under the demo
+    unpaid assumption. Backlogs or database failures can delay release. Confirmed bookings stay blocking.
+    With RABBITMQ_URL configured and demo mode off, a separate startup/30-second worker
+    scans up to 50 overdue holds with a rotating cursor. Permanent Payment closure without an attempt, or durable authorization after a verified
+    matching BNI expire lookup, permits atomic expiry/release. Pending, paid, review or uncertain
+    dependencies do not grant new release permission. Paid confirmation follows PAY-008; late paid after release authorization is retained for review without reacquiring inventory. No new public route is required for expiry.
+servers:
+  - url: http://localhost:8083
+    description: Local Booking service
+paths:
+  /health/live:
+    get:
+      operationId: bookingLiveness
+      summary: Check the Booking HTTP process
+      security: []
+      responses:
+        '200':
+          description: HTTP process is responding; does not check external dependencies.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ok] }
+  /health/ready:
+    get:
+      operationId: bookingReadiness
+      summary: Ping Booking PostgreSQL with a two-second deadline
+      security: []
+      responses:
+        '200':
+          description: PostgreSQL responds; does not verify Identity, Catalog, Payment or RabbitMQ.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ok] }
+        '503':
+          description: DATABASE_UNAVAILABLE; readiness recovers when PostgreSQL returns.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/booking/admin/overview:
+    get:
+      operationId: getBookingOverview
+      summary: Read staff booking overview
+      description: >-
+        ADMIN/OWNER only. Filter by booking creation date in WITA. Default seven dates including
+        today. Values use saved prices and confirmed bookings with both canonical Payment references;
+        demo confirmations contribute only to status counts. No provider status lookup is performed.
+        Overview accepts no query parameters. Reports accepts from and to together or neither;
+        duplicate/unknown/empty parameters and ranges above 366 inclusive dates are rejected.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Stored booking statistics, explicitly marked as simulated.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/BookingOverview' }
+        '400':
+          $ref: '#/components/responses/ReadBadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/StaffRequired'
+        '503':
+          $ref: '#/components/responses/BookingReadUnavailable'
+  /api/v1/booking/admin/reports:
+    get:
+      operationId: getBookingReports
+      summary: Read staff booking reports
+      description: >-
+        ADMIN/OWNER only. Filter by booking creation date in WITA. Default seven dates including
+        today. Values use saved prices and confirmed bookings with both canonical Payment references;
+        demo confirmations contribute only to status counts. No provider status lookup is performed.
+        Overview accepts no query parameters. Reports accepts from and to together or neither;
+        duplicate/unknown/empty parameters and ranges above 366 inclusive dates are rejected.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/ReportFrom'
+        - $ref: '#/components/parameters/ReportTo'
+      responses:
+        '200':
+          description: Stored booking statistics, explicitly marked as simulated.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/BookingReports' }
+        '400':
+          $ref: '#/components/responses/ReadBadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/StaffRequired'
+        '503':
+          $ref: '#/components/responses/BookingReadUnavailable'
+  /api/v1/booking/bookings:
+    get:
+      operationId: listOwnBookings
+      summary: List bookings for the signed-in customer
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BookingPage'
+        - $ref: '#/components/parameters/BookingLimit'
+        - $ref: '#/components/parameters/BookingStatus'
+      responses:
+        '200':
+          $ref: '#/components/responses/CustomerBookings'
+        '400':
+          $ref: '#/components/responses/ReadBadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CustomerRequired'
+        '503':
+          $ref: '#/components/responses/BookingReadUnavailable'
+    post:
+      operationId: createHold
+      summary: Reserve a unit for 15 minutes
+      description: Creates a pending_payment booking with a 15-minute deadline. Retrying a successful request with the same key and payload returns the saved booking, even after car or unit deactivation. Eligibility follows the Catalog snapshot read for this request; later deactivation does not cancel an in-flight hold.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        $ref: '#/components/requestBodies/HoldRequest'
+      responses:
+        '201':
+          $ref: '#/components/responses/Hold'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CustomerRequired'
+        '404':
+          $ref: '#/components/responses/VariantNotFound'
+        '409':
+          $ref: '#/components/responses/HoldConflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/InvalidHold'
+        '503':
+          $ref: '#/components/responses/HoldUnavailable'
+  /api/v1/booking/bookings/{id}:
+    parameters:
+      - $ref: '#/components/parameters/BookingID'
+    get:
+      operationId: getOwnBooking
+      summary: Read a booking belonging to the signed-in customer
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/CustomerBooking'
+        '400':
+          $ref: '#/components/responses/ReadBadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CustomerRequired'
+        '404':
+          $ref: '#/components/responses/BookingNotFound'
+        '503':
+          $ref: '#/components/responses/BookingReadUnavailable'
+  /api/v1/booking/admin/bookings:
+    get:
+      operationId: listStaffBookings
+      summary: List bookings as ADMIN or OWNER
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BookingPage'
+        - $ref: '#/components/parameters/BookingLimit'
+        - $ref: '#/components/parameters/BookingStatus'
+        - $ref: '#/components/parameters/BookingVariant'
+        - $ref: '#/components/parameters/BookingPickupDate'
+        - $ref: '#/components/parameters/BookingSearch'
+      responses:
+        '200':
+          $ref: '#/components/responses/StaffBookings'
+        '400':
+          $ref: '#/components/responses/ReadBadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/StaffRequired'
+        '503':
+          $ref: '#/components/responses/BookingReadUnavailable'
+  /api/v1/booking/admin/bookings/{id}:
+    parameters:
+      - $ref: '#/components/parameters/BookingID'
+    get:
+      operationId: getStaffBooking
+      summary: Inspect a booking and its status history as ADMIN or OWNER
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/StaffBookingDetail'
+        '400':
+          $ref: '#/components/responses/ReadBadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/StaffRequired'
+        '404':
+          $ref: '#/components/responses/BookingNotFound'
+        '503':
+          $ref: '#/components/responses/BookingReadUnavailable'
+  /api/v1/booking/checkout/quotes:
+    post:
+      operationId: createCheckoutQuote
+      summary: Calculate a quote for a customer
+      description: Booking verifies the customer session with Identity. A quote checks current availability without reserving a unit.
+      security:
+        - bearerAuth: []
+      requestBody:
+        $ref: '#/components/requestBodies/QuoteRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/Quote'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CustomerRequired'
+        '404':
+          $ref: '#/components/responses/VariantNotFound'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/InvalidQuote'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+components:
+  parameters:
+    ReportFrom:
+      name: from
+      in: query
+      description: Inclusive WITA creation date, YYYY-MM-DD. Supply with to; maximum 366 dates.
+      schema: { type: string, format: date }
+    ReportTo:
+      name: to
+      in: query
+      description: Inclusive WITA creation date, on or after from. Default range is the last seven dates including today.
+      schema: { type: string, format: date }
+    BookingID:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    BookingPage:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    BookingLimit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    BookingStatus:
+      name: status
+      in: query
+      schema:
+        $ref: '#/components/schemas/BookingStatus'
+    BookingVariant:
+      name: variant_id
+      in: query
+      schema: { type: string, format: uuid }
+    BookingPickupDate:
+      name: pickup_date
+      in: query
+      description: Exact pickup calendar date in WITA.
+      schema: { type: string, format: date }
+    BookingSearch:
+      name: search
+      in: query
+      description: Case-insensitive substring of booking ID, customer ID, or saved vehicle label.
+      schema: { type: string }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+      description: Generate a UUID for the booking request and reuse it when retrying that request.
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Opaque customer session token issued by Identity.
+  requestBodies:
+    HoldRequest:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/HoldRequest'
+    QuoteRequest:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/QuoteRequest'
+  responses:
+    CustomerBookings:
+      description: Own bookings ordered by creation time and ID, newest first.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data, page]
+            properties:
+              data:
+                type: array
+                items: { $ref: '#/components/schemas/Booking' }
+              page: { $ref: '#/components/schemas/BookingPage' }
+    CustomerBooking:
+      description: Booking snapshot. Status reflects the stored value. In demo payment mode the worker updates overdue pending holds to expired; reads do not themselves trigger expiry.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data: { $ref: '#/components/schemas/Booking' }
+    StaffBookings:
+      description: Matching bookings ordered by creation time and ID, newest first.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data, page]
+            properties:
+              data:
+                type: array
+                items: { $ref: '#/components/schemas/StaffBooking' }
+              page: { $ref: '#/components/schemas/BookingPage' }
+    StaffBookingDetail:
+      description: Booking snapshot, references, and status history.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data: { $ref: '#/components/schemas/StaffBookingDetail' }
+    ReadBadRequest:
+      description: INVALID_REQUEST for invalid booking ID, filters, or pagination.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    StaffRequired:
+      description: FORBIDDEN when the session belongs to a non-staff role.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    BookingNotFound:
+      description: BOOKING_NOT_FOUND when the booking does not exist or is outside the customer's scope.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    BookingReadUnavailable:
+      description: DEPENDENCY_UNAVAILABLE when Identity or PostgreSQL cannot complete the request.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Hold:
+      description: Saved hold or replay of a successful request.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '#/components/schemas/Hold'
+    HoldConflict:
+      description: QUOTE_CHANGED includes the latest quote in error.details.quote. AVAILABILITY_CONFLICT means all eligible units conflict. IDEMPOTENCY_CONFLICT indicates reuse with a different payload. BOOKING_IN_PROGRESS means retry with the same key.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InvalidHold:
+      description: INVALID_TERMS, INVALID_SCHEDULE or QUOTE_TOTAL_OUT_OF_RANGE.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    HoldUnavailable:
+      description: DEPENDENCY_UNAVAILABLE when an upstream cannot complete the request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Quote:
+      description: Current quote. Availability can change before a hold is created.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '#/components/schemas/Quote'
+    InvalidRequest:
+      description: INVALID_REQUEST for malformed JSON, a bad variant UUID, or a timestamp without an explicit offset.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthenticated:
+      description: UNAUTHENTICATED when the customer session is missing or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    CustomerRequired:
+      description: CUSTOMER_REQUIRED when the session belongs to a different role.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    VariantNotFound:
+      description: CAR_NOT_FOUND when Catalog cannot find the requested variant.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    PayloadTooLarge:
+      description: PAYLOAD_TOO_LARGE for a request body above 16 KiB.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InvalidQuote:
+      description: INVALID_SCHEDULE or QUOTE_TOTAL_OUT_OF_RANGE.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    DependencyUnavailable:
+      description: DEPENDENCY_UNAVAILABLE when Identity, Catalog, or PostgreSQL cannot complete the request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    ReportPeriod:
+      type: object
+      required: [from, to]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+    ReportSummary:
+      type: object
+      required: [total_bookings, pending_payment_bookings, confirmed_bookings, expired_bookings, payment_review_bookings, verified_confirmed_bookings, confirmed_value_idr, payment_conversion]
+      properties:
+        total_bookings: { type: integer, format: int64, minimum: 0 }
+        pending_payment_bookings:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Booking status pending_payment, including bookings without a VA attempt. Not a provider pending count.
+        confirmed_bookings: { type: integer, format: int64, minimum: 0 }
+        expired_bookings: { type: integer, format: int64, minimum: 0 }
+        payment_review_bookings: { type: integer, format: int64, minimum: 0 }
+        verified_confirmed_bookings:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Confirmed with non-null confirmed_payment_id and confirmed_provider_order_id. Excludes legacy demo confirmations.
+        confirmed_value_idr:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Sum of immutable total_idr for verified_confirmed_bookings. Booking value, not cash revenue or all settled provider payments.
+        payment_conversion:
+          type: number
+          nullable: true
+          minimum: 0
+          maximum: 1
+          description: verified_confirmed_bookings divided by total_bookings in this creation-date cohort; null for zero bookings.
+    ReportDay:
+      type: object
+      required: [date, bookings, confirmed_value_idr]
+      properties:
+        date: { type: string, format: date }
+        bookings: { type: integer, format: int64, minimum: 0 }
+        confirmed_value_idr: { type: integer, format: int64, minimum: 0 }
+    ReportVariant:
+      type: object
+      required: [variant_id, vehicle_label, bookings]
+      properties:
+        variant_id: { type: string, format: uuid }
+        vehicle_label:
+          type: string
+          description: Label from the latest matching booking snapshot (created_at DESC, id DESC); never refreshed from Catalog.
+        bookings: { type: integer, format: int64, minimum: 1 }
+    BookingReportBase:
+      type: object
+      required: [period, timezone, currency, simulated, summary, daily]
+      properties:
+        period: { $ref: '#/components/schemas/ReportPeriod' }
+        timezone: { type: string, enum: [Asia/Makassar] }
+        currency: { type: string, enum: [IDR] }
+        simulated: { type: boolean, enum: [true] }
+        summary: { $ref: '#/components/schemas/ReportSummary' }
+        daily:
+          type: array
+          minItems: 1
+          maxItems: 366
+          description: One row per inclusive WITA date, oldest first, zero-filled when empty.
+          items: { $ref: '#/components/schemas/ReportDay' }
+    BookingReports:
+      allOf:
+        - $ref: '#/components/schemas/BookingReportBase'
+        - type: object
+          required: [top_variants]
+          properties:
+            top_variants:
+              type: array
+              maxItems: 10
+              description: All statuses grouped by variant ID; bookings DESC, variant_id ASC.
+              items: { $ref: '#/components/schemas/ReportVariant' }
+    BookingOverview:
+      allOf:
+        - $ref: '#/components/schemas/BookingReportBase'
+        - type: object
+          required: [recent_bookings]
+          properties:
+            recent_bookings:
+              type: array
+              maxItems: 5
+              description: Bookings within the default period; created_at DESC, id DESC.
+              items: { $ref: '#/components/schemas/StaffBooking' }
+    BookingStatus:
+      type: string
+      enum: [pending_payment, confirmed, expired, payment_review]
+    Booking:
+      type: object
+      required: [id, variant_id, vehicle_label, status, pickup_at, return_at, rental_days, daily_rate_idr, total_idr, currency, hold_expires_at, terms_version, terms_accepted_at, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        variant_id: { type: string, format: uuid }
+        vehicle_label: { type: string }
+        status: { $ref: '#/components/schemas/BookingStatus' }
+        pickup_at: { type: string, format: date-time, description: Returned in WITA. }
+        return_at: { type: string, format: date-time, description: Returned in WITA. }
+        rental_days: { type: integer, minimum: 1 }
+        daily_rate_idr: { type: integer, format: int64, minimum: 1 }
+        total_idr: { type: integer, format: int64, minimum: 1 }
+        currency: { type: string, enum: [IDR] }
+        hold_expires_at: { type: string, format: date-time }
+        terms_version: { type: string }
+        terms_accepted_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+    BookingPage:
+      type: object
+      required: [number, limit, total]
+      properties:
+        number: { type: integer, minimum: 1 }
+        limit: { type: integer, minimum: 1, maximum: 100 }
+        total: { type: integer, format: int64, minimum: 0 }
+    StaffBooking:
+      allOf:
+        - $ref: '#/components/schemas/Booking'
+        - type: object
+          required: [customer_id, unit_id]
+          properties:
+            customer_id: { type: string, format: uuid }
+            unit_id: { type: string, format: uuid, nullable: true }
+    StaffBookingDetail:
+      allOf:
+        - $ref: '#/components/schemas/StaffBooking'
+        - type: object
+          required: [status_history]
+          properties:
+            status_history:
+              type: array
+              description: Oldest status change first.
+              items:
+                type: object
+                required: [id, from_status, to_status, actor_type, reason_code, occurred_at]
+                properties:
+                  id: { type: string, format: uuid }
+                  from_status: { type: string, nullable: true }
+                  to_status: { $ref: '#/components/schemas/BookingStatus' }
+                  actor_type: { type: string, enum: [system, customer, admin, provider_event] }
+                  reason_code: { type: string, nullable: true }
+                  occurred_at: { type: string, format: date-time }
+    HoldRequest:
+      type: object
+      additionalProperties: false
+      required: [variant_id, pickup_at, return_at, expected_total_idr, terms_version, accept_terms]
+      properties:
+        variant_id: { type: string, format: uuid }
+        pickup_at: { type: string, format: date-time }
+        return_at: { type: string, format: date-time }
+        expected_total_idr: { type: integer, format: int64, minimum: 1 }
+        terms_version: { type: string, enum: [rental-terms-v1] }
+        accept_terms: { type: boolean, enum: [true] }
+    Hold:
+      type: object
+      required: [id, status, variant_id, vehicle_label, pickup_at, return_at, rental_days, daily_rate_idr, total_idr, currency, hold_expires_at, payment_status]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [pending_payment] }
+        variant_id: { type: string, format: uuid }
+        vehicle_label: { type: string }
+        pickup_at: { type: string, format: date-time, description: Returned in WITA. }
+        return_at: { type: string, format: date-time, description: Returned in WITA. }
+        rental_days: { type: integer, minimum: 1 }
+        daily_rate_idr: { type: integer, format: int64, minimum: 1 }
+        total_idr: { type: integer, format: int64, minimum: 1 }
+        currency: { type: string, enum: [IDR] }
+        hold_expires_at: { type: string, format: date-time, description: Deadline in UTC. }
+        payment_status: { type: string, enum: [not_started] }
+    QuoteRequest:
+      type: object
+      additionalProperties: false
+      required: [variant_id, pickup_at, return_at]
+      properties:
+        variant_id:
+          type: string
+          format: uuid
+        pickup_at:
+          type: string
+          format: date-time
+          description: Earliest pickup is tomorrow in WITA. Handover slots are 08:00 through 18:00 WITA in 30-minute steps.
+        return_at:
+          type: string
+          format: date-time
+          description: Must follow pickup and use the same WITA handover slots. Same-day return is allowed.
+    Quote:
+      type: object
+      required: [variant_id, vehicle_label, pickup_at, return_at, rental_days, daily_rate_idr, total_idr, currency, available, quoted_at]
+      properties:
+        variant_id: { type: string, format: uuid }
+        vehicle_label: { type: string }
+        pickup_at: { type: string, format: date-time, description: Returned in WITA. }
+        return_at: { type: string, format: date-time, description: Returned in WITA. }
+        rental_days: { type: integer, minimum: 1, description: Inclusive WITA calendar days. }
+        daily_rate_idr: { type: integer, format: int64, minimum: 1 }
+        total_idr: { type: integer, format: int64, minimum: 1 }
+        currency: { type: string, enum: [IDR] }
+        available:
+          type: boolean
+          description: True when at least one eligible unit has no blocking allocation during the schedule.
+        quoted_at: { type: string, format: date-time, description: Server quote timestamp in UTC. }
+    Error:
+      type: object
+      required: [error, request_id]
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object }
+        request_id: { type: string }

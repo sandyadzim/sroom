@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Catalog API
-  version: 1.12.0
+  version: 1.12.1
   description: |
     The local gateway forwards the same Catalog API. An incoming X-Request-ID
     with 1-64 ASCII letters, digits, underscores, or hyphens is preserved.
@@ -9,6 +9,21 @@ info:
 servers:
   - url: http://localhost:8082
 paths:
+  /health:
+    get:
+      operationId: catalogHealth
+      summary: Check the Catalog HTTP process
+      security: []
+      responses:
+        '200':
+          description: HTTP process is responding; does not check PostgreSQL, Identity, R2 or Redis.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ok] }
   /api/v1/catalog/admin/fleet-summary:
     get:
       operationId: getFleetSummary
