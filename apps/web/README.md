@@ -82,6 +82,10 @@ The Gateway must allow the web origin. For local development, use the same hostn
 
 Customer and staff requests use separate HttpOnly session cookies. The browser calls only the Gateway; the Gateway forwards authenticated requests to the owning services.
 
+## Search indexing
+
+This app is configured as a private deployment. `static/robots.txt` disallows all crawlers, the global HTML shell sets a noindex robots meta tag, and the server hook adds `X-Robots-Tag` to every response. Do not add a sitemap or public indexing metadata.
+
 ## Scripts
 
 | Command             | Purpose                              |

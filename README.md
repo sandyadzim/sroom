@@ -193,6 +193,17 @@ Booking and Payment readiness checks include PostgreSQL. Identity has no separat
 - Keep `.env` files and provider credentials out of version control. Never expose the Midtrans server key or service tokens in browser code.
 - A checked-in `go.work` is not required. It is a local convenience for working across service modules; CI and releases should build each module independently.
 
+## Search indexing
+
+This project is configured for a private deployment:
+
+- `apps/web/static/robots.txt` disallows all crawlers.
+- The global HTML shell includes a `noindex, nofollow, noarchive, nosnippet, noimageindex` robots meta tag.
+- The SvelteKit server hook adds `X-Robots-Tag` to every response.
+- Gateway responses also include `X-Robots-Tag`.
+
+Do not add a sitemap or public indexing metadata. If a hostname was indexed before this configuration was deployed, Google may need a removal request or a temporary crawlable `noindex` state before indexing disappears.
+
 ## Contracts
 
 HTTP contracts live in `packages/contracts/openapi/`:
