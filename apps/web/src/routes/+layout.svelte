@@ -1,7 +1,6 @@
 <script lang="ts">
 	import './layout.css';
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
-	import favicon from '#lib/assets/favicon.svg';
 	import SiteHeader from '#lib/components/layout/SiteHeader.svelte';
 	import SiteFooter from '#lib/components/layout/SiteFooter.svelte';
 	import AuthHeader from '#lib/components/auth/AuthHeader.svelte';
@@ -39,7 +38,6 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
 	<link rel="preload" href={interFont} as="font" type="font/woff2" crossorigin="anonymous" />
 	<link rel="preload" href={manropeFont} as="font" type="font/woff2" crossorigin="anonymous" />
 	{#if adminPage || transactionPage}<meta name="robots" content="noindex, nofollow" />{/if}
