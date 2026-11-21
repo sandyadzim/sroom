@@ -11,6 +11,7 @@ Local Go + Gin gateway for Identity, Catalog, Booking, and Payment. Use `http://
 | Environment variable | Default |
 |---|---|
 | `APP_ENV` | `development` (any other value sets `Secure` on the staff cookie) |
+| `APP_HOST` | `127.0.0.1` |
 | `APP_PORT` | `8080` |
 | `IDENTITY_URL` | `http://localhost:8081` |
 | `CATALOG_URL` | `http://localhost:8082` |
