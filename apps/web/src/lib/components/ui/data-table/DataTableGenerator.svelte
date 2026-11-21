@@ -1,5 +1,6 @@
 <script lang="ts" generics="Row extends object">
 	import { Search } from '@lucide/svelte';
+	import AdminCarFilter from '#lib/components/admin/AdminCarFilter.svelte';
 	import SelectField from '#lib/components/ui/SelectField.svelte';
 	import TextField from '#lib/components/ui/TextField.svelte';
 	import { createDataTable } from '#lib/queries/createDataTable.svelte.ts';
@@ -59,6 +60,14 @@
 							value={table.filters[filter.name] ?? ''}
 							onchange={(event) => table.setFilter(filter.name, event.currentTarget.value)}
 							onclear={() => table.setFilter(filter.name, '')}
+						/>
+					{:else if filter.type === 'car'}
+						<AdminCarFilter
+							name={filter.name}
+							label={filter.label}
+							value={table.filters[filter.name] ?? ''}
+							placeholder={filter.placeholder}
+							onchange={(value) => table.setFilter(filter.name, value)}
 						/>
 					{:else}
 						<SelectField

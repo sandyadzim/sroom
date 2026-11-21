@@ -1,10 +1,39 @@
 import type {
-	AdminBookingPreview,
-	AdminPaymentPreview,
 	BookingStatus,
-	PaymentStatus
+	PaymentStatus,
+	TransactionEvent
 } from '#lib/types/admin-transactions.ts';
-import type { TablePage, TableParams } from '#lib/types/data-table.ts';
+
+// Temporary fixture for the FE-004 Overview/Reports preview only.
+// Bookings and Payments read the staff API since FE-003; delete this with FE-004.
+type AdminBookingPreview = {
+	id: string;
+	customer: string;
+	model: string;
+	unit: string | null;
+	pickupAt: string;
+	returnAt: string;
+	createdAt: string;
+	days: number;
+	dailyRate: number;
+	total: number;
+	status: BookingStatus;
+	timeline: TransactionEvent[];
+};
+
+type AdminPaymentPreview = {
+	id: string;
+	bookingId: string;
+	provider: 'Midtrans';
+	bank: string;
+	providerReference: string;
+	total: number;
+	status: PaymentStatus;
+	createdAt: string;
+	updatedAt: string;
+	reviewReason?: string;
+	timeline: TransactionEvent[];
+};
 
 const fleet = [
 	{ name: 'Toyota Fortuner', rate: 850_000, code: 'FORT' },
@@ -43,7 +72,7 @@ const bookingDays = [3, 4, 1, 5, 2, 4, 3, 2].flatMap((count, index) =>
 	Array<number>(count).fill(17 - index)
 );
 
-export const adminTransactionPreviews = bookingDays.map((date, index) => {
+export const adminReportFixtures = bookingDays.map((date, index) => {
 	const vehicle = fleet[index % fleet.length];
 	const fixture = cases[index % cases.length];
 	const number = String(bookingDays.length - index).padStart(3, '0');
@@ -110,6 +139,7 @@ export const adminTransactionPreviews = bookingDays.map((date, index) => {
 					{ title: 'Payment attempt created', time: createdAt },
 					{
 						title: {
+							initiating: 'Initialization started',
 							pending: 'Awaiting settlement',
 							paid: 'Settlement verified',
 							expired: 'Provider expiry recorded',
@@ -125,56 +155,3 @@ export const adminTransactionPreviews = bookingDays.map((date, index) => {
 		: null;
 	return { booking, payment };
 });
-
-export const bookingModels = fleet.map(({ name }) => ({ label: name, value: name }));
-
-export function findBookingPreview(id: string) {
-	return adminTransactionPreviews.find(({ booking }) => booking.id === id);
-}
-
-export function findPaymentPreview(id: string) {
-	return adminTransactionPreviews.find(({ payment }) => payment?.id === id);
-}
-
-function tablePage<Row>(rows: Row[], { page, limit }: TableParams): TablePage<Row> {
-	const offset = (page - 1) * limit;
-	return {
-		data: rows.slice(offset, offset + limit),
-		page: { number: page, limit, total: rows.length }
-	};
-}
-
-export function listAdminBookingPreviews(params: TableParams) {
-	const { search, status, model, pickup_date } = params.filters;
-	const term = search?.toLowerCase().trim();
-	const rows = adminTransactionPreviews
-		.map(({ booking }) => booking)
-		.filter(
-			(booking) =>
-				(!term ||
-					[booking.id, booking.customer, booking.model, booking.unit ?? ''].some((value) =>
-						value.toLowerCase().includes(term)
-					)) &&
-				(!status || booking.status === status) &&
-				(!model || booking.model === model) &&
-				(!pickup_date || booking.pickupAt.startsWith(`${pickup_date}T`))
-		);
-	return tablePage(rows, params);
-}
-
-export function listAdminPaymentPreviews(params: TableParams) {
-	const { search, status, reconciliation } = params.filters;
-	const term = search?.toLowerCase().trim();
-	const rows = adminTransactionPreviews
-		.flatMap(({ payment }) => (payment ? [payment] : []))
-		.filter(
-			(payment) =>
-				(!term ||
-					[payment.id, payment.bookingId, payment.providerReference].some((value) =>
-						value.toLowerCase().includes(term)
-					)) &&
-				(!status || payment.status === status) &&
-				(!reconciliation || Boolean(payment.reviewReason) === (reconciliation === 'required'))
-		);
-	return tablePage(rows, params);
-}

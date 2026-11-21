@@ -37,12 +37,7 @@
 		onRetry: () => void;
 	} = $props();
 
-	const hintId = $props.id();
 	let viewportWidth = $state(0);
-	let tableWidth = $state(0);
-	const showScrollHint = $derived(
-		!loading && !failure && rows.length > 0 && tableWidth > viewportWidth + 1
-	);
 	const messageWidth = $derived(viewportWidth ? `${viewportWidth}px` : undefined);
 
 	const sizeOptions = $derived(
@@ -60,22 +55,17 @@
 	);
 </script>
 
-{#if showScrollHint}
-	<p id={hintId} class="mb-2 text-xs text-ink-muted">Scroll horizontally to see more columns.</p>
-{/if}
-
 <div class="min-w-0 rounded-xl border border-line bg-panel">
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard users can scroll the table) -->
 	<div
 		role="region"
 		aria-busy={loading}
 		aria-label={`${label} table`}
-		aria-describedby={showScrollHint ? hintId : undefined}
 		bind:clientWidth={viewportWidth}
 		tabindex="0"
 		class="overflow-x-auto rounded-t-xl focus-visible:-outline-offset-2"
 	>
-		<table bind:clientWidth={tableWidth} class="w-full min-w-max border-collapse text-left text-sm">
+		<table class="w-full min-w-max border-collapse text-left text-sm">
 			<caption class="sr-only">{label}</caption>
 			<thead class="border-b border-line bg-page">
 				<tr>

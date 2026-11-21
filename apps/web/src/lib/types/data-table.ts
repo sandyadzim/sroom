@@ -14,6 +14,7 @@ export type TableFilter = {
 	| { type: 'search'; placeholder?: string }
 	| { type: 'date' }
 	| { type: 'select'; placeholder?: string; options: readonly { value: string; label: string }[] }
+	| { type: 'car'; placeholder?: string }
 );
 
 export type TableColumn<Row> = {
@@ -27,7 +28,10 @@ export type DataTableConfig<Row> = (
 	| {
 			endpoint?: never;
 			queryKey: string;
-			loadPage: (params: TableParams) => TablePage<Row> | Promise<TablePage<Row>>;
+			loadPage: (
+				params: TableParams,
+				signal?: AbortSignal
+			) => TablePage<Row> | Promise<TablePage<Row>>;
 	  }
 ) & {
 	label: string;

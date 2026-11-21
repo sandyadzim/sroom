@@ -6,6 +6,7 @@ export const bookingStatusStyles = {
 };
 
 export const paymentStatusStyles = {
+	initiating: { label: 'Initiating', tone: 'bg-information/10 text-information' },
 	pending: { label: 'Pending', tone: 'bg-caution/10 text-caution' },
 	paid: { label: 'Paid', tone: 'bg-positive/10 text-positive' },
 	expired: { label: 'Expired', tone: 'bg-panel-muted text-ink-muted' },

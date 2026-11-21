@@ -5,9 +5,9 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import Link from '#lib/components/ui/Link.svelte';
 	import DataTableGenerator from '#lib/components/ui/data-table/DataTableGenerator.svelte';
-	import type { AdminPaymentPreview } from '#lib/types/admin-transactions.ts';
+	import { fetchStaffPaymentPage } from '#lib/api/staff-transactions.ts';
+	import type { StaffPaymentRow } from '#lib/types/admin-transactions.ts';
 	import type { DataTableConfig } from '#lib/types/data-table.ts';
-	import { listAdminPaymentPreviews } from '#lib/utils/admin-transaction-preview.ts';
 	import { paymentStatusStyles } from '#lib/utils/admin-transaction-status.ts';
 	import { formatIDR } from '#lib/utils/currency.ts';
 	import { formatWitaDateTime } from '#lib/utils/date.ts';
@@ -16,15 +16,15 @@
 		return resolve('/admin/(staff)/payments/[id]', { id }) + (page.shallow?.url ?? page.url).search;
 	}
 
-	const config: DataTableConfig<AdminPaymentPreview> = {
-		queryKey: 'admin-payments-preview',
-		loadPage: listAdminPaymentPreviews,
+	const config: DataTableConfig<StaffPaymentRow> = {
+		queryKey: 'staff-payments',
+		loadPage: (params, signal) => fetchStaffPaymentPage(params, signal),
 		label: 'Payments',
-		rowKey: (row) => row.id,
+		rowKey: (row) => row.payment_id,
 		columns: [
 			{ label: 'Payment', cell: reference },
 			{ label: 'Booking', cell: booking },
-			{ label: 'Bank', field: 'bank' },
+			{ label: 'Bank', cell: bank },
 			{ label: 'Amount', cell: amount },
 			{ label: 'Payment status', cell: status },
 			{ label: 'Reconciliation', cell: reconciliation },
@@ -36,7 +36,7 @@
 				name: 'search',
 				label: 'Search',
 				type: 'search',
-				placeholder: 'Search IDs or provider reference'
+				placeholder: 'Search payment, booking or provider order ID'
 			},
 			{
 				name: 'status',
@@ -60,8 +60,8 @@
 			}
 		],
 		pageSize: 20,
-		emptyMessage: 'No payment attempts yet.',
-		filteredEmptyMessage: 'No payment attempts match your filters.'
+		emptyMessage: 'No payments yet.',
+		filteredEmptyMessage: 'No payments match your filters.'
 	};
 </script>
 
@@ -69,41 +69,42 @@
 
 <header class="mb-7">
 	<h1 class="text-3xl/10 font-bold tracking-tight sm:text-4xl/12">Payments</h1>
-	<p class="mt-2 text-sm text-ink-muted">
-		Preview data for inspecting Virtual Account attempts and reconciliation cases.
-	</p>
 </header>
 
 <DataTableGenerator {config} />
 
-{#snippet reference(row: AdminPaymentPreview)}
+{#snippet reference(row: StaffPaymentRow)}
 	<Link
-		href={detailHref(row.id)}
+		href={detailHref(row.payment_id)}
 		variant="plain"
 		class="font-medium text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary"
-		>{row.id}</Link
+		>{row.payment_id}</Link
 	>
 {/snippet}
 
-{#snippet booking(row: AdminPaymentPreview)}
+{#snippet booking(row: StaffPaymentRow)}
 	<Link
-		href={resolve('/admin/(staff)/bookings/[id]', { id: row.bookingId })}
+		href={resolve('/admin/(staff)/bookings/[id]', { id: row.booking_id })}
 		variant="plain"
 		class="text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary"
-		>{row.bookingId}</Link
+		>{row.booking_id}</Link
 	>
 {/snippet}
 
-{#snippet amount(row: AdminPaymentPreview)}
-	<span class="font-medium whitespace-nowrap tabular-nums">{formatIDR(row.total)}</span>
+{#snippet bank(row: StaffPaymentRow)}
+	{row.bank.toUpperCase()}
 {/snippet}
 
-{#snippet status(row: AdminPaymentPreview)}
+{#snippet amount(row: StaffPaymentRow)}
+	<span class="font-medium whitespace-nowrap tabular-nums">{formatIDR(row.amount_idr)}</span>
+{/snippet}
+
+{#snippet status(row: StaffPaymentRow)}
 	<TransactionStatus value={{ payment: row.status }} />
 {/snippet}
 
-{#snippet reconciliation(row: AdminPaymentPreview)}
-	{#if row.reviewReason}
+{#snippet reconciliation(row: StaffPaymentRow)}
+	{#if row.review_required}
 		<span
 			class="inline-flex rounded-full bg-information/10 px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-information"
 			>Review required</span
@@ -113,20 +114,20 @@
 	{/if}
 {/snippet}
 
-{#snippet updated(row: AdminPaymentPreview)}
-	{@const [date, time] = formatWitaDateTime(row.updatedAt).split(', ')}
-	<time datetime={row.updatedAt} class="block whitespace-nowrap tabular-nums">
+{#snippet updated(row: StaffPaymentRow)}
+	{@const [date, time] = formatWitaDateTime(row.updated_at).split(', ')}
+	<time datetime={row.updated_at} class="block whitespace-nowrap tabular-nums">
 		{date}
 		<span class="block text-xs/5 text-ink-muted">{time} WITA</span>
 	</time>
 {/snippet}
 
-{#snippet actions(row: AdminPaymentPreview)}
+{#snippet actions(row: StaffPaymentRow)}
 	<Button
-		href={detailHref(row.id)}
+		href={detailHref(row.payment_id)}
 		variant="ghost"
 		size="custom"
 		class="rounded-lg px-3"
-		aria-label={`View payment ${row.id}`}>View</Button
+		aria-label={`View payment ${row.payment_id}`}>View</Button
 	>
 {/snippet}

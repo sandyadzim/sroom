@@ -5,9 +5,9 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import Link from '#lib/components/ui/Link.svelte';
 	import DataTableGenerator from '#lib/components/ui/data-table/DataTableGenerator.svelte';
-	import type { AdminBookingPreview } from '#lib/types/admin-transactions.ts';
+	import { fetchStaffBookingPage } from '#lib/api/staff-transactions.ts';
+	import type { StaffBookingRow } from '#lib/types/admin-transactions.ts';
 	import type { DataTableConfig } from '#lib/types/data-table.ts';
-	import { bookingModels, listAdminBookingPreviews } from '#lib/utils/admin-transaction-preview.ts';
 	import { bookingStatusStyles } from '#lib/utils/admin-transaction-status.ts';
 	import { formatIDR } from '#lib/utils/currency.ts';
 	import { formatWitaDateTime } from '#lib/utils/date.ts';
@@ -16,14 +16,14 @@
 		return resolve('/admin/(staff)/bookings/[id]', { id }) + (page.shallow?.url ?? page.url).search;
 	}
 
-	const config: DataTableConfig<AdminBookingPreview> = {
-		queryKey: 'admin-bookings-preview',
-		loadPage: listAdminBookingPreviews,
+	const config: DataTableConfig<StaffBookingRow> = {
+		queryKey: 'staff-bookings',
+		loadPage: (params, signal) => fetchStaffBookingPage(params, signal),
 		label: 'Bookings',
 		rowKey: (row) => row.id,
 		columns: [
 			{ label: 'Booking', cell: reference },
-			{ label: 'Customer', field: 'customer' },
+			{ label: 'Customer', cell: customer },
 			{ label: 'Vehicle', cell: vehicle },
 			{ label: 'Pickup', cell: pickup },
 			{ label: 'Return', cell: returnAt },
@@ -37,7 +37,7 @@
 				name: 'search',
 				label: 'Search',
 				type: 'search',
-				placeholder: 'Search booking, customer or vehicle'
+				placeholder: 'Search booking ID, customer ID or vehicle'
 			},
 			{
 				name: 'status',
@@ -50,11 +50,10 @@
 				}))
 			},
 			{
-				name: 'model',
+				name: 'variant_id',
 				label: 'Vehicle',
-				type: 'select',
-				placeholder: 'Select vehicle',
-				options: bookingModels
+				type: 'car',
+				placeholder: 'Search by make, model, or trim'
 			},
 			{ name: 'pickup_date', label: 'Pickup date', type: 'date' }
 		],
@@ -68,14 +67,11 @@
 
 <header class="mb-7">
 	<h1 class="text-3xl/10 font-bold tracking-tight sm:text-4xl/12">Bookings</h1>
-	<p class="mt-2 text-sm text-ink-muted">
-		Preview data for inspecting reservations, schedules, and assigned units.
-	</p>
 </header>
 
 <DataTableGenerator {config} />
 
-{#snippet reference(row: AdminBookingPreview)}
+{#snippet reference(row: StaffBookingRow)}
 	<Link
 		href={detailHref(row.id)}
 		variant="plain"
@@ -85,29 +81,38 @@
 	</Link>
 {/snippet}
 
-{#snippet vehicle(row: AdminBookingPreview)}
-	<p>{row.model}</p>
-	<p class="text-xs/5 text-ink-muted">{row.unit ?? 'Unassigned'}</p>
+{#snippet customer(row: StaffBookingRow)}
+	<span class="font-medium">{row.customer_name ?? row.customer_id}</span>
 {/snippet}
 
-{#snippet pickup(row: AdminBookingPreview)}
-	{@render dateTime(row.pickupAt)}
+{#snippet vehicle(row: StaffBookingRow)}
+	<Link
+		href={resolve('/admin/(staff)/cars/[id]', { id: row.variant_id })}
+		variant="plain"
+		class="text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary"
+	>
+		{row.vehicle_label}
+	</Link>
 {/snippet}
 
-{#snippet returnAt(row: AdminBookingPreview)}
-	{@render dateTime(row.returnAt)}
+{#snippet pickup(row: StaffBookingRow)}
+	{@render dateTime(row.pickup_at)}
 {/snippet}
 
-{#snippet total(row: AdminBookingPreview)}
-	<span class="font-medium whitespace-nowrap tabular-nums">{formatIDR(row.total)}</span>
+{#snippet returnAt(row: StaffBookingRow)}
+	{@render dateTime(row.return_at)}
 {/snippet}
 
-{#snippet status(row: AdminBookingPreview)}
+{#snippet total(row: StaffBookingRow)}
+	<span class="font-medium whitespace-nowrap tabular-nums">{formatIDR(row.total_idr)}</span>
+{/snippet}
+
+{#snippet status(row: StaffBookingRow)}
 	<TransactionStatus value={{ booking: row.status }} />
 {/snippet}
 
-{#snippet created(row: AdminBookingPreview)}
-	{@render dateTime(row.createdAt)}
+{#snippet created(row: StaffBookingRow)}
+	{@render dateTime(row.created_at)}
 {/snippet}
 
 {#snippet dateTime(value: string)}
@@ -118,7 +123,7 @@
 	</time>
 {/snippet}
 
-{#snippet actions(row: AdminBookingPreview)}
+{#snippet actions(row: StaffBookingRow)}
 	<Button
 		href={detailHref(row.id)}
 		variant="ghost"

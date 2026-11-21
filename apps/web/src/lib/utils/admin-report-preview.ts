@@ -1,4 +1,4 @@
-import { adminTransactionPreviews, previewFleetCounts } from './admin-transaction-preview.ts';
+import { adminReportFixtures, previewFleetCounts } from './admin-report-preview-data.ts';
 import type { BookingStatus } from '#lib/types/admin-transactions.ts';
 
 export const reportPreviewPeriod = { from: '2026-11-10', to: '2026-11-17' };
@@ -30,7 +30,7 @@ export function getAdminReportPreview({ from, to } = reportPreviewPeriod) {
 	let pendingPayments = 0;
 	let total = 0;
 
-	for (const { booking, payment } of adminTransactionPreviews) {
+	for (const { booking, payment } of adminReportFixtures) {
 		// Fixture timestamps carry the WITA offset.
 		const day = booking.createdAt.slice(0, 10);
 		if (day < from || day > to) continue;

@@ -59,3 +59,4 @@ export type CustomerAccount = {
 export type RegisterCustomerInput = LoginCredentials & { full_name?: string };
 export type RegisteredCustomer = Pick<UserProfile, 'id' | 'email' | 'full_name'>;
 export type CustomerSessionProfile = UserProfile & { role: 'CUSTOMER' };
+export type CustomerLookup = Pick<CustomerAccount, 'id' | 'full_name' | 'email'>;

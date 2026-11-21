@@ -53,6 +53,7 @@
 </script>
 
 <div
+	data-staff-shell
 	class={[
 		'min-h-dvh bg-page lg:grid motion-safe:lg:transition-[grid-template-columns] motion-safe:lg:duration-200 motion-safe:lg:ease-[cubic-bezier(0.32,0.72,0,1)]',
 		collapsed ? 'lg:grid-cols-[4.5rem_minmax(0,1fr)]' : 'lg:grid-cols-[15rem_minmax(0,1fr)]'
@@ -60,6 +61,7 @@
 >
 	<aside
 		id="staff-sidebar"
+		data-staff-sidebar
 		class="sticky top-0 hidden h-dvh flex-col overflow-x-hidden overflow-y-auto px-4 pt-4 pb-2 lg:flex"
 	>
 		<div class="mb-8">
@@ -106,6 +108,7 @@
 
 	<div class="flex min-h-dvh min-w-0 flex-col lg:pr-2 lg:pb-2">
 		<header
+			data-staff-header
 			class="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-4 bg-page px-4 sm:px-6 lg:min-h-14 lg:px-8"
 		>
 			<div class="flex min-w-0 items-center gap-2 lg:hidden">
@@ -170,6 +173,7 @@
 
 		<main
 			id="main-content"
+			data-staff-main
 			tabindex="-1"
 			class="min-w-0 flex-1 border-t border-line bg-panel focus-visible:-outline-offset-4 lg:rounded-xl lg:border"
 		>

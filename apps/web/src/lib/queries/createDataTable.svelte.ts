@@ -8,6 +8,7 @@ import { fetchTablePage } from '#lib/api/data-table.ts';
 import type { DataTableConfig, TableFilter, TableParams } from '#lib/types/data-table.ts';
 import type { ApiError } from '#lib/types/identity.ts';
 import { getPagination } from '#lib/utils/pagination.ts';
+import { isStaffVariantId } from '#lib/utils/staff-transactions.ts';
 
 function allowedFilters(
 	search: Pick<URLSearchParams, 'get'>,
@@ -29,6 +30,8 @@ function allowedFilters(
 			) {
 				allowed.set(filter.name, value);
 			}
+		} else if (filter.type === 'car') {
+			if (isStaffVariantId(value)) allowed.set(filter.name, value);
 		} else if (value && filter.options.some((option) => option.value === value)) {
 			allowed.set(filter.name, value);
 		}
@@ -74,7 +77,9 @@ export function createDataTable<Row>(getConfig: () => DataTableConfig<Row>) {
 		return {
 			queryKey: [endpoint ?? queryKey, requestParams],
 			queryFn: ({ signal }) =>
-				loadPage ? loadPage(requestParams) : fetchTablePage<Row>(endpoint, requestParams, signal),
+				loadPage
+					? loadPage(requestParams, signal)
+					: fetchTablePage<Row>(endpoint, requestParams, signal),
 			refetchOnWindowFocus: false
 		};
 	});

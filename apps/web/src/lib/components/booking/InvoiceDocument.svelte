@@ -150,6 +150,32 @@
 			padding: 0;
 		}
 
+		:global(body:has([data-invoice-sheet]) [data-staff-sidebar]),
+		:global(body:has([data-invoice-sheet]) [data-staff-header]) {
+			display: none;
+		}
+
+		:global(body:has([data-invoice-sheet]) [data-staff-shell]) {
+			display: block;
+			min-height: 0;
+		}
+
+		:global(body:has([data-invoice-sheet]) [data-staff-shell] > div) {
+			display: block;
+			min-height: 0;
+			padding: 0;
+		}
+
+		:global(body:has([data-invoice-sheet]) [data-staff-main]) {
+			border: 0;
+			border-radius: 0;
+			background: transparent;
+		}
+
+		:global(body:has([data-invoice-sheet]) [data-staff-main] > div) {
+			padding: 0;
+		}
+
 		[data-invoice-sheet] {
 			border: 0;
 			border-radius: 0;
