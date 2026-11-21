@@ -1,6 +1,6 @@
 # SROOM
 
-SROOM is a portfolio/demo self-drive car rental platform for Samarinda, Indonesia. Rentals are daily and self-drive only, displayed times use WITA (UTC+08:00), and payments use the Midtrans sandbox. The repository contains a customer and staff web application, a Gateway, and four Go services for identity, catalog, booking, and payment.
+SROOM is a self-drive car rental platform for Samarinda, Indonesia. Rentals are daily and self-drive only, displayed times use WITA (UTC+08:00), and payments use the Midtrans sandbox. The repository contains a customer and staff web application, a Gateway, and four Go services for identity, catalog, booking, and payment.
 
 The customer flow covers browsing the fleet, choosing a schedule, creating a 15-minute hold, paying through a Midtrans sandbox BNI Virtual Account, and reading the confirmed booking and invoice. Staff manage the fleet, customers, bookings, payments, and operational reports.
 
