@@ -1,12 +1,8 @@
 <script lang="ts">
-	import { bookingStatuses, type BookingStatus } from '#lib/utils/booking-history.ts';
-
+	import type { BookingStatus } from '#lib/types/booking.ts';
+	import { bookingStatuses } from '#lib/utils/booking-history.ts';
+	import StatusBadge from '#lib/components/ui/StatusBadge.svelte';
 	let { status }: { status: BookingStatus } = $props();
-	const style = $derived(bookingStatuses[status]);
 </script>
 
-<span
-	class={['inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold', style.tone]}
->
-	{style.label}
-</span>
+<StatusBadge {...bookingStatuses[status]} />

@@ -139,35 +139,21 @@
 			<UserRound size={17} aria-hidden="true" />
 			Profile
 		</Link>
-		{#if import.meta.env.DEV}
-			<Link
-				href={resolve('/account/bookings')}
-				variant="plain"
-				aria-current={page.route.id?.startsWith('/account/bookings') ? 'page' : undefined}
-				onclick={closeMenus}
-				class={[
-					'flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors motion-reduce:transition-none',
-					expanded
-						? 'hover:bg-on-primary/10 aria-[current=page]:bg-on-primary/10'
-						: 'hover:bg-panel-muted aria-[current=page]:bg-panel-muted'
-				]}
-			>
-				<CalendarDays size={17} aria-hidden="true" />
-				My Bookings
-			</Link>
-		{:else}
-			<span
-				aria-disabled="true"
-				class={[
-					'flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm',
-					expanded ? 'text-on-primary/75' : 'text-ink-muted'
-				]}
-			>
-				<CalendarDays size={17} aria-hidden="true" />
-				My Bookings
-				<span class="ml-auto text-xs">Coming soon</span>
-			</span>
-		{/if}
+		<Link
+			href={resolve('/account/bookings')}
+			variant="plain"
+			aria-current={page.route.id?.startsWith('/account/bookings') ? 'page' : undefined}
+			onclick={closeMenus}
+			class={[
+				'flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors motion-reduce:transition-none',
+				expanded
+					? 'hover:bg-on-primary/10 aria-[current=page]:bg-on-primary/10'
+					: 'hover:bg-panel-muted aria-[current=page]:bg-panel-muted'
+			]}
+		>
+			<CalendarDays size={17} aria-hidden="true" />
+			My Bookings
+		</Link>
 		<div
 			class={expanded
 				? 'mt-2 border-t border-on-primary/20 pt-2'

@@ -12,7 +12,9 @@
 	const profile = createQuery(() => ({ ...customerProfileQuery, refetchOnMount: 'always' }));
 	$effect(() => {
 		if (profile.data === null && !profile.isFetching) {
-			const next = customerReturnPath(page.url.pathname);
+			const next =
+				customerReturnPath(page.url.pathname + page.url.search) ??
+				customerReturnPath(page.url.pathname);
 			void goto(
 				next ? resolve(`/(auth)/login?next=${encodeURIComponent(next)}`) : resolve('/(auth)/login'),
 				{

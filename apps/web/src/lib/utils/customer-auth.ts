@@ -1,4 +1,7 @@
+import { bookingHistorySearch, readBookingFilters } from './booking-history.ts';
 type CustomerReturnPath =
+	| '/account/bookings'
+	| `/account/bookings?${string}`
 	| '/account/profile'
 	| '/account/profile/change-password'
 	| `/checkout/${string}`
@@ -17,10 +20,25 @@ export function customerCheckoutSlug(next: string | null) {
 export function customerAccountPath(next: string | null) {
 	if (next === '/account/profile' || next === '/account/profile/change-password') return next;
 }
+const bookingHistoryPath = new RegExp(`^/account/bookings(?:/${uuidPattern}(?:/invoice)?)?$`);
 export function customerReturnPath(next: string | null) {
-	if (!next || /[\s%?#\\]/.test(next)) return undefined;
-	if (customerAccountPath(next) || checkoutPath.test(next) || rentalPath.test(next))
-		return next as CustomerReturnPath;
+	if (!next || /[\s\\#]/.test(next)) return undefined;
+	const [pathname, search, extra] = next.split('?');
+	if (pathname.includes('%') || extra !== undefined) return undefined;
+	if (bookingHistoryPath.test(pathname)) {
+		try {
+			decodeURIComponent(search ?? '');
+		} catch {
+			return undefined;
+		}
+		const params = new URLSearchParams(search);
+		if ([...params.keys()].some((key) => key !== 'status' && key !== 'page')) return undefined;
+		const selection = readBookingFilters(params);
+		return `${pathname}${bookingHistorySearch(selection.status, selection.page)}` as CustomerReturnPath;
+	}
+	if (search !== undefined) return undefined;
+	if (customerAccountPath(pathname) || checkoutPath.test(pathname) || rentalPath.test(pathname))
+		return pathname as CustomerReturnPath;
 }
 export function isBookingId(id: string) {
 	return new RegExp(`^${uuidPattern}$`).test(id);

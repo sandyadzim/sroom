@@ -1,6 +1,14 @@
 import { customerApi, customerPath } from './customer.ts';
 import type { ApiData } from '#lib/types/identity.ts';
-import type { Booking, HoldInput, QuoteInput, RentalQuote, SavedHold } from '#lib/types/booking.ts';
+import type {
+	Booking,
+	CustomerBookingsInput,
+	CustomerBookingsPage,
+	HoldInput,
+	QuoteInput,
+	RentalQuote,
+	SavedHold
+} from '#lib/types/booking.ts';
 
 export async function fetchRentalQuote(input: QuoteInput, signal?: AbortSignal) {
 	const { data } = await customerApi.post<ApiData<RentalQuote>>(
@@ -22,4 +30,12 @@ export async function fetchBooking(id: string, signal?: AbortSignal) {
 		{ signal }
 	);
 	return data.data;
+}
+
+export async function fetchCustomerBookings(params: CustomerBookingsInput, signal?: AbortSignal) {
+	const { data } = await customerApi.get<CustomerBookingsPage>(`${customerPath}/bookings`, {
+		params,
+		signal
+	});
+	return data;
 }

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import { bookingHistorySearch, readBookingFilters } from '#lib/utils/booking-history.ts';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { ArrowLeft, Printer } from '@lucide/svelte';
 	import { invoiceQuery, bookingQuery } from '#lib/queries/rental.ts';
@@ -9,6 +11,8 @@
 	import CustomerRequestState from './CustomerRequestState.svelte';
 	import InvoiceDocument from './InvoiceDocument.svelte';
 	let { customerId, bookingId }: { customerId: string; bookingId: string } = $props();
+	const selection = $derived(readBookingFilters(page.url.searchParams));
+	const search = $derived(bookingHistorySearch(selection.status, selection.page));
 	const invoice = createQuery(() => invoiceQuery(customerId, bookingId));
 	const notAvailable = $derived(getApiError(invoice.error)?.code === 'INVOICE_NOT_AVAILABLE');
 	const booking = createQuery(() => ({
@@ -20,7 +24,7 @@
 <svelte:head><title>{invoice.data?.invoice_number ?? 'Invoice'} — SROOM</title></svelte:head>
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3 print:hidden">
 	<Link
-		href={resolve('/account/bookings/[bookingId]', { bookingId })}
+		href={resolve(`/account/bookings/[bookingId]${search}`, { bookingId })}
 		variant="plain"
 		class="inline-flex min-h-11 items-center gap-2 text-sm text-ink-muted"
 		><ArrowLeft size={16} aria-hidden="true" />Back to booking</Link

@@ -53,7 +53,6 @@ describe('integrated customer return routes', () => {
 		expect(customerReturnPath(path)).toBe(path);
 	});
 	it.each([
-		'/account/bookings',
 		'/admin/bookings',
 		'//example.invalid',
 		'/payment/preview-fake',
@@ -64,5 +63,28 @@ describe('integrated customer return routes', () => {
 		'/checkout/%E0%A4%A'
 	])('rejects %s', (path) => {
 		expect(customerReturnPath(path)).toBeUndefined();
+	});
+});
+
+describe('booking history return destinations', () => {
+	const id = '12345678-1234-4321-8765-123456789abc';
+	it.each(['/account/bookings', `/account/bookings/${id}`, `/account/bookings/${id}/invoice`])(
+		'preserves the allowed list context on %s',
+		(path) => {
+			expect(customerReturnPath(`${path}?status=confirmed&page=2`)).toBe(
+				`${path}?status=confirmed&page=2`
+			);
+		}
+	);
+	it('normalizes filter/page without allowing arbitrary destinations or query parameters', () => {
+		expect(customerReturnPath('/account/bookings?status=invalid&page=-1')).toBe(
+			'/account/bookings'
+		);
+		expect(customerReturnPath('/account/bookings?status=all&page=1')).toBe('/account/bookings');
+		expect(customerReturnPath('/account/bookings?next=https://example.invalid')).toBeUndefined();
+		expect(customerReturnPath('/account/bookings?status=%E0%A4%A')).toBeUndefined();
+		expect(
+			customerReturnPath(`/account/bookings/${id}/invoice?status=confirmed#other`)
+		).toBeUndefined();
 	});
 });

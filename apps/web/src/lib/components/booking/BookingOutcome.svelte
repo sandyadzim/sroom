@@ -92,10 +92,6 @@
 				{/if}
 			</div>
 		</section>
-		<BookingSummary
-			{booking}
-			totalLabel={outcome === 'success' ? 'Total paid' : 'Booking total'}
-			paymentReference={payment.payment_id ?? undefined}
-		/>
+		<BookingSummary {booking} totalLabel={outcome === 'success' ? 'Total paid' : 'Booking total'} />
 	</div>
 {:else}<p role="status" class="text-sm text-ink-muted">Opening the latest booking status…</p>{/if}

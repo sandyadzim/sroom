@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('$app/env/public', () => ({ PUBLIC_GATEWAY_BASE_URL: 'http://localhost:8080' }));
 import { customerApi } from './customer.ts';
 import { registerCustomer } from './identity/customer-auth.ts';
-import { createBooking, fetchRentalQuote } from './booking.ts';
+import { createBooking, fetchRentalQuote, fetchCustomerBookings } from './booking.ts';
 import { createVirtualAccount, refreshCustomerPayment, fetchCustomerInvoice } from './payment.ts';
 import type { HoldInput } from '#lib/types/booking.ts';
 let requests: { url: string; body: unknown; key: unknown; credentials: boolean | undefined }[];
@@ -58,6 +58,32 @@ describe('customer rental API', () => {
 		await registerCustomer({ email: 'rental@example.invalid', password: 'test-password' });
 		expect(requests[0].url).toBe('/api/v1/identity/register');
 		expect(requests[0].credentials).toBe(false);
+	});
+	it('requests one backend page and preserves the server total and order', async () => {
+		const result = {
+			data: [{ id: 'newer' }, { id: 'older' }],
+			page: { number: 2, limit: 5, total: 11 }
+		};
+		const controller = new AbortController();
+		let input: unknown;
+		customerApi.defaults.adapter = async (config) => {
+			input = {
+				url: config.url,
+				params: config.params,
+				signal: config.signal,
+				credentials: config.withCredentials
+			};
+			return { data: result, status: 200, statusText: 'OK', headers: {}, config };
+		};
+		expect(
+			await fetchCustomerBookings({ page: 2, limit: 5, status: 'confirmed' }, controller.signal)
+		).toEqual(result);
+		expect(input).toEqual({
+			url: '/api/v1/customer/bookings',
+			params: { page: 2, limit: 5, status: 'confirmed' },
+			signal: controller.signal,
+			credentials: true
+		});
 	});
 	it('passes query cancellation and preserves structured API failures', async () => {
 		const abort = new AbortController();

@@ -37,18 +37,21 @@
 	const next = $derived(page.url.searchParams.get('next'));
 	const nextPath = $derived(customerReturnPath(next));
 	const destination = $derived.by(() => {
-		const account = customerAccountPath(nextPath ?? null);
+		const [pathname, rawSearch] = (nextPath ?? '').split('?');
+		const search = rawSearch ? (`?${rawSearch}` as const) : '';
+		const account = customerAccountPath(pathname);
 		if (account) return resolve(account);
-		const slug = customerCheckoutSlug(nextPath ?? null);
+		const slug = customerCheckoutSlug(pathname);
 		if (slug) return resolve('/checkout/[slug]', { slug });
 		if (!nextPath) return resolve('/cars');
-		const parts = nextPath.split('/');
+		if (pathname === '/account/bookings') return resolve(`/account/bookings${search}`);
+		const parts = pathname.split('/');
 		if (parts[1] === 'payment') return resolve('/payment/[bookingId]', { bookingId: parts[2] });
 		if (parts[1] === 'bookings')
 			return resolve('/bookings/[bookingId]/[outcome]', { bookingId: parts[2], outcome: parts[3] });
 		return parts[4] === 'invoice'
-			? resolve('/account/bookings/[bookingId]/invoice', { bookingId: parts[3] })
-			: resolve('/account/bookings/[bookingId]', { bookingId: parts[3] });
+			? resolve(`/account/bookings/[bookingId]/invoice${search}`, { bookingId: parts[3] })
+			: resolve(`/account/bookings/[bookingId]${search}`, { bookingId: parts[3] });
 	});
 	const nextQuery = $derived(nextPath ? (`?next=${encodeURIComponent(nextPath)}` as const) : '');
 	const loginHref = $derived(`${resolve('/(auth)/login')}${nextQuery}`);

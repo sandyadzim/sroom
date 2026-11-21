@@ -31,3 +31,10 @@ export type SavedHold = Omit<Booking, 'terms_version' | 'terms_accepted_at' | 'c
 	payment_status: 'not_started';
 };
 export type PendingHold = { key: string; payload: HoldInput };
+
+export type BookingHistoryFilters = { status: BookingStatus | 'all'; page: number };
+export type CustomerBookingsInput = { status?: BookingStatus; page: number; limit: number };
+export type CustomerBookingsPage = {
+	data: Booking[];
+	page: { number: number; limit: number; total: number };
+};

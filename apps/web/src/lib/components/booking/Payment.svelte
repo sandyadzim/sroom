@@ -224,5 +224,5 @@
 				</ol>
 			</section>{/if}
 	</section>
-	<BookingSummary {booking} paymentReference={payment.payment_id ?? undefined} />
+	<BookingSummary {booking} />
 </div>
