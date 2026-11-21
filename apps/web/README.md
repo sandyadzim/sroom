@@ -91,8 +91,9 @@ This app is configured as a private deployment. `static/robots.txt` disallows al
 | Command             | Purpose                              |
 | ------------------- | ------------------------------------ |
 | `bun run dev`       | Start the Vite development server    |
-| `bun run build`     | Build the production app             |
+| `bun run build`     | Build the production Node app        |
 | `bun run preview`   | Preview the production build locally |
+| `bun run start`     | Start the built Node server          |
 | `bun run check`     | Run Svelte and TypeScript checks     |
 | `bun run test`      | Run the Vitest suite once            |
 | `bun run test:unit` | Start Vitest in watch mode           |
@@ -162,4 +163,4 @@ bun run lint
 bun run build
 ```
 
-The hosting adapter is not finalized yet; the project currently uses SvelteKit's `adapter-auto`.
+The app uses `@sveltejs/adapter-node`. After `bun run build`, start the generated server with `bun run start` (or `node build`). Set `PORT` to choose the HTTP port. The public Gateway URL is compiled from `PUBLIC_GATEWAY_BASE_URL` during the build, so rebuild when that value changes.
