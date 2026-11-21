@@ -40,6 +40,7 @@ func registerStaff(staff *gin.RouterGroup, client *http.Client, identityURL *url
 	staff.PATCH("/admins/:id", staffIdentity)
 
 	staff.GET("/customers", staffIdentity)
+	staff.POST("/customers/lookup", staffIdentity)
 	staff.GET("/customers/:id", staffIdentity)
 	staff.PATCH("/customers/:id/status", staffIdentity)
 

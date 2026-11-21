@@ -17,3 +17,11 @@ type CustomerListResponse struct {
 	Data []CustomerResponse `json:"data"`
 	Page AccountPage        `json:"page"`
 }
+
+type CustomerLookupRequest struct {
+	CustomerIDs []string `json:"customer_ids"`
+}
+
+type CustomerLookupResponse struct {
+	Data []CustomerResponse `json:"data"`
+}

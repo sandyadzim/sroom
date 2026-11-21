@@ -19,6 +19,7 @@ var ErrInvalidCustomerStatus = errors.New("status must be active or inactive")
 type CustomerRepository interface {
 	ListCustomers(ctx context.Context, limit, offset int, search, status string) ([]model.User, int64, error)
 	FindCustomerByID(ctx context.Context, id uuid.UUID) (*model.User, error)
+	FindCustomersByIDs(ctx context.Context, ids []uuid.UUID) ([]model.User, error)
 	UpdateCustomerStatus(ctx context.Context, id uuid.UUID, status string) (*model.User, error)
 }
 
@@ -44,6 +45,18 @@ func (s *CustomerService) List(ctx context.Context, page, limit int, search, sta
 		Data: customers,
 		Page: dto.AccountPage{Number: page, Limit: limit, Total: total},
 	}, nil
+}
+
+func (s *CustomerService) Lookup(ctx context.Context, ids []uuid.UUID) (*dto.CustomerLookupResponse, error) {
+	users, err := s.userRepo.FindCustomersByIDs(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("lookup customers: %w", err)
+	}
+	customers := make([]dto.CustomerResponse, 0, len(users))
+	for _, user := range users {
+		customers = append(customers, customerResponse(user))
+	}
+	return &dto.CustomerLookupResponse{Data: customers}, nil
 }
 
 func (s *CustomerService) Detail(ctx context.Context, id uuid.UUID) (*dto.CustomerResponse, error) {

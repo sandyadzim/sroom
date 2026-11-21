@@ -32,6 +32,36 @@ func (h *CustomerHandler) List(c fiber.Ctx) error {
 	return c.JSON(customers)
 }
 
+func (h *CustomerHandler) Lookup(c fiber.Ctx) error {
+	var req dto.CustomerLookupRequest
+	if err := strictJSON(c, &req); err != nil {
+		return err
+	}
+	if len(req.CustomerIDs) == 0 || len(req.CustomerIDs) > 100 {
+		return response.Error(c, fiber.StatusBadRequest, "INVALID_REQUEST", "customer_ids must contain between 1 and 100 IDs", nil)
+	}
+
+	ids := make([]uuid.UUID, 0, len(req.CustomerIDs))
+	seen := make(map[uuid.UUID]struct{}, len(req.CustomerIDs))
+	for _, value := range req.CustomerIDs {
+		id, err := uuid.Parse(value)
+		if err != nil {
+			return response.Error(c, fiber.StatusBadRequest, "INVALID_REQUEST", "customer_ids must contain valid UUIDs", nil)
+		}
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+
+	customers, err := h.service.Lookup(c.Context(), ids)
+	if err != nil {
+		return err
+	}
+	return c.JSON(customers)
+}
+
 func (h *CustomerHandler) Detail(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {

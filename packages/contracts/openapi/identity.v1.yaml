@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Identity API
-  version: 1.6.0
+  version: 1.7.0
   description: |
     Local backend for the SROOM portfolio demo. No real rental operations.
     Requests use JSON. Registration creates CUSTOMER only and does not log in.
@@ -450,6 +450,43 @@ paths:
           $ref: '#/components/responses/StaffForbidden'
         default:
           $ref: '#/components/responses/OtherError'
+  /api/v1/identity/customers/lookup:
+    parameters:
+      - $ref: '#/components/parameters/RequestID'
+    post:
+      operationId: lookupCustomers
+      summary: Resolve customer names by ID (ADMIN or OWNER)
+      description: |
+        Returns CUSTOMER accounts for the submitted IDs. Unknown IDs are omitted.
+        Duplicate IDs are deduplicated. The request accepts 1-100 valid UUIDs;
+        invalid or unknown fields return 400. Reads do not change account state.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerLookupRequest'
+      responses:
+        '200':
+          description: Matching CUSTOMER accounts; data is [] when none match.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerLookupResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/StaffForbidden'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        default:
+          $ref: '#/components/responses/OtherError'
   /api/v1/identity/customers/{id}:
     parameters:
       - $ref: '#/components/parameters/RequestID'
@@ -689,6 +726,26 @@ components:
               type: integer
               format: int64
               minimum: 0
+    CustomerLookupRequest:
+      type: object
+      additionalProperties: false
+      required: [customer_ids]
+      properties:
+        customer_ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: string
+            format: uuid
+    CustomerLookupResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomerProfile'
     RegisterRequest:
       type: object
       required: [email, password]

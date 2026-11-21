@@ -151,6 +151,7 @@ func accountTestApp() (*fiber.App, *accountUsers, *accountSessions) {
 	customers := group.Group("/customers", auth.RequireAuth, middleware.RequireStaff(users))
 	customer := NewCustomerHandler(service.NewCustomerService(users))
 	customers.Get("/", customer.List)
+	customers.Post("/lookup", customer.Lookup)
 	customers.Get("/:id", customer.Detail)
 	customers.Patch("/:id/status", customer.UpdateStatus)
 	group.Get("/me", auth.RequireAuth, NewMeHandler(service.NewMeService(users)).Me)

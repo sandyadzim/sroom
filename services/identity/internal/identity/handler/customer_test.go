@@ -38,6 +38,17 @@ func (r *accountUsers) FindCustomerByID(ctx context.Context, id uuid.UUID) (*mod
 	return user, nil
 }
 
+func (r *accountUsers) FindCustomersByIDs(_ context.Context, ids []uuid.UUID) ([]model.User, error) {
+	users := make([]model.User, 0, len(ids))
+	for _, id := range ids {
+		user, ok := r.users[id]
+		if ok && user.Role == model.RoleCustomer {
+			users = append(users, user)
+		}
+	}
+	return users, nil
+}
+
 func (r *accountUsers) UpdateCustomerStatus(ctx context.Context, id uuid.UUID, status string) (*model.User, error) {
 	user, err := r.FindCustomerByID(ctx, id)
 	if err != nil {
@@ -71,6 +82,7 @@ func TestCustomerManagement(t *testing.T) {
 	users.users[customer.ID] = customer
 	detailURL := root + "/" + customer.ID.String()
 	statusURL := detailURL + "/status"
+	lookupURL := root + "/lookup"
 
 	for _, bearer := range []string{"admin-token", "owner-token"} {
 		body := request(t, app, "GET", root+"?status=active", "", "", bearer, 200)
@@ -100,6 +112,26 @@ func TestCustomerManagement(t *testing.T) {
 	request(t, app, "GET", root+"?status=unknown", "", "", "admin-token", 400)
 	request(t, app, "GET", root+"/"+admin.ID.String(), "", "", "owner-token", 404)
 	request(t, app, "PATCH", root+"/"+admin.ID.String()+"/status", `{"status":"inactive"}`, jsonType, "owner-token", 404)
+
+	lookupBody := `{"customer_ids":["` + customer.ID.String() + `","` + customer.ID.String() + `","` + admin.ID.String() + `"]}`
+	for _, bearer := range []string{"admin-token", "owner-token"} {
+		body := request(t, app, "POST", lookupURL, lookupBody, jsonType, bearer, 200)
+		var lookup dto.CustomerLookupResponse
+		if err := json.Unmarshal(body, &lookup); err != nil || len(lookup.Data) != 1 ||
+			lookup.Data[0].ID != customer.ID.String() || lookup.Data[0].Email != customer.Email {
+			t.Fatal("lookup must deduplicate IDs and return only the customer account")
+		}
+	}
+	for _, body := range []string{
+		`{}`,
+		`{"customer_ids":[]}`,
+		`{"customer_ids":["not-a-uuid"]}`,
+		`{"customer_ids":["` + customer.ID.String() + `"],"role":"OWNER"}`,
+	} {
+		request(t, app, "POST", lookupURL, body, jsonType, "admin-token", 400)
+	}
+	request(t, app, "POST", lookupURL, lookupBody, jsonType, "", 401)
+	request(t, app, "POST", lookupURL, lookupBody, jsonType, "customer-token", 403)
 	for _, body := range []string{`{}`, `{"status":null}`, `{"status":"enabled"}`, `{"status":"inactive","full_name":"Forged"}`, `{"status":"inactive","role":"OWNER"}`} {
 		request(t, app, "PATCH", statusURL, body, jsonType, "admin-token", 400)
 	}

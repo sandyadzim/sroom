@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SROOM Gateway API
-  version: 1.17.0
+  version: 1.18.0
   description: |
     Local entry point for the documented Identity, Catalog, Booking, and Payment routes.
     Request and response schemas are owned by those services. The gateway forwards
@@ -776,6 +776,29 @@ paths:
           $ref: './identity.v1.yaml#/components/responses/Unauthenticated'
         '403':
           $ref: './identity.v1.yaml#/components/responses/StaffForbidden'
+        default:
+          $ref: './identity.v1.yaml#/components/responses/OtherError'
+  /api/v1/staff/customers/lookup:
+    post:
+      operationId: staffLookupCustomers
+      summary: Resolve customer names by ID (ADMIN or OWNER)
+      security:
+        - staffCookie: []
+      requestBody:
+        $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customers~1lookup/post/requestBody'
+      responses:
+        '200':
+          $ref: './identity.v1.yaml#/paths/~1api~1v1~1identity~1customers~1lookup/post/responses/200'
+        '400':
+          $ref: './identity.v1.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './identity.v1.yaml#/components/responses/Unauthenticated'
+        '403':
+          $ref: './identity.v1.yaml#/components/responses/StaffForbidden'
+        '413':
+          $ref: './identity.v1.yaml#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: './identity.v1.yaml#/components/responses/UnsupportedMediaType'
         default:
           $ref: './identity.v1.yaml#/components/responses/OtherError'
   /api/v1/staff/customers/{id}:

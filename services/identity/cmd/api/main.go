@@ -100,6 +100,7 @@ func main() {
 	// Staff customer management
 	customers := identityGroup.Group("/customers", authMiddleware.RequireAuth, middleware.RequireStaff(userRepo))
 	customers.Get("/", customerHandler.List)
+	customers.Post("/lookup", customerHandler.Lookup)
 	customers.Get("/:id", customerHandler.Detail)
 	customers.Patch("/:id/status", customerHandler.UpdateStatus)
 
