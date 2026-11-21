@@ -130,6 +130,7 @@ func requestHeaders(c *gin.Context) {
 	}
 	c.Header("X-Request-ID", requestID)
 	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet")
 	c.Next()
 }
 
