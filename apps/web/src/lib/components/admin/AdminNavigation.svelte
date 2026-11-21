@@ -43,25 +43,15 @@
 		{ label: 'Bookings', icon: CalendarDays, route: '/admin/(staff)/bookings' },
 		{ label: 'Payments', icon: CreditCard, route: '/admin/(staff)/payments' }
 	] as const;
-	const planned = import.meta.env.DEV
-		? []
-		: [
-				{ label: 'Overview', icon: LayoutDashboard, route: '/admin/(staff)/overview' },
-				{ label: 'Reports', icon: ChartColumn, route: '/admin/(staff)/reports' }
-			];
 	const operations = [
-		...(import.meta.env.DEV
-			? [{ label: 'Overview', icon: LayoutDashboard, route: '/admin/(staff)/overview' } as const]
-			: []),
+		{ label: 'Overview', icon: LayoutDashboard, route: '/admin/(staff)/overview' },
 		...transactionLinks,
 		{ label: 'Brands', icon: Tag, route: '/admin/(staff)/brands' },
 		{ label: 'Cars', icon: CarFront, route: '/admin/(staff)/cars' },
 		{ label: 'Physical units', icon: Warehouse, route: '/admin/(staff)/units' },
 		{ label: 'Banners', icon: PanelsTopLeft, route: '/admin/(staff)/banners' },
 		{ label: 'Featured Cars', icon: Star, route: '/admin/(staff)/featured-cars' },
-		...(import.meta.env.DEV
-			? [{ label: 'Reports', icon: ChartColumn, route: '/admin/(staff)/reports' } as const]
-			: [])
+		{ label: 'Reports', icon: ChartColumn, route: '/admin/(staff)/reports' }
 	] as const;
 	const customersHref = $derived(resolve('/admin/(staff)/customers'));
 	const inCustomers = $derived(page.route.id?.startsWith('/admin/(staff)/customers'));
@@ -107,17 +97,6 @@
 							<Icon size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
 							<span class={labelClass}>{label}</span>
 						</Link>
-					</li>
-				{/each}
-				{#each planned as { label, icon: Icon } (label)}
-					<li>
-						<span
-							class={[row, 'text-ink-muted']}
-							title={collapsed ? `${label} (planned)` : undefined}
-						>
-							<Icon size={17} strokeWidth={1.5} aria-hidden="true" class="shrink-0" />
-							<span class={labelClass}>{label}<span class="sr-only"> (planned)</span></span>
-						</span>
 					</li>
 				{/each}
 			</ul>
